@@ -75,14 +75,57 @@ swift test --verbose
 
 ### Commit Messages
 
-Use [Conventional Commits](https://www.conventionalcommits.org/):
+This repository **enforces** [Conventional Commits](https://www.conventionalcommits.org/). All commits must follow this format or they will be **rejected by CI**.
 
+**Format:**
+```
+<type>(<scope>): <subject>
+
+[optional body]
+
+[optional footer]
+```
+
+**Allowed types:**
+| Type | Description |
+|------|-------------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `docs` | Documentation only |
+| `style` | Formatting, whitespace (no code change) |
+| `refactor` | Code change that neither fixes nor adds |
+| `perf` | Performance improvement |
+| `test` | Adding or updating tests |
+| `build` | Build system or dependencies |
+| `ci` | CI configuration |
+| `chore` | Other changes (no src/test modification) |
+| `revert` | Reverts a previous commit |
+
+**Rules:**
+- Type must be lowercase
+- Subject must be lowercase
+- Subject must not be empty
+- Header must be <= 100 characters
+- No period at the end of subject
+
+**Examples:**
 ```
 feat: add new template case for dictionary literals
 fix: correct rendering of empty array literals
 docs: update installation instructions
 test: add property-based tests for functor laws
 refactor: extract helper methods in Renderer
+ci: add commit message validation
+feat(renderer): support method call expressions
+fix(template): handle nil payload in conditional
+```
+
+**Invalid examples:**
+```
+Added new feature          # No type prefix
+Feat: Add new feature      # Type must be lowercase
+feat: Add new feature.     # Subject should be lowercase, no period
+feat:missing space         # Space required after colon
 ```
 
 ### Code Quality Requirements
