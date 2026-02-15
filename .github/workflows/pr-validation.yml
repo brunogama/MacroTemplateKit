@@ -1,0 +1,152 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Strict format check - MUST pass
+  format-check:
+    name: Format Check
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install swift-format
+        run: brew install swift-format
+
+      - name: Check Formatting
+        run: |
+          swift-format lint --strict --recursive Sources/ Tests/
+          if [ $? -ne 0 ]; then
+            echo "::error::Code is not properly formatted. Run 'swift-format format --recursive Sources/ Tests/' locally."
+            exit 1
+          fi
+
+  # Strict lint check - MUST pass, no disables allowed
+  lint-check:
+    name: SwiftLint Strict
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Check for Forbidden Disable Tags
+        run: |
+          echo "Checking for forbidden swiftlint:disable/enable tags..."
+          if grep -rn "swiftlint:disable\|swiftlint:enable" Sources/ Tests/ --include="*.swift"; then
+            echo "::error::SwiftLint disable/enable tags are STRICTLY FORBIDDEN. Fix the underlying issues instead."
+            exit 1
+          fi
+          echo "No forbidden tags found."
+
+      - name: Run SwiftLint Strict
+        run: |
+          swiftlint lint --strict --reporter github-actions-logging Sources/ Tests/
+          if [ $? -ne 0 ]; then
+            echo "::error::SwiftLint violations found. All issues must be fixed."
+            exit 1
+          fi
+
+  # Build with warnings as errors - MUST pass
+  build-check:
+    name: Build (Warnings = Errors)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.0'
+
+      - name: Build with Strict Warnings
+        run: swift build -Xswiftc -warnings-as-errors
+
+  # All tests MUST pass
+  test-check:
+    name: Tests
+    runs-on: macos-14
+    needs: build-check
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.0'
+
+      - name: Run All Tests
+        run: swift test --parallel
+
+  # Danger validation
+  danger-check:
+    name: Danger
+    runs-on: macos-14
+    needs: [format-check, lint-check]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.0'
+
+      - name: Install Danger
+        run: brew install danger/tap/danger-swift
+
+      - name: Run Danger
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: danger-swift ci --fail-on-errors
+
+  # Final gate - all checks must pass
+  pr-ready:
+    name: PR Ready
+    runs-on: ubuntu-latest
+    needs: [format-check, lint-check, build-check, test-check, danger-check]
+    if: always()
+
+    steps:
+      - name: Check All Jobs
+        run: |
+          if [ "${{ needs.format-check.result }}" != "success" ]; then
+            echo "::error::Format check failed"
+            exit 1
+          fi
+          if [ "${{ needs.lint-check.result }}" != "success" ]; then
+            echo "::error::Lint check failed"
+            exit 1
+          fi
+          if [ "${{ needs.build-check.result }}" != "success" ]; then
+            echo "::error::Build check failed"
+            exit 1
+          fi
+          if [ "${{ needs.test-check.result }}" != "success" ]; then
+            echo "::error::Test check failed"
+            exit 1
+          fi
+          if [ "${{ needs.danger-check.result }}" != "success" ]; then
+            echo "::error::Danger check failed"
+            exit 1
+          fi
+          echo "All checks passed! PR is ready for review."
