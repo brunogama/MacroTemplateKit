@@ -1,0 +1,108 @@
+# SwiftLint Nested Configuration for Tests
+# This config merges with the root .swiftlint.yml and overrides specific rules
+# for test files which naturally tend to be longer and have different patterns.
+#
+# See: https://realm.github.io/SwiftLint/configuration.html
+
+# Relaxed limits for test files
+file_length:
+  warning: 1500
+  error: 2000
+  ignore_comment_only_lines: true
+
+type_body_length:
+  warning: 1000
+  error: 1500
+
+function_body_length:
+  warning: 150
+  error: 200
+
+# Line length - more permissive for tests
+line_length:
+  warning: 150
+  error: 250
+  ignores_urls: true
+  ignores_function_declarations: true
+  ignores_comments: true
+  ignores_interpolated_strings: true
+
+# Tests often need larger tuples for test data
+large_tuple:
+  warning: 8
+  error: 12
+
+# Tests can have deeper nesting
+nesting:
+  type_level: 3
+  function_level: 4
+
+# Tests can have longer type names
+type_name:
+  min_length: 3
+  max_length:
+    warning: 60
+    error: 80
+  allowed_symbols:
+    - "_"
+  validates_start_with_lowercase:
+    warning: false
+
+# Tests can have shorter/unconventional identifiers for convenience
+identifier_name:
+  min_length:
+    warning: 1
+    error: 0
+  max_length:
+    warning: 60
+    error: 80
+  allowed_symbols:
+    - "_"
+  excluded:
+  - id
+  - ID
+  - URL
+  - url
+  - i
+  - j
+  - k
+  - x
+  - y
+  - z
+  - p
+  - v
+  - c
+  - r
+  - g
+  - b
+  - a
+  - db
+  - rng
+
+# Disable rules that don't apply well to tests
+disabled_rules:
+  # Force try/cast is fine in tests
+  - force_try
+  - force_cast
+  # Tests may have complex setup
+  - cyclomatic_complexity
+  # Disable blanket command checks for tests (often need file-wide disables)
+  - blanket_disable_command
+  - superfluous_disable_command
+  # Orphaned doc comments may occur in test data
+  - orphaned_doc_comment
+  # For-where is stylistic preference
+  - for_where
+  # Unused enumerated is common in tests with mock data
+  - unused_enumerated
+  # Let _ = is sometimes clearer than _ =
+  - redundant_discardable_let
+  # String to Data conversion style is preference
+  - non_optional_string_data_conversion
+  # Formatting rules (handled by swift-format)
+  - trailing_comma
+  - opening_brace
+  - closure_parameter_position
+
+# Custom rules to disable for tests (from parent)
+custom_rules: {}

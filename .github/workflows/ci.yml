@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    strategy:
+      matrix:
+        os: [macos-14, macos-15]
+        swift: ['6.0']
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: ${{ matrix.swift }}
+
+      - name: Swift Version
+        run: swift --version
+
+      - name: Build
+        run: swift build -Xswiftc -warnings-as-errors
+
+      - name: Run Tests
+        run: swift test --parallel
+
+  build-release:
+    name: Build Release
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.0'
+
+      - name: Build Release
+        run: swift build -c release -Xswiftc -warnings-as-errors
+
+  lint:
+    name: SwiftLint
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run SwiftLint
+        run: swiftlint lint --strict Sources/ Tests/
+
+  code-coverage:
+    name: Code Coverage
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '6.0'
+
+      - name: Generate Coverage
+        run: swift test --enable-code-coverage
+
+      - name: Export Coverage
+        run: |
+          xcrun llvm-cov export \
+            .build/debug/MacroTemplateKitPackageTests.xctest/Contents/MacOS/MacroTemplateKitPackageTests \
+            -instr-profile .build/debug/codecov/default.profdata \
+            -format lcov \
+            -ignore-filename-regex Tests/ \
+            > coverage.lcov
+        continue-on-error: true
