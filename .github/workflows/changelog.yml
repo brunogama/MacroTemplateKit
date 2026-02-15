@@ -6,13 +6,12 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   changelog:
     name: Update Changelog
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
       - name: Checkout
@@ -21,15 +20,14 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install git-cliff
+        run: |
+          curl -sSfL https://github.com/orhun/git-cliff/releases/download/v2.7.0/git-cliff-2.7.0-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          sudo mv git-cliff-2.7.0/git-cliff /usr/local/bin/
+
       - name: Generate Changelog
-        uses: orhun/git-cliff-action@v3
-        id: git-cliff
-        with:
-          config: .github/cliff.toml
-          args: --verbose
-        env:
-          OUTPUT: CHANGELOG.md
-          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          git-cliff --config .github/cliff.toml --output CHANGELOG.md
 
       - name: Check for Changes
         id: check
