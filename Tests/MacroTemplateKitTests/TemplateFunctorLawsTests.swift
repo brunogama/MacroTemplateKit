@@ -1,10 +1,6 @@
 import XCTest
 @testable import MacroTemplateKit
 
-// swiftlint:disable file_length
-// Justification: Comprehensive functor law tests covering all 9 Template cases.
-// Splitting would reduce test cohesion and clarity.
-
 /// Property-based tests verifying Template<A> satisfies functor laws.
 ///
 /// Functor laws tested:
@@ -15,15 +11,11 @@ import XCTest
 /// - Structure preservation during mapping
 /// - Composability of transformations
 /// - Predictable behavior for all template cases
-// swiftlint:disable:next type_body_length
-// Justification: All test methods test the same mathematical properties, cohesive suite.
 final class TemplateFunctorLawsTests: XCTestCase {
 
   // MARK: - Functor Law 1: Identity
   // template.map { $0 } == template
 
-  // swiftlint:disable:next array_init
-  // Justification: Testing functor identity law (map id == id), not array conversion.
   func testFunctorIdentityLaw_literal_integer() {
     let template: Template<Int> = .literal(.integer(42))
     let mapped = template.map { $0 }
@@ -34,14 +26,12 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  // swiftlint:disable:next array_init
   func testFunctorIdentityLaw_literal_string() {
     let template: Template<String> = .literal(.string("hello"))
     let mapped = template.map { $0 }
     XCTAssertEqual(mapped, template, "Identity law failed for string literal")
   }
 
-  // swiftlint:disable:next array_init
   func testFunctorIdentityLaw_literal_boolean() {
     let templateTrue: Template<Bool> = .literal(.boolean(true))
     let templateFalse: Template<Bool> = .literal(.boolean(false))
@@ -49,14 +39,12 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(templateFalse.map { $0 }, templateFalse, "Identity law failed for false literal")
   }
 
-  // swiftlint:disable:next array_init
   func testFunctorIdentityLaw_literal_nil() {
     let template: Template<Int> = .literal(.nil)
     let mapped = template.map { $0 }
     XCTAssertEqual(mapped, template, "Identity law failed for nil literal")
   }
 
-  // swiftlint:disable:next array_init
   func testFunctorIdentityLaw_variable() {
     let template: Template<String> = .variable("myVar", payload: "metadata")
     let mapped = template.map { $0 }
@@ -67,7 +55,6 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  // swiftlint:disable:next array_init
   func testFunctorIdentityLaw_conditional() {
     let template: Template<Int> = .conditional(
       condition: .literal(.boolean(true)),
@@ -181,18 +168,14 @@ final class TemplateFunctorLawsTests: XCTestCase {
   // MARK: - Functor Law 2: Composition
   // template.map(f).map(g) == template.map { g(f($0)) }
 
-  // swiftlint:disable:next identifier_name
-  // Justification: f and g are standard mathematical notation for functor composition laws.
   func testFunctorCompositionLaw_simple() {
     let template: Template<Int> = .variable("x", payload: 10)
 
-    // f: Int -> String
-    let f: (Int) -> String = { "\($0)" }
-    // g: String -> Int
-    let g: (String) -> Int = { $0.count }
+    let transform1: (Int) -> String = { "\($0)" }
+    let transform2: (String) -> Int = { $0.count }
 
-    let mappedTwice = template.map(f).map(g)
-    let mappedComposed = template.map { g(f($0)) }
+    let mappedTwice = template.map(transform1).map(transform2)
+    let mappedComposed = template.map { transform2(transform1($0)) }
 
     XCTAssertEqual(
       mappedTwice,
@@ -201,7 +184,6 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  // swiftlint:disable:next identifier_name
   func testFunctorCompositionLaw_nestedTemplate() {
     let template: Template<Int> = .conditional(
       condition: .literal(.boolean(true)),
@@ -209,13 +191,11 @@ final class TemplateFunctorLawsTests: XCTestCase {
       elseBranch: .variable("y", payload: 2)
     )
 
-    // f: Int -> String (convert to string)
-    let f: (Int) -> String = { "value_\($0)" }
-    // g: String -> Bool (check length)
-    let g: (String) -> Bool = { $0.count > 5 }
+    let transform1: (Int) -> String = { "value_\($0)" }
+    let transform2: (String) -> Bool = { $0.count > 5 }
 
-    let mappedTwice = template.map(f).map(g)
-    let mappedComposed = template.map { g(f($0)) }
+    let mappedTwice = template.map(transform1).map(transform2)
+    let mappedComposed = template.map { transform2(transform1($0)) }
 
     XCTAssertEqual(
       mappedTwice,
@@ -224,7 +204,6 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  // swiftlint:disable:next identifier_name
   func testFunctorCompositionLaw_functionCall() {
     let template: Template<String> = .functionCall(
       function: "print",
@@ -234,13 +213,11 @@ final class TemplateFunctorLawsTests: XCTestCase {
       ]
     )
 
-    // f: String -> Int (length)
-    let f: (String) -> Int = { $0.count }
-    // g: Int -> String (description)
-    let g: (Int) -> String = { "len_\($0)" }
+    let transform1: (String) -> Int = { $0.count }
+    let transform2: (Int) -> String = { "len_\($0)" }
 
-    let mappedTwice = template.map(f).map(g)
-    let mappedComposed = template.map { g(f($0)) }
+    let mappedTwice = template.map(transform1).map(transform2)
+    let mappedComposed = template.map { transform2(transform1($0)) }
 
     XCTAssertEqual(
       mappedTwice,
@@ -249,7 +226,6 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  // swiftlint:disable:next identifier_name
   func testFunctorCompositionLaw_arrayLiteral() {
     let template: Template<Int> = .arrayLiteral([
       .variable("a", payload: 1),
@@ -257,13 +233,11 @@ final class TemplateFunctorLawsTests: XCTestCase {
       .variable("c", payload: 3),
     ])
 
-    // f: Int -> String
-    let f: (Int) -> String = { "item_\($0)" }
-    // g: String -> Int
-    let g: (String) -> Int = { $0.count }
+    let transform1: (Int) -> String = { "item_\($0)" }
+    let transform2: (String) -> Int = { $0.count }
 
-    let mappedTwice = template.map(f).map(g)
-    let mappedComposed = template.map { g(f($0)) }
+    let mappedTwice = template.map(transform1).map(transform2)
+    let mappedComposed = template.map { transform2(transform1($0)) }
 
     XCTAssertEqual(
       mappedTwice,
