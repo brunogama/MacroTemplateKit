@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- **lint**: Remove array_init rule and disable tags from tests
 - **ci**: Use direct git-cliff installation instead of docker action
 - **ci**: Use Xcode-bundled Swift instead of standalone toolchain
+
+### Documentation
+
+- Update changelog [skip ci]
 
 ### Miscellaneous Tasks
 
