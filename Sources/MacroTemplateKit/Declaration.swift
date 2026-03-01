@@ -270,19 +270,36 @@ public struct SetterSignature<A>: Sendable where A: Sendable {
   }
 }
 
-/// Extension signature with type name and members.
+/// A generic where clause conformance requirement (e.g., `Tier: TierAtLeastPerformance`).
+public struct WhereRequirement: Equatable, Hashable, Sendable {
+  /// The type parameter name (left side of `:`, e.g., `"Tier"`).
+  public let typeParameter: String
+
+  /// The constraint protocol name (right side of `:`, e.g., `"TierAtLeastPerformance"`).
+  public let constraint: String
+
+  public init(typeParameter: String, constraint: String) {
+    self.typeParameter = typeParameter
+    self.constraint = constraint
+  }
+}
+
+/// Extension signature with type name, conformances, where clause, and members.
 public struct ExtensionSignature<A>: Sendable where A: Sendable {
   public let typeName: String
   public let conformances: [String]
+  public let whereRequirements: [WhereRequirement]
   public let members: [Declaration<A>]
 
   public init(
     typeName: String,
     conformances: [String] = [],
+    whereRequirements: [WhereRequirement] = [],
     members: [Declaration<A>] = []
   ) {
     self.typeName = typeName
     self.conformances = conformances
+    self.whereRequirements = whereRequirements
     self.members = members
   }
 }
@@ -427,6 +444,7 @@ extension ExtensionSignature {
     ExtensionSignature<B>(
       typeName: typeName,
       conformances: conformances,
+      whereRequirements: whereRequirements,
       members: members.map { $0.map(transform) }
     )
   }
