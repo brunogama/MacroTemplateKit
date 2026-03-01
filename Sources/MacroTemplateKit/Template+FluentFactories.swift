@@ -129,4 +129,54 @@ extension Template {
   public static func array(_ elements: [Template<A>]) -> Template<A> {
     .arrayLiteral(elements)
   }
+
+  /// Creates a dictionary literal template from key-value pairs.
+  ///
+  /// Empty array renders as `[:]`. Non-empty renders as `[k1: v1, k2: v2]`.
+  public static func dictionary(_ entries: [(key: Template<A>, value: Template<A>)]) -> Template<A> {
+    .dictionaryLiteral(entries)
+  }
+
+  // MARK: - Subscript Access
+
+  /// Creates a subscript access template (`base[index]`).
+  public static func `subscript`(_ base: Template<A>, index: Template<A>) -> Template<A> {
+    .subscriptAccess(base: base, index: index)
+  }
+
+  // MARK: - Force Unwrap
+
+  /// Creates a force-unwrap template (`expr!`).
+  public static func unwrapped(_ expr: Template<A>) -> Template<A> {
+    .forceUnwrap(expr)
+  }
+
+  // MARK: - String Interpolation
+
+  /// Creates a string interpolation template from segments.
+  ///
+  /// Example: `.interpolated([.text("prefix_"), .expression(.variable("name", payload: ())), .text("_suffix")])`
+  public static func interpolated(_ segments: [StringInterpolationSegment<A>]) -> Template<A> {
+    .stringInterpolation(segments)
+  }
+
+  // MARK: - Self Access
+
+  /// Creates a type metatype access template (`TypeName.self`).
+  public static func selfType(_ typeName: String) -> Template<A> {
+    .selfAccess(typeName)
+  }
+
+  // MARK: - Closure
+
+  /// Creates a closure template with explicit signature.
+  ///
+  /// When parameters is empty and returnType is nil, renders as `{ body }`.
+  public static func closure(
+    params: [(name: String, type: String?)] = [],
+    returnType: String? = nil,
+    body: [Statement<A>]
+  ) -> Template<A> {
+    .closure(ClosureSignature<A>(parameters: params, returnType: returnType, body: body))
+  }
 }

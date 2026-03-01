@@ -131,6 +131,9 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Whether function is static.
   public let isStatic: Bool
 
+  /// Whether function is mutating.
+  public let isMutating: Bool
+
   /// Function name.
   public let name: String
 
@@ -152,6 +155,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   public init(
     accessLevel: AccessLevel = .internal,
     isStatic: Bool = false,
+    isMutating: Bool = false,
     name: String,
     parameters: [ParameterSignature] = [],
     isAsync: Bool = false,
@@ -161,6 +165,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   ) {
     self.accessLevel = accessLevel
     self.isStatic = isStatic
+    self.isMutating = isMutating
     self.name = name
     self.parameters = parameters
     self.isAsync = isAsync
@@ -270,19 +275,36 @@ public struct SetterSignature<A>: Sendable where A: Sendable {
   }
 }
 
-/// Extension signature with type name and members.
+/// A generic where clause conformance requirement (e.g., `Tier: TierAtLeastPerformance`).
+public struct WhereRequirement: Equatable, Hashable, Sendable {
+  /// The type parameter name (left side of `:`, e.g., `"Tier"`).
+  public let typeParameter: String
+
+  /// The constraint protocol name (right side of `:`, e.g., `"TierAtLeastPerformance"`).
+  public let constraint: String
+
+  public init(typeParameter: String, constraint: String) {
+    self.typeParameter = typeParameter
+    self.constraint = constraint
+  }
+}
+
+/// Extension signature with type name, conformances, where clause, and members.
 public struct ExtensionSignature<A>: Sendable where A: Sendable {
   public let typeName: String
   public let conformances: [String]
+  public let whereRequirements: [WhereRequirement]
   public let members: [Declaration<A>]
 
   public init(
     typeName: String,
     conformances: [String] = [],
+    whereRequirements: [WhereRequirement] = [],
     members: [Declaration<A>] = []
   ) {
     self.typeName = typeName
     self.conformances = conformances
+    self.whereRequirements = whereRequirements
     self.members = members
   }
 }
@@ -313,6 +335,9 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
+  /// Whether the initializer is failable (`init?`).
+  public let isFailable: Bool
+
   /// Parameter list with labels, names, types, and default values.
   public let parameters: [ParameterSignature]
 
@@ -324,11 +349,13 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
 
   public init(
     accessLevel: AccessLevel = .internal,
+    isFailable: Bool = false,
     parameters: [ParameterSignature] = [],
     canThrow: Bool = false,
     body: [Statement<A>] = []
   ) {
     self.accessLevel = accessLevel
+    self.isFailable = isFailable
     self.parameters = parameters
     self.canThrow = canThrow
     self.body = body
@@ -373,6 +400,7 @@ extension FunctionSignature {
     FunctionSignature<B>(
       accessLevel: accessLevel,
       isStatic: isStatic,
+      isMutating: isMutating,
       name: name,
       parameters: parameters,
       isAsync: isAsync,
@@ -427,6 +455,7 @@ extension ExtensionSignature {
     ExtensionSignature<B>(
       typeName: typeName,
       conformances: conformances,
+      whereRequirements: whereRequirements,
       members: members.map { $0.map(transform) }
     )
   }
@@ -449,6 +478,7 @@ extension InitializerSignature {
   where A: Sendable, B: Sendable {
     InitializerSignature<B>(
       accessLevel: accessLevel,
+      isFailable: isFailable,
       parameters: parameters,
       canThrow: canThrow,
       body: body.map { $0.map(transform) }
