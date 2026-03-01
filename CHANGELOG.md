@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- **quick-10**: Add trailing commas to InheritedTypeListSyntax elements
 - Update Package@swift-6.0.swift swift-syntax range to 510..<700
 - **lint**: Remove array_init rule and disable tags from tests
 - **ci**: Use direct git-cliff installation instead of docker action
@@ -18,9 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update changelog [skip ci]
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 
 ### Features
 
+- Add selfAccess, isFailable, isMutating, breakStatement
+- **16-01**: Add new Template and Statement cases to MacroTemplateKit
+- Add WhereRequirement support and fix rendering of commas and colons
 - Add isStatic, accessLevel, effects, and genericCall
 
 ### Miscellaneous Tasks
@@ -31,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add conventional commit validation workflow
 - Add strict PR validation with Danger
 - Add automatic changelog generation on main branch merges
+
+### Testing
+
+- **16-01**: Add unit tests for all new Template and Statement cases
 
 ## [0.0.1] - 2026-02-15
 
