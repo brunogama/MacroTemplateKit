@@ -21,8 +21,8 @@ public struct Renderer {
   /// - Returns: SwiftSyntax expression node
   public static func render<A>(_ template: Template<A>) -> ExprSyntax {
     renderLiterals(template) ?? renderVariables(template) ?? renderControlFlow(template)
-      ?? renderOperations(template) ?? renderDeclarations(template) ?? renderCollections(template)
-      ?? ExprSyntax(NilLiteralExprSyntax())
+      ?? renderOperations(template) ?? renderEffects(template) ?? renderDeclarations(template)
+      ?? renderCollections(template) ?? ExprSyntax(NilLiteralExprSyntax())
   }
 
   // MARK: - Literal Rendering
@@ -144,6 +144,8 @@ public struct Renderer {
       return renderBinaryOperation(left, op, right)
     case .propertyAccess(let base, let property):
       return renderPropertyAccess(base, property)
+    case .genericCall(let function, let typeArguments, let arguments):
+      return renderGenericCall(function, typeArguments, arguments)
     default:
       return nil
     }
@@ -217,6 +219,54 @@ public struct Renderer {
       MemberAccessExprSyntax(
         base: render(base),
         name: .identifier(property)
+      )
+    )
+  }
+
+  // MARK: - Effects Rendering
+
+  private static func renderEffects<A>(_ template: Template<A>) -> ExprSyntax? {
+    switch template {
+    case .tryExpression(let inner):
+      return ExprSyntax(TryExprSyntax(expression: render(inner)))
+    case .awaitExpression(let inner):
+      return ExprSyntax(AwaitExprSyntax(expression: render(inner)))
+    default:
+      return nil
+    }
+  }
+
+  // MARK: - Generic Call Rendering
+
+  private static func renderGenericCall<A>(
+    _ function: String,
+    _ typeArguments: [String],
+    _ arguments: [(label: String?, value: Template<A>)]
+  ) -> ExprSyntax {
+    let genericArgs = typeArguments.map { typeArg in
+      GenericArgumentSyntax(argument: .type(TypeSyntax(stringLiteral: typeArg)))
+    }
+
+    let calledExpr = ExprSyntax(GenericSpecializationExprSyntax(
+      expression: ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier(function))),
+      genericArgumentClause: GenericArgumentClauseSyntax(
+        arguments: GenericArgumentListSyntax(genericArgs)
+      )
+    ))
+
+    return ExprSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: calledExpr,
+        leftParen: .leftParenToken(),
+        arguments: LabeledExprListSyntax {
+          for argument in arguments {
+            LabeledExprSyntax(
+              label: argument.label.map { .identifier($0) },
+              expression: render(argument.value)
+            )
+          }
+        },
+        rightParen: .rightParenToken()
       )
     )
   }

@@ -70,8 +70,16 @@ extension Renderer {
 
     let body = CodeBlockSyntax(statements: renderStatements(sig.body))
 
+    var modifierList: [DeclModifierSyntax] = []
+    if let keyword = sig.accessLevel.keyword {
+      modifierList.append(DeclModifierSyntax(name: .keyword(keyword)))
+    }
+    if sig.isStatic {
+      modifierList.append(DeclModifierSyntax(name: .keyword(.static)))
+    }
+
     return FunctionDeclSyntax(
-      modifiers: renderModifiers(accessLevel: sig.accessLevel),
+      modifiers: DeclModifierListSyntax(modifierList),
       name: .identifier(sig.name),
       signature: signature,
       body: body
@@ -109,10 +117,14 @@ extension Renderer {
   private static func renderComputedProperty<A: Sendable>(
     _ sig: ComputedPropertySignature<A>
   ) -> VariableDeclSyntax {
-    var modifiers = DeclModifierListSyntax([])
-    if sig.isStatic {
-      modifiers = DeclModifierListSyntax([DeclModifierSyntax(name: .keyword(.static))])
+    var modifierList: [DeclModifierSyntax] = []
+    if let keyword = sig.accessLevel.keyword {
+      modifierList.append(DeclModifierSyntax(name: .keyword(keyword)))
     }
+    if sig.isStatic {
+      modifierList.append(DeclModifierSyntax(name: .keyword(.static)))
+    }
+    let modifiers = DeclModifierListSyntax(modifierList)
 
     let getterBody = CodeBlockSyntax(statements: renderStatements(sig.getter))
     let getter = AccessorDeclSyntax(

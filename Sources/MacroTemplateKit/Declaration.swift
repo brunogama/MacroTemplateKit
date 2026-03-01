@@ -128,6 +128,9 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
+  /// Whether function is static.
+  public let isStatic: Bool
+
   /// Function name.
   public let name: String
 
@@ -148,6 +151,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
 
   public init(
     accessLevel: AccessLevel = .internal,
+    isStatic: Bool = false,
     name: String,
     parameters: [ParameterSignature] = [],
     isAsync: Bool = false,
@@ -156,6 +160,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
     body: [Statement<A>] = []
   ) {
     self.accessLevel = accessLevel
+    self.isStatic = isStatic
     self.name = name
     self.parameters = parameters
     self.isAsync = isAsync
@@ -226,6 +231,8 @@ public struct PropertySignature<A>: Sendable where A: Sendable {
 
 /// Computed property signature with accessors.
 public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
+  /// Access level (public, internal, private, fileprivate).
+  public let accessLevel: AccessLevel
   public let name: String
   public let type: String
   public let isStatic: Bool
@@ -233,12 +240,14 @@ public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
   public let setter: SetterSignature<A>?
 
   public init(
+    accessLevel: AccessLevel = .internal,
     name: String,
     type: String,
     isStatic: Bool = false,
     getter: [Statement<A>],
     setter: SetterSignature<A>? = nil
   ) {
+    self.accessLevel = accessLevel
     self.name = name
     self.type = type
     self.isStatic = isStatic
@@ -363,6 +372,7 @@ extension FunctionSignature {
   where A: Sendable, B: Sendable {
     FunctionSignature<B>(
       accessLevel: accessLevel,
+      isStatic: isStatic,
       name: name,
       parameters: parameters,
       isAsync: isAsync,
@@ -391,6 +401,7 @@ extension ComputedPropertySignature {
   func map<B>(_ transform: @escaping @Sendable (A) -> B) -> ComputedPropertySignature<B>
   where A: Sendable, B: Sendable {
     ComputedPropertySignature<B>(
+      accessLevel: accessLevel,
       name: name,
       type: type,
       isStatic: isStatic,
