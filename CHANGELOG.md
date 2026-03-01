@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- **core**: Break up template map nil-coalescing chain for release builds
 - Replace swift package generate-documentation with xcodebuild docbuild in docs workflow
 
 ### Documentation
 
+- Update changelog [skip ci]
 - Update changelog [skip ci]
 - Sync README and DocC articles with latest API surface
 - Update changelog [skip ci]
