@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update changelog [skip ci]
 - Update changelog [skip ci]
+- Update changelog [skip ci]
 - Sync README and DocC articles with latest API surface
 - Update changelog [skip ci]
 - Update changelog [skip ci]
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Miscellaneous Tasks
 
+- Make commit lint reject push and pr
 - Update MacroTemplateKit version to 0.0.3
 - Modify changelog workflow branch configuration
 
