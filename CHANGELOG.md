@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Update changelog [skip ci]
+
 ### Miscellaneous Tasks
 
+- Update MacroTemplateKit version to 0.0.3
 - Modify changelog workflow branch configuration
 
 ## [.0.0.3] - 2026-03-01
