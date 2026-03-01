@@ -101,6 +101,31 @@ public indirect enum Template<A> {
     initializer: Template<A>
   )
 
+  // MARK: - Effects
+
+  /// Try expression wrapping an inner expression.
+  ///
+  /// SwiftSyntax equivalent: `TryExprSyntax`
+  case tryExpression(Template<A>)
+
+  /// Await expression wrapping an inner expression.
+  ///
+  /// SwiftSyntax equivalent: `AwaitExprSyntax`
+  case awaitExpression(Template<A>)
+
+  // MARK: - Generic Calls
+
+  /// Function call with generic type arguments.
+  ///
+  /// Renders to: `Function<Type1, Type2>(arg1: val1, ...)`
+  ///
+  /// SwiftSyntax equivalent: `FunctionCallExprSyntax` with `GenericSpecializationExprSyntax`
+  case genericCall(
+    function: String,
+    typeArguments: [String],
+    arguments: [(label: String?, value: Template<A>)]
+  )
+
   // MARK: - Collections
 
   /// Array literal with element expressions.
@@ -123,7 +148,8 @@ public indirect enum Template<A> {
   public func map<B>(_ transform: (A) -> B) -> Template<B> {
     mapLiterals(transform) ?? mapVariables(transform) ?? mapControlFlow(transform) ?? mapOperations(
       transform
-    ) ?? mapDeclarations(transform) ?? mapCollections(transform) ?? .literal(.nil)
+    ) ?? mapEffects(transform) ?? mapDeclarations(transform) ?? mapCollections(transform)
+      ?? .literal(.nil)
   }
 
   private func mapLiterals<B>(_ transform: (A) -> B) -> Template<B>? {
@@ -179,6 +205,23 @@ public indirect enum Template<A> {
         base: base.map(transform),
         property: property
       )
+    case .genericCall(let function, let typeArguments, let arguments):
+      return .genericCall(
+        function: function,
+        typeArguments: typeArguments,
+        arguments: arguments.map { (label: $0.label, value: $0.value.map(transform)) }
+      )
+    default:
+      return nil
+    }
+  }
+
+  private func mapEffects<B>(_ transform: (A) -> B) -> Template<B>? {
+    switch self {
+    case .tryExpression(let inner):
+      return .tryExpression(inner.map(transform))
+    case .awaitExpression(let inner):
+      return .awaitExpression(inner.map(transform))
     default:
       return nil
     }

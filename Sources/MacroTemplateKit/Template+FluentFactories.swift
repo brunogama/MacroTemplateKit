@@ -90,6 +90,34 @@ extension Template {
     .conditional(condition: condition, thenBranch: thenBranch, elseBranch: elseBranch)
   }
 
+  // MARK: - Effects
+
+  /// Wraps an expression in `try`.
+  public static func `try`(_ expression: Template<A>) -> Template<A> {
+    .tryExpression(expression)
+  }
+
+  /// Wraps an expression in `await`.
+  public static func `await`(_ expression: Template<A>) -> Template<A> {
+    .awaitExpression(expression)
+  }
+
+  /// Wraps an expression in `try await`.
+  public static func tryAwait(_ expression: Template<A>) -> Template<A> {
+    .tryExpression(.awaitExpression(expression))
+  }
+
+  // MARK: - Generic Calls
+
+  /// Creates a generic function call template (e.g., `SQVField<String>("name")`).
+  public static func genericCall(
+    _ function: String,
+    typeArguments: [String],
+    arguments: [(label: String?, value: Template<A>)]
+  ) -> Template<A> {
+    .genericCall(function: function, typeArguments: typeArguments, arguments: arguments)
+  }
+
   // MARK: - Collections
 
   /// Creates an array literal template.

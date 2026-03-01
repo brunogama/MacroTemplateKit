@@ -3,7 +3,8 @@
 extension Template: Equatable where A: Equatable {
   public static func == (lhs: Template<A>, rhs: Template<A>) -> Bool {
     equalLiterals(lhs, rhs) || equalVariables(lhs, rhs) || equalControlFlow(lhs, rhs)
-      || equalOperations(lhs, rhs) || equalDeclarations(lhs, rhs) || equalCollections(lhs, rhs)
+      || equalOperations(lhs, rhs) || equalEffects(lhs, rhs) || equalDeclarations(lhs, rhs)
+      || equalCollections(lhs, rhs)
   }
 
   private static func equalLiterals(_ lhs: Template<A>, _ rhs: Template<A>) -> Bool {
@@ -48,6 +49,22 @@ extension Template: Equatable where A: Equatable {
       return lhsLeft == rhsLeft && lhsOp == rhsOp && lhsRight == rhsRight
     case (.propertyAccess(let lhsBase, let lhsProp), .propertyAccess(let rhsBase, let rhsProp)):
       return lhsBase == rhsBase && lhsProp == rhsProp
+    case (
+      .genericCall(let lhsFunc, let lhsTypes, let lhsArgs),
+      .genericCall(let rhsFunc, let rhsTypes, let rhsArgs)
+    ):
+      return lhsFunc == rhsFunc && lhsTypes == rhsTypes && equalMethodArgs(lhsArgs, rhsArgs)
+    default:
+      return false
+    }
+  }
+
+  private static func equalEffects(_ lhs: Template<A>, _ rhs: Template<A>) -> Bool {
+    switch (lhs, rhs) {
+    case (.tryExpression(let lhsInner), .tryExpression(let rhsInner)):
+      return lhsInner == rhsInner
+    case (.awaitExpression(let lhsInner), .awaitExpression(let rhsInner)):
+      return lhsInner == rhsInner
     default:
       return false
     }
@@ -94,7 +111,8 @@ extension Template: Hashable where A: Hashable {
   public func hash(into hasher: inout Hasher) {
     _ =
       hashLiterals(&hasher) || hashVariables(&hasher) || hashControlFlow(&hasher)
-      || hashOperations(&hasher) || hashDeclarations(&hasher) || hashCollections(&hasher)
+      || hashOperations(&hasher) || hashEffects(&hasher) || hashDeclarations(&hasher)
+      || hashCollections(&hasher)
   }
 
   @discardableResult
@@ -158,6 +176,28 @@ extension Template: Hashable where A: Hashable {
       hasher.combine(6)
       hasher.combine(base)
       hasher.combine(property)
+      return true
+    case .genericCall(let function, let typeArguments, let arguments):
+      hasher.combine(12)
+      hasher.combine(function)
+      hasher.combine(typeArguments)
+      hashFunctionArgs(arguments, &hasher)
+      return true
+    default:
+      return false
+    }
+  }
+
+  @discardableResult
+  private func hashEffects(_ hasher: inout Hasher) -> Bool {
+    switch self {
+    case .tryExpression(let inner):
+      hasher.combine(10)
+      hasher.combine(inner)
+      return true
+    case .awaitExpression(let inner):
+      hasher.combine(11)
+      hasher.combine(inner)
       return true
     default:
       return false
