@@ -1,4 +1,8 @@
 // swift-tools-version: 5.10
+// Development manifest -- builds MacroTemplateKit from source (requires swift-syntax).
+// MacroTemplateKit is a compile-time library statically linked into macro binaries.
+// When macros ship as .artifactbundle binaries, MTK is baked in -- consumers never
+// resolve it or swift-syntax. Package.binary.swift exists for completeness.
 import PackageDescription
 
 let package = Package(
