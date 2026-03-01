@@ -1,0 +1,76 @@
+name: LLMS.txt
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'Sources/**'
+      - 'Scripts/generate_llms_txt.sh'
+      - 'LLMS.txt'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'Sources/**'
+      - 'Scripts/generate_llms_txt.sh'
+      - 'LLMS.txt'
+  schedule:
+    # Run weekly on Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+    inputs:
+      regenerate:
+        description: 'Regenerate and commit LLMS.txt'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check LLMS.txt
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check LLMS.txt is up to date
+        run: bash Scripts/generate_llms_txt.sh --check
+
+  regenerate:
+    name: Regenerate LLMS.txt
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: >
+      (github.event_name == 'schedule') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.regenerate == 'true') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Regenerate LLMS.txt
+        run: bash Scripts/generate_llms_txt.sh
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add LLMS.txt
+          if git diff --cached --quiet; then
+            echo "LLMS.txt is already up to date, nothing to commit."
+          else
+            git commit -m "chore: regenerate LLMS.txt [skip ci]"
+            git push
+          fi

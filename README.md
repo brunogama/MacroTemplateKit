@@ -1,13 +1,29 @@
 # MacroTemplateKit
 
 [![CI](https://github.com/brunogama/MacroTemplateKit/actions/workflows/ci.yml/badge.svg)](https://github.com/brunogama/MacroTemplateKit/actions/workflows/ci.yml)
+[![Documentation](https://github.com/brunogama/MacroTemplateKit/actions/workflows/docs.yml/badge.svg)](https://github.com/brunogama/MacroTemplateKit/actions/workflows/docs.yml)
 [![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
 [![Platform](https://img.shields.io/badge/Platforms-iOS%20|%20macOS%20|%20tvOS%20|%20watchOS-blue.svg)](https://developer.apple.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Swift Package Index](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fbrunogama%2FMacroTemplateKit%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/brunogama/MacroTemplateKit)
 
 A type-safe, functional templating engine for Swift macro code generation.
 
 MacroTemplateKit provides a **parametric algebraic data type** (ADT) that separates template structure from metadata, enabling compile-time safety, composability, and mathematical guarantees through functor laws.
+
+## Documentation
+
+- 📖 **DocC Reference** — [brunogama.github.io/MacroTemplateKit](https://brunogama.github.io/MacroTemplateKit/documentation/macrotemplatekit/)
+- 🔍 **Swift Package Index** — [swiftpackageindex.com/brunogama/MacroTemplateKit](https://swiftpackageindex.com/brunogama/MacroTemplateKit)
+
+> **Local docs generation:**
+> ```bash
+> swift package --allow-writing-to-directory docs \
+>   generate-documentation --target MacroTemplateKit \
+>   --disable-indexing --transform-for-static-hosting \
+>   --hosting-base-path MacroTemplateKit --output-path docs
+> open docs/index.html
+> ```
 
 ## Why MacroTemplateKit?
 
