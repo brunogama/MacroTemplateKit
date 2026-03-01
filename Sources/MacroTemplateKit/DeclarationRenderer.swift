@@ -180,8 +180,12 @@ extension Renderer {
       sig.conformances.isEmpty
       ? nil
       : {
-        let types = sig.conformances.map { conformance in
-          InheritedTypeSyntax(type: TypeSyntax(stringLiteral: conformance))
+        let lastIndex = sig.conformances.count - 1
+        let types = sig.conformances.enumerated().map { (index, conformance) in
+          InheritedTypeSyntax(
+            type: TypeSyntax(stringLiteral: conformance),
+            trailingComma: index < lastIndex ? .commaToken(trailingTrivia: .space) : nil
+          )
         }
         return InheritanceClauseSyntax(inheritedTypes: InheritedTypeListSyntax(types))
       }()
@@ -222,8 +226,12 @@ extension Renderer {
       sig.conformances.isEmpty
       ? nil
       : {
-        let types = sig.conformances.map { conformance in
-          InheritedTypeSyntax(type: TypeSyntax(stringLiteral: conformance))
+        let lastIndex = sig.conformances.count - 1
+        let types = sig.conformances.enumerated().map { (index, conformance) in
+          InheritedTypeSyntax(
+            type: TypeSyntax(stringLiteral: conformance),
+            trailingComma: index < lastIndex ? .commaToken(trailingTrivia: .space) : nil
+          )
         }
         return InheritanceClauseSyntax(inheritedTypes: InheritedTypeListSyntax(types))
       }()
