@@ -9,18 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- Sync README and DocC articles with latest API surface
+- Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 
 ### Features
 
+- **core**: Add tupleLiteral, subscriptCall, forInStatement, ifLetBinding, enumDecl, typeAlias + relax SwiftLint thresholds
 - **packaging**: Add binary manifest for MacroTemplateKit
 
 ### Miscellaneous Tasks
 
 - Update MacroTemplateKit version to 0.0.3
 - Modify changelog workflow branch configuration
+
+### Refactor
+
+- **tests**: Remove redundant swiftlint:disable tags now covered by Tests/.swiftlint.yml
 
 ## [.0.0.3] - 2026-03-01
 
