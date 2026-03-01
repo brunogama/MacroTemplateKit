@@ -90,6 +90,33 @@ jobs:
       - name: Run All Tests
         run: swift test --parallel
 
+  # Commit message lint - MUST pass
+  commitlint-check:
+    name: Commit Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install commitlint
+        run: |
+          npm install --save-dev @commitlint/cli @commitlint/config-conventional
+
+      - name: Validate PR commits
+        run: |
+          echo "Validating commits from ${{ github.event.pull_request.base.sha }} to ${{ github.event.pull_request.head.sha }}"
+          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
   # Danger validation
   danger-check:
     name: Danger
@@ -117,7 +144,7 @@ jobs:
   pr-ready:
     name: PR Ready
     runs-on: ubuntu-latest
-    needs: [format-check, lint-check, build-check, test-check, danger-check]
+    needs: [format-check, lint-check, build-check, test-check, danger-check, commitlint-check]
     if: always()
 
     steps:
@@ -141,6 +168,10 @@ jobs:
           fi
           if [ "${{ needs.danger-check.result }}" != "success" ]; then
             echo "::error::Danger check failed"
+            exit 1
+          fi
+          if [ "${{ needs.commitlint-check.result }}" != "success" ]; then
+            echo "::error::Commit lint check failed"
             exit 1
           fi
           echo "All checks passed! PR is ready for review."
