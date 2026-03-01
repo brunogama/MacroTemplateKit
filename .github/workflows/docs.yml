@@ -33,12 +33,19 @@ jobs:
 
       - name: Build DocC Documentation
         run: |
-          swift package \
-            --allow-writing-to-directory docs \
-            generate-documentation \
-            --target MacroTemplateKit \
-            --disable-indexing \
-            --transform-for-static-hosting \
+          xcodebuild docbuild \
+            -scheme MacroTemplateKit \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath /tmp/docbuild
+
+          ARCHIVE=$(find /tmp/docbuild -name "*.doccarchive" | head -n 1)
+          if [ -z "$ARCHIVE" ]; then
+            echo "error: No .doccarchive found in derived data" >&2
+            exit 1
+          fi
+
+          xcrun docc process-archive transform-for-static-hosting \
+            "$ARCHIVE" \
             --hosting-base-path MacroTemplateKit \
             --output-path docs
 
