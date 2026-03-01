@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Update changelog [skip ci]
+- Update changelog [skip ci]
+
+### Features
+
+- **packaging**: Add binary manifest for MacroTemplateKit
 
 ### Miscellaneous Tasks
 
