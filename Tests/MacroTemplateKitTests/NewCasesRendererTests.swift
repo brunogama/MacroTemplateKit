@@ -3,10 +3,6 @@ import XCTest
 
 @testable import MacroTemplateKit
 
-// swiftlint:disable file_length type_body_length
-// Justification: Comprehensive tests for all new Template/Statement cases added in phase 16-01.
-// All test methods are cohesive: verifying rendering of the new MTK cases. Splitting reduces clarity.
-
 /// Tests for all new Template and Statement cases added in MacroTemplateKit (phase 16-01).
 ///
 /// Verifies Renderer renders: dictionary literals, subscript access, force-unwrap,
