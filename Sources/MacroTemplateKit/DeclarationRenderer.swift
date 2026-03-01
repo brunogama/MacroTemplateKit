@@ -163,6 +163,16 @@ extension Renderer {
     )
   }
 
+  /// Renders an `ExtensionSignature` directly to `ExtensionDeclSyntax`.
+  ///
+  /// Use this when the `ExtensionMacro` protocol requires `[ExtensionDeclSyntax]`
+  /// rather than `DeclSyntax`.
+  public static func renderExtensionDecl<A: Sendable>(
+    _ sig: ExtensionSignature<A>
+  ) -> ExtensionDeclSyntax {
+    renderExtension(sig)
+  }
+
   private static func renderExtension<A: Sendable>(
     _ sig: ExtensionSignature<A>
   ) -> ExtensionDeclSyntax {
@@ -176,6 +186,23 @@ extension Renderer {
         return InheritanceClauseSyntax(inheritedTypes: InheritedTypeListSyntax(types))
       }()
 
+    let whereClause: GenericWhereClauseSyntax? =
+      sig.whereRequirements.isEmpty
+      ? nil
+      : {
+        let requirements = sig.whereRequirements.map { req in
+          GenericRequirementSyntax(
+            requirement: .init(ConformanceRequirementSyntax(
+              leftType: IdentifierTypeSyntax(name: .identifier(req.typeParameter)),
+              rightType: IdentifierTypeSyntax(name: .identifier(req.constraint))
+            ))
+          )
+        }
+        return GenericWhereClauseSyntax(
+          requirements: GenericRequirementListSyntax(requirements)
+        )
+      }()
+
     let members = MemberBlockItemListSyntax(
       sig.members.map { member in
         MemberBlockItemSyntax(decl: render(member))
@@ -185,6 +212,7 @@ extension Renderer {
     return ExtensionDeclSyntax(
       extendedType: TypeSyntax(stringLiteral: sig.typeName),
       inheritanceClause: inheritanceClause,
+      genericWhereClause: whereClause,
       memberBlock: MemberBlockSyntax(members: members)
     )
   }
@@ -260,7 +288,7 @@ extension Renderer {
   private static func renderParameterList(
     _ parameters: [ParameterSignature]
   ) -> [FunctionParameterSyntax] {
-    parameters.map { param -> FunctionParameterSyntax in
+    parameters.enumerated().map { index, param -> FunctionParameterSyntax in
       let firstName = param.label.map { TokenSyntax.identifier($0) } ?? .identifier(param.name)
       let secondName = param.label != nil ? TokenSyntax.identifier(param.name) : nil
       let typeString = param.isInout ? "inout \(param.type)" : param.type
@@ -269,11 +297,14 @@ extension Renderer {
         InitializerClauseSyntax(value: ExprSyntax(stringLiteral: value))
       }
 
+      let isLast = index == parameters.count - 1
+
       return FunctionParameterSyntax(
         firstName: firstName,
         secondName: secondName,
         type: TypeSyntax(stringLiteral: typeString),
-        defaultValue: defaultExpr
+        defaultValue: defaultExpr,
+        trailingComma: isLast ? nil : .commaToken()
       )
     }
   }

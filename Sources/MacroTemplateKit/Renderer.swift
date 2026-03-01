@@ -159,14 +159,7 @@ public struct Renderer {
       FunctionCallExprSyntax(
         calledExpression: DeclReferenceExprSyntax(baseName: .identifier(function)),
         leftParen: .leftParenToken(),
-        arguments: LabeledExprListSyntax {
-          for argument in arguments {
-            LabeledExprSyntax(
-              label: argument.label.map { .identifier($0) },
-              expression: render(argument.value)
-            )
-          }
-        },
+        arguments: renderLabeledExprList(arguments),
         rightParen: .rightParenToken()
       )
     )
@@ -184,14 +177,7 @@ public struct Renderer {
           name: .identifier(method)
         ),
         leftParen: .leftParenToken(),
-        arguments: LabeledExprListSyntax {
-          for argument in arguments {
-            LabeledExprSyntax(
-              label: argument.label.map { .identifier($0) },
-              expression: render(argument.value)
-            )
-          }
-        },
+        arguments: renderLabeledExprList(arguments),
         rightParen: .rightParenToken()
       )
     )
@@ -258,17 +244,28 @@ public struct Renderer {
       FunctionCallExprSyntax(
         calledExpression: calledExpr,
         leftParen: .leftParenToken(),
-        arguments: LabeledExprListSyntax {
-          for argument in arguments {
-            LabeledExprSyntax(
-              label: argument.label.map { .identifier($0) },
-              expression: render(argument.value)
-            )
-          }
-        },
+        arguments: renderLabeledExprList(arguments),
         rightParen: .rightParenToken()
       )
     )
+  }
+
+  // MARK: - Labeled Expression List Helper
+
+  /// Renders labeled argument lists with proper colon and trailing comma tokens.
+  private static func renderLabeledExprList<A>(
+    _ arguments: [(label: String?, value: Template<A>)]
+  ) -> LabeledExprListSyntax {
+    let exprs = arguments.enumerated().map { index, argument -> LabeledExprSyntax in
+      let isLast = index == arguments.count - 1
+      return LabeledExprSyntax(
+        label: argument.label.map { .identifier($0) },
+        colon: argument.label != nil ? .colonToken() : nil,
+        expression: render(argument.value),
+        trailingComma: isLast ? nil : .commaToken()
+      )
+    }
+    return LabeledExprListSyntax(exprs)
   }
 
   // MARK: - Declarations Rendering
