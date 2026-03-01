@@ -322,7 +322,7 @@ Add MacroTemplateKit to your `Package.swift` dependencies:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.1")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.3")
 ]
 ```
 
@@ -355,7 +355,7 @@ For macro implementations, add it to your macro target:
 1. Open your project in Xcode
 2. Go to **File > Add Package Dependencies...**
 3. Enter the repository URL: `https://github.com/brunogama/MacroTemplateKit.git`
-4. Select version **0.0.1** or later
+4. Select version **0.0.3** or later
 5. Click **Add Package**
 
 ## Design Philosophy
