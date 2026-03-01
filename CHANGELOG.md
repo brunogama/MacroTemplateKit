@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Miscellaneous Tasks
+
+- Modify changelog workflow branch configuration
+
+## [.0.0.3] - 2026-03-01
+
 ### Bug Fixes
 
 - **quick-10**: Add trailing commas to InheritedTypeListSyntax elements
@@ -17,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
 - Update changelog [skip ci]
@@ -47,5 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of MacroTemplateKit v0.0.1
 
-[Unreleased]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/brunogama/MacroTemplateKit/compare/v.0.0.3...HEAD
+[.0.0.3]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.1...v.0.0.3
 
