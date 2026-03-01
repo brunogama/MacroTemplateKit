@@ -131,6 +131,9 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Whether function is static.
   public let isStatic: Bool
 
+  /// Whether function is mutating.
+  public let isMutating: Bool
+
   /// Function name.
   public let name: String
 
@@ -152,6 +155,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   public init(
     accessLevel: AccessLevel = .internal,
     isStatic: Bool = false,
+    isMutating: Bool = false,
     name: String,
     parameters: [ParameterSignature] = [],
     isAsync: Bool = false,
@@ -161,6 +165,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   ) {
     self.accessLevel = accessLevel
     self.isStatic = isStatic
+    self.isMutating = isMutating
     self.name = name
     self.parameters = parameters
     self.isAsync = isAsync
@@ -330,6 +335,9 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
+  /// Whether the initializer is failable (`init?`).
+  public let isFailable: Bool
+
   /// Parameter list with labels, names, types, and default values.
   public let parameters: [ParameterSignature]
 
@@ -341,11 +349,13 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
 
   public init(
     accessLevel: AccessLevel = .internal,
+    isFailable: Bool = false,
     parameters: [ParameterSignature] = [],
     canThrow: Bool = false,
     body: [Statement<A>] = []
   ) {
     self.accessLevel = accessLevel
+    self.isFailable = isFailable
     self.parameters = parameters
     self.canThrow = canThrow
     self.body = body
@@ -390,6 +400,7 @@ extension FunctionSignature {
     FunctionSignature<B>(
       accessLevel: accessLevel,
       isStatic: isStatic,
+      isMutating: isMutating,
       name: name,
       parameters: parameters,
       isAsync: isAsync,
@@ -467,6 +478,7 @@ extension InitializerSignature {
   where A: Sendable, B: Sendable {
     InitializerSignature<B>(
       accessLevel: accessLevel,
+      isFailable: isFailable,
       parameters: parameters,
       canThrow: canThrow,
       body: body.map { $0.map(transform) }

@@ -217,6 +217,8 @@ extension Template: Equatable where A: Equatable {
       return l == r
     case (.assignment(let ll, let lr), .assignment(let rl, let rr)):
       return ll == rl && lr == rr
+    case (.selfAccess(let l), .selfAccess(let r)):
+      return l == r
     default:
       return false
     }
@@ -385,6 +387,10 @@ extension Template: Hashable where A: Hashable {
       hasher.combine(18)
       hasher.combine(lhs)
       hasher.combine(rhs)
+      return true
+    case .selfAccess(let typeName):
+      hasher.combine(19)
+      hasher.combine(typeName)
       return true
     default:
       return false

@@ -99,6 +99,13 @@ public indirect enum Statement<A> {
   ///
   /// SwiftSyntax equivalent: `InfixOperatorExprSyntax` wrapped in `CodeBlockItemSyntax`
   case assignmentStatement(lhs: Template<A>, rhs: Template<A>)
+
+  // MARK: - Break Statement
+
+  /// break
+  ///
+  /// SwiftSyntax equivalent: `BreakStmtSyntax`
+  case breakStatement
 }
 
 // MARK: - Functor
@@ -158,6 +165,8 @@ extension Statement {
       )
     case .assignmentStatement(let lhs, let rhs):
       return .assignmentStatement(lhs: lhs.map(transform), rhs: rhs.map(transform))
+    case .breakStatement:
+      return .breakStatement
     }
   }
 

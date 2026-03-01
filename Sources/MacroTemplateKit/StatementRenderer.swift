@@ -52,6 +52,9 @@ extension Renderer {
 
     case .assignmentStatement(let lhs, let rhs):
       return renderAssignmentStatement(lhs: lhs, rhs: rhs)
+
+    case .breakStatement:
+      return CodeBlockItemSyntax(item: .stmt(StmtSyntax(BreakStmtSyntax())))
     }
   }
 

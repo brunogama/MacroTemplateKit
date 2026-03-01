@@ -77,6 +77,9 @@ extension Renderer {
     if sig.isStatic {
       modifierList.append(DeclModifierSyntax(name: .keyword(.static)))
     }
+    if sig.isMutating {
+      modifierList.append(DeclModifierSyntax(name: .keyword(.mutating)))
+    }
 
     return FunctionDeclSyntax(
       modifiers: DeclModifierListSyntax(modifierList),
@@ -275,6 +278,7 @@ extension Renderer {
 
     return InitializerDeclSyntax(
       modifiers: renderModifiers(accessLevel: sig.accessLevel),
+      optionalMark: sig.isFailable ? .postfixQuestionMarkToken() : nil,
       signature: signature,
       body: body
     )

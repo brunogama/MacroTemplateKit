@@ -233,6 +233,15 @@ public indirect enum Template<A> {
   /// SwiftSyntax equivalent: `InfixOperatorExprSyntax` with `AssignmentExprSyntax`
   case assignment(lhs: Template<A>, rhs: Template<A>)
 
+  // MARK: - Self Access
+
+  /// Type metatype access expression (`TypeName.self`).
+  ///
+  /// Renders the `.self` member access on a type expression, producing a metatype value.
+  ///
+  /// SwiftSyntax equivalent: `MemberAccessExprSyntax(base: TypeExprSyntax(...), name: .keyword(.self))`
+  case selfAccess(String)
+
   // MARK: - Functor
 
   /// Maps a transformation function over all variable payloads, preserving structure.
@@ -370,6 +379,8 @@ public indirect enum Template<A> {
       ))
     case .assignment(let lhs, let rhs):
       return .assignment(lhs: lhs.map(transform), rhs: rhs.map(transform))
+    case .selfAccess(let typeName):
+      return .selfAccess(typeName)
     default:
       return nil
     }

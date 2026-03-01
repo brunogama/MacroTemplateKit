@@ -537,4 +537,171 @@ final class NewCasesRendererTests: XCTestCase {
     )
     XCTAssertEqual(case1.hashValue, case2.hashValue, "Equal switch cases should have equal hash values")
   }
+
+  // MARK: - Self Access (Template.selfAccess)
+
+  func testRenderSelfAccess_simpleType() {
+    // String.self
+    let template: Template<Void> = .selfAccess("String")
+    let result = Renderer.render(template)
+
+    let description = result.trimmedDescription
+    XCTAssertTrue(description.contains("String"), "Should contain type name")
+    XCTAssertTrue(description.contains(".self"), "Should contain .self access")
+  }
+
+  func testRenderSelfAccess_customType() {
+    // MyStruct.self
+    let template: Template<Void> = .selfAccess("MyStruct")
+    let result = Renderer.render(template)
+
+    let description = result.trimmedDescription
+    XCTAssertEqual(description, "MyStruct.self", "Should render as TypeName.self")
+  }
+
+  func testFluentFactory_selfType() {
+    let template: Template<Void> = .selfType("Int")
+    let result = Renderer.render(template)
+
+    XCTAssertEqual(result.trimmedDescription, "Int.self", "Fluent factory should render Type.self")
+  }
+
+  func testMap_selfAccess() {
+    let template: Template<Int> = .selfAccess("Double")
+    let mapped: Template<String> = template.map { "\($0)" }
+
+    if case .selfAccess(let typeName) = mapped {
+      XCTAssertEqual(typeName, "Double", "Should preserve type name through map")
+    } else {
+      XCTFail("Should remain selfAccess after map")
+    }
+  }
+
+  func testEquatable_selfAccess() {
+    let a: Template<Int> = .selfAccess("String")
+    let b: Template<Int> = .selfAccess("String")
+    let c: Template<Int> = .selfAccess("Int")
+
+    XCTAssertEqual(a, b, "Same selfAccess should be equal")
+    XCTAssertNotEqual(a, c, "Different selfAccess should not be equal")
+  }
+
+  // MARK: - Failable Initializer (InitializerSignature.isFailable)
+
+  func testRenderFailableInitializer() {
+    // init?(rawValue: String) { ... }
+    let decl: Declaration<Void> = .initDecl(InitializerSignature<Void>(
+      isFailable: true,
+      parameters: [ParameterSignature(name: "rawValue", type: "String")],
+      body: [.returnStatement(.literal(.nil))]
+    ))
+    let result = Renderer.render(decl)
+
+    let description = result.trimmedDescription
+    XCTAssertTrue(description.contains("init?"), "Should render as failable init?")
+    XCTAssertTrue(description.contains("rawValue"), "Should contain parameter name")
+    XCTAssertTrue(description.contains("String"), "Should contain parameter type")
+  }
+
+  func testRenderNonFailableInitializer() {
+    // init(value: Int) { ... }
+    let decl: Declaration<Void> = .initDecl(InitializerSignature<Void>(
+      parameters: [ParameterSignature(name: "value", type: "Int")],
+      body: []
+    ))
+    let result = Renderer.render(decl)
+
+    let description = result.trimmedDescription
+    XCTAssertTrue(description.contains("init"), "Should contain init")
+    XCTAssertFalse(description.contains("init?"), "Non-failable should not have question mark")
+  }
+
+  // MARK: - Mutating Function (FunctionSignature.isMutating)
+
+  func testRenderMutatingFunction() {
+    // mutating func update(value: Int) { ... }
+    let decl: Declaration<Void> = .function(FunctionSignature<Void>(
+      isMutating: true,
+      name: "update",
+      parameters: [ParameterSignature(name: "value", type: "Int")],
+      body: []
+    ))
+    let result = Renderer.render(decl)
+
+    let description = result.formatted().description
+    XCTAssertTrue(description.contains("mutating"), "Should contain mutating modifier")
+    XCTAssertTrue(description.contains("update"), "Should contain func name")
+  }
+
+  func testRenderNonMutatingFunction() {
+    // func read() { ... }
+    let decl: Declaration<Void> = .function(FunctionSignature<Void>(
+      name: "read",
+      body: []
+    ))
+    let result = Renderer.render(decl)
+
+    let description = result.formatted().description
+    XCTAssertFalse(description.contains("mutating"), "Non-mutating func should not have mutating modifier")
+    XCTAssertTrue(description.contains("read"), "Should contain func name")
+  }
+
+  func testRenderStaticMutatingNotCombined() {
+    // static func (isMutating should not apply alongside static in practice,
+    // but test that both modifiers appear if set)
+    let decl: Declaration<Void> = .function(FunctionSignature<Void>(
+      isStatic: true,
+      isMutating: true,
+      name: "reset"
+    ))
+    let result = Renderer.render(decl)
+
+    let description = result.trimmedDescription
+    XCTAssertTrue(description.contains("static"), "Should contain static modifier")
+    XCTAssertTrue(description.contains("mutating"), "Should contain mutating modifier")
+  }
+
+  // MARK: - Break Statement
+
+  func testRenderBreakStatement() {
+    let statement: Statement<Void> = .breakStatement
+    let result = Renderer.render(statement)
+
+    let description = result.formatted().description
+    XCTAssertTrue(description.contains("break"), "Should render break statement")
+  }
+
+  func testBreakStatementInSwitchDefault() {
+    // switch x { case "a": ...; default: break }
+    let statement: Statement<Void> = .switchStatement(
+      subject: .variable("x", payload: ()),
+      cases: [
+        SwitchCase(
+          pattern: .stringLiteral("a"),
+          body: [.returnStatement(.literal(.integer(1)))]
+        ),
+        SwitchCase(
+          pattern: .defaultCase,
+          body: [.breakStatement]
+        ),
+      ]
+    )
+    let result = Renderer.render(statement)
+
+    let description = result.formatted().description
+    XCTAssertTrue(description.contains("switch"), "Should contain switch")
+    XCTAssertTrue(description.contains("default"), "Should contain default case")
+    XCTAssertTrue(description.contains("break"), "Default case should contain break")
+  }
+
+  func testMap_breakStatement() {
+    let statement: Statement<Int> = .breakStatement
+    let mapped: Statement<String> = statement.map { "\($0)" }
+
+    if case .breakStatement = mapped {
+      // OK
+    } else {
+      XCTFail("Should remain breakStatement after map")
+    }
+  }
 }

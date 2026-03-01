@@ -160,6 +160,13 @@ extension Template {
     .stringInterpolation(segments)
   }
 
+  // MARK: - Self Access
+
+  /// Creates a type metatype access template (`TypeName.self`).
+  public static func selfType(_ typeName: String) -> Template<A> {
+    .selfAccess(typeName)
+  }
+
   // MARK: - Closure
 
   /// Creates a closure template with explicit signature.

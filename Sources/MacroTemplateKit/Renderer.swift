@@ -342,6 +342,13 @@ public struct Renderer {
           rightOperand: render(rhs)
         )
       )
+    case .selfAccess(let typeName):
+      return ExprSyntax(
+        MemberAccessExprSyntax(
+          base: ExprSyntax(TypeExprSyntax(type: IdentifierTypeSyntax(name: .identifier(typeName)))),
+          name: .keyword(.self)
+        )
+      )
     default:
       return nil
     }
