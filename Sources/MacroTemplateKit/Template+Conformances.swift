@@ -1,10 +1,102 @@
+// MARK: - Protocol Conformances for New Types
+
+extension StringInterpolationSegment: Equatable where A: Equatable {
+  public static func == (lhs: StringInterpolationSegment<A>, rhs: StringInterpolationSegment<A>) -> Bool {
+    switch (lhs, rhs) {
+    case (.text(let l), .text(let r)):
+      return l == r
+    case (.expression(let l), .expression(let r)):
+      return l == r
+    default:
+      return false
+    }
+  }
+}
+
+extension StringInterpolationSegment: Hashable where A: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    switch self {
+    case .text(let s):
+      hasher.combine(0)
+      hasher.combine(s)
+    case .expression(let expr):
+      hasher.combine(1)
+      hasher.combine(expr)
+    }
+  }
+}
+
+extension ClosureSignature: Equatable where A: Equatable {
+  public static func == (lhs: ClosureSignature<A>, rhs: ClosureSignature<A>) -> Bool {
+    guard lhs.parameters.count == rhs.parameters.count else { return false }
+    let paramsEqual = zip(lhs.parameters, rhs.parameters).allSatisfy {
+      $0.name == $1.name && $0.type == $1.type
+    }
+    return paramsEqual && lhs.returnType == rhs.returnType && lhs.body == rhs.body
+  }
+}
+
+extension ClosureSignature: Hashable where A: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    for param in parameters {
+      hasher.combine(param.name)
+      hasher.combine(param.type)
+    }
+    hasher.combine(returnType)
+    hasher.combine(body)
+  }
+}
+
+extension SwitchCase: Equatable where A: Equatable {
+  public static func == (lhs: SwitchCase<A>, rhs: SwitchCase<A>) -> Bool {
+    lhs.pattern == rhs.pattern && lhs.body == rhs.body
+  }
+}
+
+extension SwitchCase: Hashable where A: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(pattern)
+    hasher.combine(body)
+  }
+}
+
+extension SwitchCasePattern: Equatable where A: Equatable {
+  public static func == (lhs: SwitchCasePattern<A>, rhs: SwitchCasePattern<A>) -> Bool {
+    switch (lhs, rhs) {
+    case (.expression(let l), .expression(let r)):
+      return l == r
+    case (.stringLiteral(let l), .stringLiteral(let r)):
+      return l == r
+    case (.defaultCase, .defaultCase):
+      return true
+    default:
+      return false
+    }
+  }
+}
+
+extension SwitchCasePattern: Hashable where A: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    switch self {
+    case .expression(let expr):
+      hasher.combine(0)
+      hasher.combine(expr)
+    case .stringLiteral(let s):
+      hasher.combine(1)
+      hasher.combine(s)
+    case .defaultCase:
+      hasher.combine(2)
+    }
+  }
+}
+
 // MARK: - Protocol Conformances
 
 extension Template: Equatable where A: Equatable {
   public static func == (lhs: Template<A>, rhs: Template<A>) -> Bool {
     equalLiterals(lhs, rhs) || equalVariables(lhs, rhs) || equalControlFlow(lhs, rhs)
       || equalOperations(lhs, rhs) || equalEffects(lhs, rhs) || equalDeclarations(lhs, rhs)
-      || equalCollections(lhs, rhs)
+      || equalCollections(lhs, rhs) || equalExtensions(lhs, rhs)
   }
 
   private static func equalLiterals(_ lhs: Template<A>, _ rhs: Template<A>) -> Bool {
@@ -100,10 +192,34 @@ extension Template: Equatable where A: Equatable {
   }
 
   private static func equalCollections(_ lhs: Template<A>, _ rhs: Template<A>) -> Bool {
-    guard case .arrayLiteral(let lhsElements) = lhs,
-      case .arrayLiteral(let rhsElements) = rhs
-    else { return false }
-    return lhsElements == rhsElements
+    switch (lhs, rhs) {
+    case (.arrayLiteral(let lhsElements), .arrayLiteral(let rhsElements)):
+      return lhsElements == rhsElements
+    case (.dictionaryLiteral(let lhsEntries), .dictionaryLiteral(let rhsEntries)):
+      guard lhsEntries.count == rhsEntries.count else { return false }
+      return zip(lhsEntries, rhsEntries).allSatisfy { l, r in
+        l.key == r.key && l.value == r.value
+      }
+    default:
+      return false
+    }
+  }
+
+  private static func equalExtensions(_ lhs: Template<A>, _ rhs: Template<A>) -> Bool {
+    switch (lhs, rhs) {
+    case (.subscriptAccess(let lb, let li), .subscriptAccess(let rb, let ri)):
+      return lb == rb && li == ri
+    case (.forceUnwrap(let l), .forceUnwrap(let r)):
+      return l == r
+    case (.stringInterpolation(let l), .stringInterpolation(let r)):
+      return l == r
+    case (.closure(let l), .closure(let r)):
+      return l == r
+    case (.assignment(let ll, let lr), .assignment(let rl, let rr)):
+      return ll == rl && lr == rr
+    default:
+      return false
+    }
   }
 }
 
@@ -112,7 +228,7 @@ extension Template: Hashable where A: Hashable {
     _ =
       hashLiterals(&hasher) || hashVariables(&hasher) || hashControlFlow(&hasher)
       || hashOperations(&hasher) || hashEffects(&hasher) || hashDeclarations(&hasher)
-      || hashCollections(&hasher)
+      || hashCollections(&hasher) || hashExtensions(&hasher)
   }
 
   @discardableResult
@@ -228,9 +344,50 @@ extension Template: Hashable where A: Hashable {
 
   @discardableResult
   private func hashCollections(_ hasher: inout Hasher) -> Bool {
-    guard case .arrayLiteral(let elements) = self else { return false }
-    hasher.combine(8)
-    hasher.combine(elements)
-    return true
+    switch self {
+    case .arrayLiteral(let elements):
+      hasher.combine(8)
+      hasher.combine(elements)
+      return true
+    case .dictionaryLiteral(let entries):
+      hasher.combine(13)
+      for entry in entries {
+        hasher.combine(entry.key)
+        hasher.combine(entry.value)
+      }
+      return true
+    default:
+      return false
+    }
+  }
+
+  @discardableResult
+  private func hashExtensions(_ hasher: inout Hasher) -> Bool {
+    switch self {
+    case .subscriptAccess(let base, let index):
+      hasher.combine(14)
+      hasher.combine(base)
+      hasher.combine(index)
+      return true
+    case .forceUnwrap(let inner):
+      hasher.combine(15)
+      hasher.combine(inner)
+      return true
+    case .stringInterpolation(let segments):
+      hasher.combine(16)
+      hasher.combine(segments)
+      return true
+    case .closure(let sig):
+      hasher.combine(17)
+      hasher.combine(sig)
+      return true
+    case .assignment(let lhs, let rhs):
+      hasher.combine(18)
+      hasher.combine(lhs)
+      hasher.combine(rhs)
+      return true
+    default:
+      return false
+    }
   }
 }

@@ -19,15 +19,15 @@ public struct Renderer {
   ///
   /// - Parameter template: Template to render
   /// - Returns: SwiftSyntax expression node
-  public static func render<A>(_ template: Template<A>) -> ExprSyntax {
+  public static func render<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
     renderLiterals(template) ?? renderVariables(template) ?? renderControlFlow(template)
       ?? renderOperations(template) ?? renderEffects(template) ?? renderDeclarations(template)
-      ?? renderCollections(template) ?? ExprSyntax(NilLiteralExprSyntax())
+      ?? renderCollections(template) ?? renderExtensions(template) ?? ExprSyntax(NilLiteralExprSyntax())
   }
 
   // MARK: - Literal Rendering
 
-  private static func renderLiterals<A>(_ template: Template<A>) -> ExprSyntax? {
+  private static func renderLiterals<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
     guard case .literal(let value) = template else { return nil }
     return renderLiteral(value)
   }
@@ -66,14 +66,14 @@ public struct Renderer {
 
   // MARK: - Variable Rendering
 
-  private static func renderVariables<A>(_ template: Template<A>) -> ExprSyntax? {
+  private static func renderVariables<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
     guard case .variable(let name, _) = template else { return nil }
     return ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier(name)))
   }
 
   // MARK: - Control Flow Rendering
 
-  private static func renderControlFlow<A>(_ template: Template<A>) -> ExprSyntax? {
+  private static func renderControlFlow<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
     switch template {
     case .conditional(let condition, let thenBranch, let elseBranch):
       return renderConditional(condition, thenBranch, elseBranch)
@@ -84,7 +84,7 @@ public struct Renderer {
     }
   }
 
-  private static func renderConditional<A>(
+  private static func renderConditional<A: Sendable>(
     _ condition: Template<A>,
     _ thenBranch: Template<A>,
     _ elseBranch: Template<A>
@@ -98,7 +98,7 @@ public struct Renderer {
     )
   }
 
-  private static func renderLoop<A>(
+  private static func renderLoop<A: Sendable>(
     _ variable: String,
     _ collection: Template<A>,
     _ body: Template<A>
@@ -134,7 +134,7 @@ public struct Renderer {
 
   // MARK: - Operations Rendering
 
-  private static func renderOperations<A>(_ template: Template<A>) -> ExprSyntax? {
+  private static func renderOperations<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
     switch template {
     case .functionCall(let function, let arguments):
       return renderFunctionCall(function, arguments)
@@ -151,7 +151,7 @@ public struct Renderer {
     }
   }
 
-  private static func renderFunctionCall<A>(
+  private static func renderFunctionCall<A: Sendable>(
     _ function: String,
     _ arguments: [(label: String?, value: Template<A>)]
   ) -> ExprSyntax {
@@ -165,7 +165,7 @@ public struct Renderer {
     )
   }
 
-  private static func renderMethodCall<A>(
+  private static func renderMethodCall<A: Sendable>(
     _ base: Template<A>,
     _ method: String,
     _ arguments: [(label: String?, value: Template<A>)]
@@ -183,7 +183,7 @@ public struct Renderer {
     )
   }
 
-  private static func renderBinaryOperation<A>(
+  private static func renderBinaryOperation<A: Sendable>(
     _ left: Template<A>,
     _ op: String,
     _ right: Template<A>
@@ -197,7 +197,7 @@ public struct Renderer {
     )
   }
 
-  private static func renderPropertyAccess<A>(
+  private static func renderPropertyAccess<A: Sendable>(
     _ base: Template<A>,
     _ property: String
   ) -> ExprSyntax {
@@ -211,7 +211,7 @@ public struct Renderer {
 
   // MARK: - Effects Rendering
 
-  private static func renderEffects<A>(_ template: Template<A>) -> ExprSyntax? {
+  private static func renderEffects<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
     switch template {
     case .tryExpression(let inner):
       return ExprSyntax(TryExprSyntax(expression: render(inner)))
@@ -224,7 +224,7 @@ public struct Renderer {
 
   // MARK: - Generic Call Rendering
 
-  private static func renderGenericCall<A>(
+  private static func renderGenericCall<A: Sendable>(
     _ function: String,
     _ typeArguments: [String],
     _ arguments: [(label: String?, value: Template<A>)]
@@ -253,7 +253,7 @@ public struct Renderer {
   // MARK: - Labeled Expression List Helper
 
   /// Renders labeled argument lists with proper colon and trailing comma tokens.
-  private static func renderLabeledExprList<A>(
+  private static func renderLabeledExprList<A: Sendable>(
     _ arguments: [(label: String?, value: Template<A>)]
   ) -> LabeledExprListSyntax {
     let exprs = arguments.enumerated().map { index, argument -> LabeledExprSyntax in
@@ -270,7 +270,7 @@ public struct Renderer {
 
   // MARK: - Declarations Rendering
 
-  private static func renderDeclarations<A>(_ template: Template<A>) -> ExprSyntax? {
+  private static func renderDeclarations<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
     guard case .variableDeclaration(_, _, let initializer) = template else { return nil }
     // Limitation: Only render initializer expression (full variable declaration requires statement context)
     return render(initializer)
@@ -278,21 +278,151 @@ public struct Renderer {
 
   // MARK: - Collections Rendering
 
-  private static func renderCollections<A>(_ template: Template<A>) -> ExprSyntax? {
-    guard case .arrayLiteral(let elements) = template else { return nil }
-    return ExprSyntax(
-      ArrayExprSyntax(
-        leftSquare: .leftSquareToken(),
-        elements: ArrayElementListSyntax {
-          for (index, element) in elements.enumerated() {
-            ArrayElementSyntax(
-              expression: render(element),
-              trailingComma: index < elements.count - 1 ? .commaToken() : nil
-            )
-          }
-        },
-        rightSquare: .rightSquareToken()
+  private static func renderCollections<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
+    switch template {
+    case .arrayLiteral(let elements):
+      return ExprSyntax(
+        ArrayExprSyntax(
+          leftSquare: .leftSquareToken(),
+          elements: ArrayElementListSyntax {
+            for (index, element) in elements.enumerated() {
+              ArrayElementSyntax(
+                expression: render(element),
+                trailingComma: index < elements.count - 1 ? .commaToken() : nil
+              )
+            }
+          },
+          rightSquare: .rightSquareToken()
+        )
       )
+    case .dictionaryLiteral(let entries):
+      return renderDictionaryLiteral(entries)
+    default:
+      return nil
+    }
+  }
+
+  private static func renderDictionaryLiteral<A: Sendable>(
+    _ entries: [(key: Template<A>, value: Template<A>)]
+  ) -> ExprSyntax {
+    if entries.isEmpty {
+      return ExprSyntax(
+        DictionaryExprSyntax(content: .colon(.colonToken()))
+      )
+    }
+    let elements = DictionaryElementListSyntax(
+      entries.enumerated().map { index, entry -> DictionaryElementSyntax in
+        DictionaryElementSyntax(
+          key: render(entry.key),
+          value: render(entry.value),
+          trailingComma: index < entries.count - 1 ? .commaToken() : nil
+        )
+      }
+    )
+    return ExprSyntax(DictionaryExprSyntax(content: .elements(elements)))
+  }
+
+  // MARK: - Extension Cases Rendering
+
+  private static func renderExtensions<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
+    switch template {
+    case .subscriptAccess(let base, let index):
+      return renderSubscriptAccess(base, index)
+    case .forceUnwrap(let expr):
+      return ExprSyntax(ForceUnwrapExprSyntax(expression: render(expr)))
+    case .stringInterpolation(let segments):
+      return renderStringInterpolation(segments)
+    case .closure(let sig):
+      return renderClosure(sig)
+    case .assignment(let lhs, let rhs):
+      return ExprSyntax(
+        InfixOperatorExprSyntax(
+          leftOperand: render(lhs),
+          operator: AssignmentExprSyntax(),
+          rightOperand: render(rhs)
+        )
+      )
+    default:
+      return nil
+    }
+  }
+
+  private static func renderSubscriptAccess<A: Sendable>(
+    _ base: Template<A>,
+    _ index: Template<A>
+  ) -> ExprSyntax {
+    ExprSyntax(
+      SubscriptCallExprSyntax(
+        calledExpression: render(base),
+        arguments: LabeledExprListSyntax([
+          LabeledExprSyntax(expression: render(index))
+        ])
+      )
+    )
+  }
+
+  private static func renderStringInterpolation<A: Sendable>(
+    _ segments: [StringInterpolationSegment<A>]
+  ) -> ExprSyntax {
+    let syntaxSegments = segments.map { segment -> StringLiteralSegmentListSyntax.Element in
+      switch segment {
+      case .text(let s):
+        return .stringSegment(StringSegmentSyntax(content: .stringSegment(s)))
+      case .expression(let expr):
+        return .expressionSegment(
+          ExpressionSegmentSyntax(
+            expressions: LabeledExprListSyntax([LabeledExprSyntax(expression: render(expr))])
+          )
+        )
+      }
+    }
+    return ExprSyntax(
+      StringLiteralExprSyntax(
+        openingQuote: .stringQuoteToken(),
+        segments: StringLiteralSegmentListSyntax(syntaxSegments),
+        closingQuote: .stringQuoteToken()
+      )
+    )
+  }
+
+  private static func renderClosure<A: Sendable>(_ sig: ClosureSignature<A>) -> ExprSyntax {
+    let hasSignature = !sig.parameters.isEmpty || sig.returnType != nil
+
+    let closureSignature: ClosureSignatureSyntax? = hasSignature
+      ? buildClosureSignature(sig)
+      : nil
+
+    return ExprSyntax(
+      ClosureExprSyntax(
+        signature: closureSignature,
+        statements: renderStatements(sig.body)
+      )
+    )
+  }
+
+  private static func buildClosureSignature<A: Sendable>(_ sig: ClosureSignature<A>) -> ClosureSignatureSyntax {
+    let params = sig.parameters.enumerated().map { index, param -> ClosureParameterSyntax in
+      let paramType: TypeSyntax? = param.type.map { typeName in
+        TypeSyntax(IdentifierTypeSyntax(name: .identifier(typeName)))
+      }
+      return ClosureParameterSyntax(
+        firstName: .identifier(param.name),
+        type: paramType,
+        trailingComma: index < sig.parameters.count - 1 ? .commaToken() : nil
+      )
+    }
+
+    let parameterClause = ClosureParameterClauseSyntax(
+      parameters: ClosureParameterListSyntax(params)
+    )
+
+    let returnClause: ReturnClauseSyntax? = sig.returnType.map { typeName in
+      ReturnClauseSyntax(type: TypeSyntax(IdentifierTypeSyntax(name: .identifier(typeName))))
+    }
+
+    return ClosureSignatureSyntax(
+      parameterClause: .parameterClause(parameterClause),
+      returnClause: returnClause
     )
   }
 }

@@ -70,6 +70,35 @@ public indirect enum Statement<A> {
   ///
   /// SwiftSyntax equivalent: `ExprSyntax` in statement position
   case expression(Template<A>)
+
+  // MARK: - Guard Let Binding
+
+  /// guard let name: Type = expr else { body }
+  ///
+  /// Uses `OptionalBindingConditionSyntax` — this is a guard-let, not a boolean guard.
+  /// The type annotation is optional; omit if nil.
+  ///
+  /// SwiftSyntax equivalent: `GuardStmtSyntax` with `OptionalBindingConditionSyntax`
+  case guardLetBinding(
+    name: String,
+    type: String?,
+    initializer: Template<A>,
+    elseBody: [Statement<A>]
+  )
+
+  // MARK: - Switch Statement
+
+  /// switch subject { case ...: body }
+  ///
+  /// SwiftSyntax equivalent: `SwitchExprSyntax`
+  case switchStatement(subject: Template<A>, cases: [SwitchCase<A>])
+
+  // MARK: - Assignment Statement
+
+  /// lhs = rhs as a statement (assignment expression in statement position).
+  ///
+  /// SwiftSyntax equivalent: `InfixOperatorExprSyntax` wrapped in `CodeBlockItemSyntax`
+  case assignmentStatement(lhs: Template<A>, rhs: Template<A>)
 }
 
 // MARK: - Functor
@@ -110,6 +139,39 @@ extension Statement {
       return .deferStatement(body.map { $0.map(transform) })
     case .expression(let expr):
       return .expression(expr.map(transform))
+    case .guardLetBinding(let name, let type, let initializer, let elseBody):
+      return .guardLetBinding(
+        name: name,
+        type: type,
+        initializer: initializer.map(transform),
+        elseBody: elseBody.map { $0.map(transform) }
+      )
+    case .switchStatement(let subject, let cases):
+      return .switchStatement(
+        subject: subject.map(transform),
+        cases: cases.map { switchCase in
+          SwitchCase<B>(
+            pattern: mapSwitchCasePattern(switchCase.pattern, transform),
+            body: switchCase.body.map { $0.map(transform) }
+          )
+        }
+      )
+    case .assignmentStatement(let lhs, let rhs):
+      return .assignmentStatement(lhs: lhs.map(transform), rhs: rhs.map(transform))
+    }
+  }
+
+  private func mapSwitchCasePattern<B>(
+    _ pattern: SwitchCasePattern<A>,
+    _ transform: (A) -> B
+  ) -> SwitchCasePattern<B> {
+    switch pattern {
+    case .expression(let expr):
+      return .expression(expr.map(transform))
+    case .stringLiteral(let s):
+      return .stringLiteral(s)
+    case .defaultCase:
+      return .defaultCase
     }
   }
 }

@@ -1,3 +1,58 @@
+/// A segment in a string interpolation expression.
+///
+/// Used by `Template.stringInterpolation` to represent either a literal text
+/// segment or an interpolated expression segment within a string literal.
+public enum StringInterpolationSegment<A> {
+  /// A literal text segment (no interpolation).
+  case text(String)
+  /// An interpolated expression segment (`\(expr)`).
+  case expression(Template<A>)
+}
+
+/// Signature for a closure expression.
+///
+/// Carries parameter names, optional type annotations, optional return type,
+/// and body statements for rendering as a `ClosureExprSyntax`.
+public struct ClosureSignature<A> {
+  /// Named parameters with optional type annotations.
+  public let parameters: [(name: String, type: String?)]
+  /// Optional explicit return type annotation.
+  public let returnType: String?
+  /// Body statements rendered inside the closure braces.
+  public let body: [Statement<A>]
+
+  /// Creates a closure signature.
+  public init(parameters: [(name: String, type: String?)], returnType: String?, body: [Statement<A>]) {
+    self.parameters = parameters
+    self.returnType = returnType
+    self.body = body
+  }
+}
+
+/// A single case in a switch statement.
+public struct SwitchCase<A> {
+  /// The pattern matched by this case.
+  public let pattern: SwitchCasePattern<A>
+  /// Body statements executed when the pattern matches.
+  public let body: [Statement<A>]
+
+  /// Creates a switch case.
+  public init(pattern: SwitchCasePattern<A>, body: [Statement<A>]) {
+    self.pattern = pattern
+    self.body = body
+  }
+}
+
+/// The pattern for a single switch case.
+public enum SwitchCasePattern<A> {
+  /// Match by evaluating an expression pattern (e.g., `case myEnum.value:`).
+  case expression(Template<A>)
+  /// Match a string literal (e.g., `case "hello":`).
+  case stringLiteral(String)
+  /// The default case (`default:`).
+  case defaultCase
+}
+
 /// Parametric algebraic data type representing code generation templates.
 ///
 /// `Template<A>` is a functor that separates template structure from payload data.
@@ -133,6 +188,51 @@ public indirect enum Template<A> {
   /// SwiftSyntax equivalent: `ArrayExprSyntax` with `ArrayElementListSyntax`
   case arrayLiteral([Template<A>])
 
+  /// Dictionary literal with key-value pairs.
+  ///
+  /// Empty array renders as `[:]`. Non-empty renders as `[k1: v1, k2: v2]`.
+  ///
+  /// SwiftSyntax equivalent: `DictionaryExprSyntax`
+  case dictionaryLiteral([(key: Template<A>, value: Template<A>)])
+
+  // MARK: - Access
+
+  /// Subscript access expression (`base[index]`).
+  ///
+  /// SwiftSyntax equivalent: `SubscriptCallExprSyntax`
+  case subscriptAccess(base: Template<A>, index: Template<A>)
+
+  // MARK: - Unwrapping
+
+  /// Force-unwrap expression (`expr!`).
+  ///
+  /// SwiftSyntax equivalent: `ForceUnwrapExprSyntax`
+  case forceUnwrap(Template<A>)
+
+  // MARK: - String Interpolation
+
+  /// String interpolation literal (`"text\(expr)text"`).
+  ///
+  /// SwiftSyntax equivalent: `StringLiteralExprSyntax` with interpolated segments
+  case stringInterpolation([StringInterpolationSegment<A>])
+
+  // MARK: - Closure
+
+  /// Closure expression with optional signature and body statements.
+  ///
+  /// When parameters is empty and returnType is nil, renders as `{ body }`.
+  /// Otherwise renders as `{ (params) -> ReturnType in body }`.
+  ///
+  /// SwiftSyntax equivalent: `ClosureExprSyntax`
+  case closure(ClosureSignature<A>)
+
+  // MARK: - Assignment Expression
+
+  /// Assignment expression (`lhs = rhs`) in expression position.
+  ///
+  /// SwiftSyntax equivalent: `InfixOperatorExprSyntax` with `AssignmentExprSyntax`
+  case assignment(lhs: Template<A>, rhs: Template<A>)
+
   // MARK: - Functor
 
   /// Maps a transformation function over all variable payloads, preserving structure.
@@ -149,7 +249,7 @@ public indirect enum Template<A> {
     mapLiterals(transform) ?? mapVariables(transform) ?? mapControlFlow(transform) ?? mapOperations(
       transform
     ) ?? mapEffects(transform) ?? mapDeclarations(transform) ?? mapCollections(transform)
-      ?? .literal(.nil)
+      ?? mapExtensions(transform) ?? .literal(.nil)
   }
 
   private func mapLiterals<B>(_ transform: (A) -> B) -> Template<B>? {
@@ -237,11 +337,49 @@ public indirect enum Template<A> {
   }
 
   private func mapCollections<B>(_ transform: (A) -> B) -> Template<B>? {
-    guard case .arrayLiteral(let elements) = self else { return nil }
-    return .arrayLiteral(elements.map { $0.map(transform) })
+    switch self {
+    case .arrayLiteral(let elements):
+      return .arrayLiteral(elements.map { $0.map(transform) })
+    case .dictionaryLiteral(let entries):
+      return .dictionaryLiteral(entries.map { (key: $0.key.map(transform), value: $0.value.map(transform)) })
+    default:
+      return nil
+    }
+  }
+
+  private func mapExtensions<B>(_ transform: (A) -> B) -> Template<B>? {
+    switch self {
+    case .subscriptAccess(let base, let index):
+      return .subscriptAccess(base: base.map(transform), index: index.map(transform))
+    case .forceUnwrap(let inner):
+      return .forceUnwrap(inner.map(transform))
+    case .stringInterpolation(let segments):
+      return .stringInterpolation(segments.map { segment -> StringInterpolationSegment<B> in
+        switch segment {
+        case .text(let s):
+          return .text(s)
+        case .expression(let expr):
+          return .expression(expr.map(transform))
+        }
+      })
+    case .closure(let sig):
+      return .closure(ClosureSignature<B>(
+        parameters: sig.parameters,
+        returnType: sig.returnType,
+        body: sig.body.map { $0.map(transform) }
+      ))
+    case .assignment(let lhs, let rhs):
+      return .assignment(lhs: lhs.map(transform), rhs: rhs.map(transform))
+    default:
+      return nil
+    }
   }
 }
 
-// MARK: - Sendable Conformance
+// MARK: - Sendable Conformances
 
 extension Template: Sendable where A: Sendable {}
+extension StringInterpolationSegment: Sendable where A: Sendable {}
+extension ClosureSignature: Sendable where A: Sendable {}
+extension SwitchCase: Sendable where A: Sendable {}
+extension SwitchCasePattern: Sendable where A: Sendable {}
