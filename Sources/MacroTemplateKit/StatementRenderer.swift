@@ -32,6 +32,18 @@ extension Renderer {
     case .ifStatement(let condition, let thenBody, let elseBody):
       return renderIf(condition: condition, thenBody: thenBody, elseBody: elseBody)
 
+    case .forInStatement(let variable, let collection, let body):
+      return renderForInStatement(variable: variable, collection: collection, body: body)
+
+    case .ifLetBinding(let name, let type, let initializer, let thenBody, let elseBody):
+      return renderIfLetBinding(
+        name: name,
+        type: type,
+        initializer: initializer,
+        thenBody: thenBody,
+        elseBody: elseBody
+      )
+
     case .returnStatement(let expr):
       return renderReturn(expression: expr)
 
@@ -45,7 +57,8 @@ extension Renderer {
       return CodeBlockItemSyntax(item: .expr(render(expr)))
 
     case .guardLetBinding(let name, let type, let initializer, let elseBody):
-      return renderGuardLetBinding(name: name, type: type, initializer: initializer, elseBody: elseBody)
+      return renderGuardLetBinding(
+        name: name, type: type, initializer: initializer, elseBody: elseBody)
 
     case .switchStatement(let subject, let cases):
       return renderSwitchStatement(subject: subject, cases: cases)
@@ -153,6 +166,58 @@ extension Renderer {
     return CodeBlockItemSyntax(item: .expr(ExprSyntax(ifExpr)))
   }
 
+  private static func renderForInStatement<A: Sendable>(
+    variable: String,
+    collection: Template<A>,
+    body: [Statement<A>]
+  ) -> CodeBlockItemSyntax {
+    let forInStmt = ForStmtSyntax(
+      pattern: PatternSyntax(IdentifierPatternSyntax(identifier: .identifier(variable))),
+      sequence: render(collection),
+      body: CodeBlockSyntax(statements: renderStatements(body))
+    )
+
+    return CodeBlockItemSyntax(item: .stmt(StmtSyntax(forInStmt)))
+  }
+
+  private static func renderIfLetBinding<A: Sendable>(
+    name: String,
+    type: String?,
+    initializer: Template<A>,
+    thenBody: [Statement<A>],
+    elseBody: [Statement<A>]?
+  ) -> CodeBlockItemSyntax {
+    let typeAnnotation: TypeAnnotationSyntax? = type.map { typeName in
+      TypeAnnotationSyntax(
+        type: TypeSyntax(IdentifierTypeSyntax(name: .identifier(typeName)))
+      )
+    }
+
+    let binding = OptionalBindingConditionSyntax(
+      bindingSpecifier: .keyword(.let),
+      pattern: PatternSyntax(IdentifierPatternSyntax(identifier: .identifier(name))),
+      typeAnnotation: typeAnnotation,
+      initializer: InitializerClauseSyntax(value: render(initializer))
+    )
+
+    let conditionElement = ConditionElementSyntax(
+      condition: .optionalBinding(binding)
+    )
+
+    let elseClause: IfExprSyntax.ElseBody? = elseBody.map { body in
+      .codeBlock(CodeBlockSyntax(statements: renderStatements(body)))
+    }
+
+    let ifExpr = IfExprSyntax(
+      conditions: ConditionElementListSyntax([conditionElement]),
+      body: CodeBlockSyntax(statements: renderStatements(thenBody)),
+      elseKeyword: elseBody != nil ? .keyword(.else) : nil,
+      elseBody: elseClause
+    )
+
+    return CodeBlockItemSyntax(item: .expr(ExprSyntax(ifExpr)))
+  }
+
   private static func renderReturn<A: Sendable>(expression: Template<A>?) -> CodeBlockItemSyntax {
     let returnStmt = ReturnStmtSyntax(expression: expression.map { render($0) })
     return CodeBlockItemSyntax(item: .stmt(StmtSyntax(returnStmt)))
@@ -222,7 +287,8 @@ extension Renderer {
     return CodeBlockItemSyntax(item: .expr(ExprSyntax(switchExpr)))
   }
 
-  private static func renderSwitchCase<A: Sendable>(_ switchCase: SwitchCase<A>) -> SwitchCaseSyntax {
+  private static func renderSwitchCase<A: Sendable>(_ switchCase: SwitchCase<A>) -> SwitchCaseSyntax
+  {
     let label: SwitchCaseSyntax.Label
     switch switchCase.pattern {
     case .expression(let expr):

@@ -1,7 +1,9 @@
 // MARK: - Protocol Conformances for New Types
 
 extension StringInterpolationSegment: Equatable where A: Equatable {
-  public static func == (lhs: StringInterpolationSegment<A>, rhs: StringInterpolationSegment<A>) -> Bool {
+  public static func == (lhs: StringInterpolationSegment<A>, rhs: StringInterpolationSegment<A>)
+    -> Bool
+  {
     switch (lhs, rhs) {
     case (.text(let l), .text(let r)):
       return l == r
@@ -195,6 +197,8 @@ extension Template: Equatable where A: Equatable {
     switch (lhs, rhs) {
     case (.arrayLiteral(let lhsElements), .arrayLiteral(let rhsElements)):
       return lhsElements == rhsElements
+    case (.tupleLiteral(let lhsElements), .tupleLiteral(let rhsElements)):
+      return lhsElements == rhsElements
     case (.dictionaryLiteral(let lhsEntries), .dictionaryLiteral(let rhsEntries)):
       guard lhsEntries.count == rhsEntries.count else { return false }
       return zip(lhsEntries, rhsEntries).allSatisfy { l, r in
@@ -209,6 +213,8 @@ extension Template: Equatable where A: Equatable {
     switch (lhs, rhs) {
     case (.subscriptAccess(let lb, let li), .subscriptAccess(let rb, let ri)):
       return lb == rb && li == ri
+    case (.subscriptCall(let lhsBase, let lhsArgs), .subscriptCall(let rhsBase, let rhsArgs)):
+      return lhsBase == rhsBase && equalMethodArgs(lhsArgs, rhsArgs)
     case (.forceUnwrap(let l), .forceUnwrap(let r)):
       return l == r
     case (.stringInterpolation(let l), .stringInterpolation(let r)):
@@ -351,6 +357,10 @@ extension Template: Hashable where A: Hashable {
       hasher.combine(8)
       hasher.combine(elements)
       return true
+    case .tupleLiteral(let elements):
+      hasher.combine(20)
+      hasher.combine(elements)
+      return true
     case .dictionaryLiteral(let entries):
       hasher.combine(13)
       for entry in entries {
@@ -370,6 +380,11 @@ extension Template: Hashable where A: Hashable {
       hasher.combine(14)
       hasher.combine(base)
       hasher.combine(index)
+      return true
+    case .subscriptCall(let base, let arguments):
+      hasher.combine(21)
+      hasher.combine(base)
+      hashFunctionArgs(arguments, &hasher)
       return true
     case .forceUnwrap(let inner):
       hasher.combine(15)

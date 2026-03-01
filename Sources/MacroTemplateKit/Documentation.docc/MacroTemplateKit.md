@@ -1,68 +1,42 @@
 # ``MacroTemplateKit``
 
-A type-safe, functional templating engine for Swift macro code generation.
+A structured, type-safe AST for generating Swift macro output without string interpolation.
 
 ## Overview
 
-MacroTemplateKit provides a **parametric algebraic data type** (ADT) that separates template structure from metadata, enabling compile-time safety, composability, and mathematical guarantees through functor laws.
+MacroTemplateKit replaces string interpolation in Swift macros with a three-layer algebraic data type that renders directly to SwiftSyntax nodes. Every template is syntactically correct by construction -- no mismatched braces, missing commas, or malformed output.
 
-Instead of building Swift code via string interpolation—which is fragile and hard to validate—MacroTemplateKit gives you a three-layer structured AST:
+The library provides three core types that mirror Swift's own syntax hierarchy:
 
-```
-Declaration<A>  ──────►  DeclSyntax
-       │
-Statement<A>   ──────►  CodeBlockItemSyntax
-       │
- Template<A>   ──────►  ExprSyntax
-```
+- ``Template`` -- expression-level constructs, renders to `ExprSyntax`
+- ``Statement`` -- statement-level constructs, renders to `CodeBlockItemSyntax`
+- ``Declaration`` -- declaration-level constructs, renders to `DeclSyntax`
 
-Each layer is a **functor**: it supports a `map` operation that satisfies the identity and composition laws, enabling safe and predictable transformations of metadata without changing template structure.
-
-### Quick Example
-
-```swift
-import MacroTemplateKit
-
-let template: Declaration<Void> = .function(FunctionSignature(
-    accessLevel: .public,
-    name: "loadUser",
-    parameters: [ParameterSignature(label: "with", name: "id", type: "String")],
-    isAsync: true,
-    canThrow: true,
-    returnType: "User",
-    body: [
-        .letBinding(name: "data", type: nil,
-                    initializer: .methodCall(base: .variable("api", payload: ()),
-                                             method: "fetch",
-                                             arguments: [(label: "id", value: .variable("id", payload: ()))])),
-        .returnStatement(.functionCall(function: "User",
-                                       arguments: [(label: "from", value: .variable("data", payload: ()))]))
-    ]
-))
-
-let syntax: DeclSyntax = Renderer.render(template)
-// public func loadUser(with id: String) async throws -> User { … }
-```
+All three types are generic over a payload parameter `A` that carries compile-time metadata through the template without affecting rendered output. Use ``Template/map(_:)`` to transform or discard metadata before rendering.
 
 ## Topics
 
-### Getting Started
+### Essentials
 
 - <doc:GettingStarted>
+- <doc:ThreeLayerAST>
 
-### Core Template Types
+### Templates
 
 - ``Template``
-- ``Statement``
-- ``Declaration``
 - ``LiteralValue``
+- ``StringInterpolationSegment``
+- ``ClosureSignature``
 
-### Rendering
+### Statements
 
-- ``Renderer``
+- ``Statement``
+- ``SwitchCase``
+- ``SwitchCasePattern``
 
-### Signature Types
+### Declarations
 
+- ``Declaration``
 - ``FunctionSignature``
 - ``ParameterSignature``
 - ``PropertySignature``
@@ -71,8 +45,13 @@ let syntax: DeclSyntax = Renderer.render(template)
 - ``ExtensionSignature``
 - ``StructSignature``
 - ``InitializerSignature``
+- ``WhereRequirement``
 - ``AccessLevel``
 
-### Result Builder DSL
+### Rendering
+
+- ``Renderer``
+
+### Result Builders
 
 - ``TemplateBuilder``

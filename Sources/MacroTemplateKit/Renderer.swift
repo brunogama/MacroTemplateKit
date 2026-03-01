@@ -22,7 +22,8 @@ public struct Renderer {
   public static func render<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
     renderLiterals(template) ?? renderVariables(template) ?? renderControlFlow(template)
       ?? renderOperations(template) ?? renderEffects(template) ?? renderDeclarations(template)
-      ?? renderCollections(template) ?? renderExtensions(template) ?? ExprSyntax(NilLiteralExprSyntax())
+      ?? renderCollections(template) ?? renderExtensions(template)
+      ?? ExprSyntax(NilLiteralExprSyntax())
   }
 
   // MARK: - Literal Rendering
@@ -233,12 +234,13 @@ public struct Renderer {
       GenericArgumentSyntax(argument: .type(TypeSyntax(stringLiteral: typeArg)))
     }
 
-    let calledExpr = ExprSyntax(GenericSpecializationExprSyntax(
-      expression: ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier(function))),
-      genericArgumentClause: GenericArgumentClauseSyntax(
-        arguments: GenericArgumentListSyntax(genericArgs)
-      )
-    ))
+    let calledExpr = ExprSyntax(
+      GenericSpecializationExprSyntax(
+        expression: ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier(function))),
+        genericArgumentClause: GenericArgumentClauseSyntax(
+          arguments: GenericArgumentListSyntax(genericArgs)
+        )
+      ))
 
     return ExprSyntax(
       FunctionCallExprSyntax(
@@ -295,6 +297,8 @@ public struct Renderer {
           rightSquare: .rightSquareToken()
         )
       )
+    case .tupleLiteral(let elements):
+      return Renderer.renderTupleLiteral(elements)
     case .dictionaryLiteral(let entries):
       return renderDictionaryLiteral(entries)
     default:
@@ -328,6 +332,8 @@ public struct Renderer {
     switch template {
     case .subscriptAccess(let base, let index):
       return renderSubscriptAccess(base, index)
+    case .subscriptCall(let base, let arguments):
+      return Renderer.renderSubscriptCall(base, arguments)
     case .forceUnwrap(let expr):
       return ExprSyntax(ForceUnwrapExprSyntax(expression: render(expr)))
     case .stringInterpolation(let segments):
@@ -395,7 +401,8 @@ public struct Renderer {
   private static func renderClosure<A: Sendable>(_ sig: ClosureSignature<A>) -> ExprSyntax {
     let hasSignature = !sig.parameters.isEmpty || sig.returnType != nil
 
-    let closureSignature: ClosureSignatureSyntax? = hasSignature
+    let closureSignature: ClosureSignatureSyntax? =
+      hasSignature
       ? buildClosureSignature(sig)
       : nil
 
@@ -407,7 +414,9 @@ public struct Renderer {
     )
   }
 
-  private static func buildClosureSignature<A: Sendable>(_ sig: ClosureSignature<A>) -> ClosureSignatureSyntax {
+  private static func buildClosureSignature<A: Sendable>(_ sig: ClosureSignature<A>)
+    -> ClosureSignatureSyntax
+  {
     let params = sig.parameters.enumerated().map { index, param -> ClosureParameterSyntax in
       let paramType: TypeSyntax? = param.type.map { typeName in
         TypeSyntax(IdentifierTypeSyntax(name: .identifier(typeName)))
@@ -430,6 +439,47 @@ public struct Renderer {
     return ClosureSignatureSyntax(
       parameterClause: .parameterClause(parameterClause),
       returnClause: returnClause
+    )
+  }
+}
+
+extension Renderer {
+  fileprivate static func renderTupleLiteral<A: Sendable>(_ elements: [Template<A>]) -> ExprSyntax {
+    ExprSyntax(
+      TupleExprSyntax(
+        elements: LabeledExprListSyntax(
+          elements.enumerated().map { index, element in
+            LabeledExprSyntax(
+              expression: render(element),
+              trailingComma: index < elements.count - 1 ? .commaToken() : nil
+            )
+          }
+        )
+      )
+    )
+  }
+
+  fileprivate static func renderSubscriptCall<A: Sendable>(
+    _ base: Template<A>,
+    _ arguments: [(label: String?, value: Template<A>)]
+  ) -> ExprSyntax {
+    let renderedArguments = LabeledExprListSyntax(
+      arguments.enumerated().map { index, argument in
+        let isLast = index == arguments.count - 1
+        return LabeledExprSyntax(
+          label: argument.label.map { .identifier($0) },
+          colon: argument.label != nil ? .colonToken(trailingTrivia: .space) : nil,
+          expression: render(argument.value),
+          trailingComma: isLast ? nil : .commaToken(trailingTrivia: .space)
+        )
+      }
+    )
+
+    return ExprSyntax(
+      SubscriptCallExprSyntax(
+        calledExpression: render(base),
+        arguments: renderedArguments
+      )
     )
   }
 }

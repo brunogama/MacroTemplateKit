@@ -108,6 +108,16 @@ public indirect enum Declaration<A> {
   /// SwiftSyntax equivalent: `StructDeclSyntax`
   case structDecl(StructSignature<A>)
 
+  /// Enum declaration with enum cases and member declarations.
+  ///
+  /// SwiftSyntax equivalent: `EnumDeclSyntax`
+  case enumDecl(EnumSignature<A>)
+
+  /// Type alias declaration.
+  ///
+  /// SwiftSyntax equivalent: `TypeAliasDeclSyntax`
+  case typeAlias(TypeAliasSignature)
+
   /// Initializer declaration.
   ///
   /// Renders to:
@@ -388,6 +398,10 @@ extension Declaration {
       return .extensionDecl(signature.map(transform))
     case .structDecl(let signature):
       return .structDecl(signature.map(transform))
+    case .enumDecl(let signature):
+      return .enumDecl(signature.map(transform))
+    case .typeAlias(let signature):
+      return .typeAlias(signature)
     case .initDecl(let signature):
       return .initDecl(signature.map(transform))
     }

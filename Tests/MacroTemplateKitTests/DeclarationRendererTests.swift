@@ -1,12 +1,7 @@
-import XCTest
 import SwiftSyntax
-@testable import MacroTemplateKit
+import XCTest
 
-// swiftlint:disable file_length type_body_length
-// Justification: Comprehensive declaration renderer tests covering all 5 Declaration cases
-// with multiple test scenarios per case. Tests verify complex SwiftSyntax generation including
-// function signatures, property accessors, and nested declarations. Splitting would reduce
-// test cohesion and clarity.
+@testable import MacroTemplateKit
 
 /// Tests for Declaration rendering to SwiftSyntax DeclSyntax.
 ///
@@ -26,9 +21,12 @@ final class DeclarationRendererTests: XCTestCase {
         canThrow: false,
         returnType: nil,
         body: [
-          .expression(.functionCall(function: "print", arguments: [
-            (label: nil, value: .literal(.string("Hello")))
-          ]))
+          .expression(
+            .functionCall(
+              function: "print",
+              arguments: [
+                (label: nil, value: .literal(.string("Hello")))
+              ]))
         ]
       )
     )
@@ -88,7 +86,8 @@ final class DeclarationRendererTests: XCTestCase {
     let description = result.formatted().description
     XCTAssertTrue(description.contains("func greet"), "Should contain function name")
     XCTAssertTrue(description.contains("name userName: String"), "Should contain labeled parameter")
-    XCTAssertTrue(description.contains("times count: Int"), "Should contain second labeled parameter")
+    XCTAssertTrue(
+      description.contains("times count: Int"), "Should contain second labeled parameter")
   }
 
   func testRenderFunction_async() {
@@ -303,17 +302,21 @@ final class DeclarationRendererTests: XCTestCase {
         type: "Int",
         isStatic: false,
         getter: [
-          .returnStatement(.propertyAccess(
-            base: .variable("storage", payload: 1),
-            property: "count"
-          ))
+          .returnStatement(
+            .propertyAccess(
+              base: .variable("storage", payload: 1),
+              property: "count"
+            ))
         ],
         setter: SetterSignature(
           parameterName: "newValue",
           body: [
-            .expression(.functionCall(function: "updateStorage", arguments: [
-              (label: "count", value: .variable("newValue", payload: 2))
-            ]))
+            .expression(
+              .functionCall(
+                function: "updateStorage",
+                arguments: [
+                  (label: "count", value: .variable("newValue", payload: 2))
+                ]))
           ]
         )
       )
@@ -421,22 +424,27 @@ final class DeclarationRendererTests: XCTestCase {
         typeName: "MyType",
         conformances: ["CustomStringConvertible"],
         members: [
-          .property(PropertySignature(
-            name: "description",
-            type: "String",
-            isStatic: false,
-            isLet: false,
-            initializer: .literal(.string("MyType instance"))
-          )),
-          .function(FunctionSignature(
-            name: "greet",
-            parameters: [],
-            body: [
-              .expression(.functionCall(function: "print", arguments: [
-                (label: nil, value: .literal(.string("Hello")))
-              ]))
-            ]
-          )),
+          .property(
+            PropertySignature(
+              name: "description",
+              type: "String",
+              isStatic: false,
+              isLet: false,
+              initializer: .literal(.string("MyType instance"))
+            )),
+          .function(
+            FunctionSignature(
+              name: "greet",
+              parameters: [],
+              body: [
+                .expression(
+                  .functionCall(
+                    function: "print",
+                    arguments: [
+                      (label: nil, value: .literal(.string("Hello")))
+                    ]))
+              ]
+            )),
         ]
       )
     )
@@ -490,30 +498,33 @@ final class DeclarationRendererTests: XCTestCase {
         name: "Point",
         conformances: ["Equatable"],
         members: [
-          .property(PropertySignature(
-            name: "x",
-            type: "Double",
-            isStatic: false,
-            isLet: true,
-            initializer: nil
-          )),
-          .property(PropertySignature(
-            name: "y",
-            type: "Double",
-            isStatic: false,
-            isLet: true,
-            initializer: nil
-          )),
-          .function(FunctionSignature(
-            name: "distance",
-            parameters: [
-              ParameterSignature(label: "to", name: "other", type: "Point")
-            ],
-            returnType: "Double",
-            body: [
-              .returnStatement(.literal(.double(0.0)))
-            ]
-          )),
+          .property(
+            PropertySignature(
+              name: "x",
+              type: "Double",
+              isStatic: false,
+              isLet: true,
+              initializer: nil
+            )),
+          .property(
+            PropertySignature(
+              name: "y",
+              type: "Double",
+              isStatic: false,
+              isLet: true,
+              initializer: nil
+            )),
+          .function(
+            FunctionSignature(
+              name: "distance",
+              parameters: [
+                ParameterSignature(label: "to", name: "other", type: "Point")
+              ],
+              returnType: "Double",
+              body: [
+                .returnStatement(.literal(.double(0.0)))
+              ]
+            )),
         ]
       )
     )
@@ -536,19 +547,21 @@ final class DeclarationRendererTests: XCTestCase {
         name: "OuterStruct",
         conformances: [],
         members: [
-          .structDecl(StructSignature(
-            name: "InnerStruct",
-            conformances: [],
-            members: [
-              .property(PropertySignature(
-                name: "value",
-                type: "Int",
-                isStatic: false,
-                isLet: true,
-                initializer: .literal(.integer(0))
-              ))
-            ]
-          ))
+          .structDecl(
+            StructSignature(
+              name: "InnerStruct",
+              conformances: [],
+              members: [
+                .property(
+                  PropertySignature(
+                    name: "value",
+                    type: "Int",
+                    isStatic: false,
+                    isLet: true,
+                    initializer: .literal(.integer(0))
+                  ))
+              ]
+            ))
         ]
       )
     )
@@ -566,11 +579,12 @@ final class DeclarationRendererTests: XCTestCase {
         typeName: "MyType",
         conformances: [],
         members: [
-          .extensionDecl(ExtensionSignature(
-            typeName: "NestedType",
-            conformances: ["Codable"],
-            members: []
-          ))
+          .extensionDecl(
+            ExtensionSignature(
+              typeName: "NestedType",
+              conformances: ["Codable"],
+              members: []
+            ))
         ]
       )
     )
@@ -580,5 +594,144 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("extension MyType"), "Should contain outer extension")
     XCTAssertTrue(description.contains("extension NestedType"), "Should contain nested extension")
     XCTAssertTrue(description.contains("Codable"), "Should contain nested conformance")
+  }
+
+  // MARK: - Enum Declaration Tests
+
+  func testRenderEnum_empty() {
+    let decl: Declaration<Void> = .enumDecl(EnumSignature(name: "Direction"))
+    let result = Renderer.render(decl)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("enum Direction"))
+  }
+
+  func testRenderEnum_withCases() {
+    let decl: Declaration<Void> = .enumDecl(
+      EnumSignature(
+        name: "Direction",
+        cases: [
+          EnumCaseSignature(name: "north"),
+          EnumCaseSignature(name: "south"),
+          EnumCaseSignature(name: "east"),
+          EnumCaseSignature(name: "west"),
+        ]
+      ))
+    let result = Renderer.render(decl)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("case north"))
+    XCTAssertTrue(text.contains("case south"))
+    XCTAssertTrue(text.contains("case east"))
+    XCTAssertTrue(text.contains("case west"))
+  }
+
+  func testRenderEnum_withConformances() {
+    let decl: Declaration<Void> = .enumDecl(
+      EnumSignature(
+        name: "Status",
+        conformances: ["String", "CaseIterable"],
+        cases: [
+          EnumCaseSignature(name: "active", rawValue: "active"),
+          EnumCaseSignature(name: "inactive", rawValue: "inactive"),
+        ]
+      ))
+    let result = Renderer.render(decl)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("enum Status"))
+    XCTAssertTrue(text.contains("String"))
+    XCTAssertTrue(text.contains("CaseIterable"))
+  }
+
+  func testRenderEnum_withAssociatedTypes() {
+    let decl: Declaration<Void> = .enumDecl(
+      EnumSignature(
+        name: "Result",
+        cases: [
+          EnumCaseSignature(name: "success", associatedTypes: ["String"]),
+          EnumCaseSignature(name: "failure", associatedTypes: ["Error"]),
+        ]
+      ))
+    let result = Renderer.render(decl)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("case success(String)"))
+    XCTAssertTrue(text.contains("case failure(Error)"))
+  }
+
+  func testRenderEnum_withMembers() {
+    let decl: Declaration<Void> = .enumDecl(
+      EnumSignature(
+        accessLevel: .public,
+        name: "Color",
+        cases: [
+          EnumCaseSignature(name: "red"),
+          EnumCaseSignature(name: "green"),
+        ],
+        members: [
+          .computedProperty(
+            ComputedPropertySignature(
+              name: "label",
+              type: "String",
+              getter: [.returnStatement(.literal(.string("color")))]
+            ))
+        ]
+      ))
+    let result = Renderer.render(decl)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("public enum Color"))
+    XCTAssertTrue(text.contains("case red"))
+    XCTAssertTrue(text.contains("var label"))
+  }
+
+  // MARK: - Type Alias Declaration Tests
+
+  func testRenderTypeAlias_simple() {
+    let decl: Declaration<Void> = .typeAlias(
+      TypeAliasSignature(
+        name: "RawValue",
+        existingType: "UInt8"
+      ))
+    let result = Renderer.render(decl)
+    let text = result.description
+    XCTAssertTrue(text.contains("typealias RawValue"))
+    XCTAssertTrue(text.contains("UInt8"))
+  }
+
+  func testRenderTypeAlias_public() {
+    let decl: Declaration<Void> = .typeAlias(
+      TypeAliasSignature(
+        accessLevel: .public,
+        name: "Identifier",
+        existingType: "String"
+      ))
+    let result = Renderer.render(decl)
+    let text = result.description
+    XCTAssertTrue(text.contains("public typealias Identifier"))
+    XCTAssertTrue(text.contains("String"))
+  }
+
+  func testRenderTypeAlias_genericType() {
+    let decl: Declaration<Void> = .typeAlias(
+      TypeAliasSignature(
+        name: "StringArray",
+        existingType: "Array<String>"
+      ))
+    let result = Renderer.render(decl)
+    let text = result.description
+    XCTAssertTrue(text.contains("typealias StringArray"))
+    XCTAssertTrue(text.contains("Array<String>"))
+  }
+
+  func testRenderTypeAlias_mapPreservesStructure() {
+    let decl: Declaration<Int> = .typeAlias(
+      TypeAliasSignature(
+        name: "Foo",
+        existingType: "Bar"
+      ))
+    let mapped = decl.map { $0 * 2 }
+    if case .typeAlias(let sig) = mapped {
+      XCTAssertEqual(sig.name, "Foo")
+      XCTAssertEqual(sig.existingType, "Bar")
+    } else {
+      XCTFail("Expected typeAlias case after map")
+    }
   }
 }

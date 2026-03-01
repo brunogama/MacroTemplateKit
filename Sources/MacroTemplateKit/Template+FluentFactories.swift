@@ -130,10 +130,16 @@ extension Template {
     .arrayLiteral(elements)
   }
 
+  /// Creates a tuple literal template.
+  public static func tuple(_ elements: Template<A>...) -> Template<A> {
+    .tupleLiteral(elements)
+  }
+
   /// Creates a dictionary literal template from key-value pairs.
   ///
   /// Empty array renders as `[:]`. Non-empty renders as `[k1: v1, k2: v2]`.
-  public static func dictionary(_ entries: [(key: Template<A>, value: Template<A>)]) -> Template<A> {
+  public static func dictionary(_ entries: [(key: Template<A>, value: Template<A>)]) -> Template<A>
+  {
     .dictionaryLiteral(entries)
   }
 
@@ -142,6 +148,14 @@ extension Template {
   /// Creates a subscript access template (`base[index]`).
   public static func `subscript`(_ base: Template<A>, index: Template<A>) -> Template<A> {
     .subscriptAccess(base: base, index: index)
+  }
+
+  /// Creates a subscript call template with multiple arguments.
+  public static func subscriptCall(
+    _ base: Template<A>,
+    arguments: [(label: String?, value: Template<A>)]
+  ) -> Template<A> {
+    .subscriptCall(base: base, arguments: arguments)
   }
 
   // MARK: - Force Unwrap

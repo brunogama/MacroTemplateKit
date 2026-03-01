@@ -1,11 +1,7 @@
-import XCTest
 import SwiftSyntax
-@testable import MacroTemplateKit
+import XCTest
 
-// swiftlint:disable file_length type_body_length
-// Justification: Comprehensive renderer tests covering all 9 Template cases with edge cases.
-// All test methods verify Renderer natural transformation - cohesive test suite.
-// Splitting would reduce test cohesion and clarity.
+@testable import MacroTemplateKit
 
 /// Tests for Renderer natural transformation from Template<A> to SwiftSyntax ExprSyntax.
 ///
