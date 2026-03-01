@@ -22,7 +22,9 @@ public struct ClosureSignature<A> {
   public let body: [Statement<A>]
 
   /// Creates a closure signature.
-  public init(parameters: [(name: String, type: String?)], returnType: String?, body: [Statement<A>]) {
+  public init(
+    parameters: [(name: String, type: String?)], returnType: String?, body: [Statement<A>]
+  ) {
     self.parameters = parameters
     self.returnType = returnType
     self.body = body
@@ -188,6 +190,11 @@ public indirect enum Template<A> {
   /// SwiftSyntax equivalent: `ArrayExprSyntax` with `ArrayElementListSyntax`
   case arrayLiteral([Template<A>])
 
+  /// Tuple literal with element expressions.
+  ///
+  /// SwiftSyntax equivalent: `TupleExprSyntax` with `LabeledExprListSyntax`
+  case tupleLiteral([Template<A>])
+
   /// Dictionary literal with key-value pairs.
   ///
   /// Empty array renders as `[:]`. Non-empty renders as `[k1: v1, k2: v2]`.
@@ -201,6 +208,11 @@ public indirect enum Template<A> {
   ///
   /// SwiftSyntax equivalent: `SubscriptCallExprSyntax`
   case subscriptAccess(base: Template<A>, index: Template<A>)
+
+  /// Multi-argument subscript call expression (`base[a, b]` or `base[key, default: value]`).
+  ///
+  /// SwiftSyntax equivalent: `SubscriptCallExprSyntax` with `LabeledExprListSyntax`
+  case subscriptCall(base: Template<A>, arguments: [(label: String?, value: Template<A>)])
 
   // MARK: - Unwrapping
 
@@ -349,8 +361,11 @@ public indirect enum Template<A> {
     switch self {
     case .arrayLiteral(let elements):
       return .arrayLiteral(elements.map { $0.map(transform) })
+    case .tupleLiteral(let elements):
+      return .tupleLiteral(elements.map { $0.map(transform) })
     case .dictionaryLiteral(let entries):
-      return .dictionaryLiteral(entries.map { (key: $0.key.map(transform), value: $0.value.map(transform)) })
+      return .dictionaryLiteral(
+        entries.map { (key: $0.key.map(transform), value: $0.value.map(transform)) })
     default:
       return nil
     }
@@ -360,23 +375,30 @@ public indirect enum Template<A> {
     switch self {
     case .subscriptAccess(let base, let index):
       return .subscriptAccess(base: base.map(transform), index: index.map(transform))
+    case .subscriptCall(let base, let arguments):
+      return .subscriptCall(
+        base: base.map(transform),
+        arguments: arguments.map { (label: $0.label, value: $0.value.map(transform)) }
+      )
     case .forceUnwrap(let inner):
       return .forceUnwrap(inner.map(transform))
     case .stringInterpolation(let segments):
-      return .stringInterpolation(segments.map { segment -> StringInterpolationSegment<B> in
-        switch segment {
-        case .text(let s):
-          return .text(s)
-        case .expression(let expr):
-          return .expression(expr.map(transform))
-        }
-      })
+      return .stringInterpolation(
+        segments.map { segment -> StringInterpolationSegment<B> in
+          switch segment {
+          case .text(let s):
+            return .text(s)
+          case .expression(let expr):
+            return .expression(expr.map(transform))
+          }
+        })
     case .closure(let sig):
-      return .closure(ClosureSignature<B>(
-        parameters: sig.parameters,
-        returnType: sig.returnType,
-        body: sig.body.map { $0.map(transform) }
-      ))
+      return .closure(
+        ClosureSignature<B>(
+          parameters: sig.parameters,
+          returnType: sig.returnType,
+          body: sig.body.map { $0.map(transform) }
+        ))
     case .assignment(let lhs, let rhs):
       return .assignment(lhs: lhs.map(transform), rhs: rhs.map(transform))
     case .selfAccess(let typeName):

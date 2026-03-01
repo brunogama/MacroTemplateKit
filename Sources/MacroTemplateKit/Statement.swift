@@ -45,6 +45,29 @@ public indirect enum Statement<A> {
     elseBody: [Statement<A>]?
   )
 
+  /// for variable in collection { body }
+  ///
+  /// SwiftSyntax equivalent: `ForInStmtSyntax`
+  case forInStatement(
+    variable: String,
+    collection: Template<A>,
+    body: [Statement<A>]
+  )
+
+  /// if let name: Type = initializer { thenBody } else { elseBody }
+  ///
+  /// Uses `OptionalBindingConditionSyntax` for optional binding condition.
+  /// The type annotation is optional; omit if nil.
+  ///
+  /// SwiftSyntax equivalent: `IfExprSyntax` with `OptionalBindingConditionSyntax`
+  case ifLetBinding(
+    name: String,
+    type: String?,
+    initializer: Template<A>,
+    thenBody: [Statement<A>],
+    elseBody: [Statement<A>]?
+  )
+
   // MARK: - Returns and Throws
 
   /// return expression
@@ -135,6 +158,20 @@ extension Statement {
     case .ifStatement(let condition, let thenBody, let elseBody):
       return .ifStatement(
         condition: condition.map(transform),
+        thenBody: thenBody.map { $0.map(transform) },
+        elseBody: elseBody?.map { $0.map(transform) }
+      )
+    case .forInStatement(let variable, let collection, let body):
+      return .forInStatement(
+        variable: variable,
+        collection: collection.map(transform),
+        body: body.map { $0.map(transform) }
+      )
+    case .ifLetBinding(let name, let type, let initializer, let thenBody, let elseBody):
+      return .ifLetBinding(
+        name: name,
+        type: type,
+        initializer: initializer.map(transform),
         thenBody: thenBody.map { $0.map(transform) },
         elseBody: elseBody?.map { $0.map(transform) }
       )

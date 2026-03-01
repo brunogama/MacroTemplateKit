@@ -35,6 +35,12 @@ extension Renderer {
     case .structDecl(let sig):
       return DeclSyntax(renderStruct(sig))
 
+    case .enumDecl(let sig):
+      return DeclSyntax(renderEnum(sig))
+
+    case .typeAlias(let sig):
+      return DeclSyntax(stringLiteral: renderTypeAlias(sig))
+
     case .initDecl(let sig):
       return DeclSyntax(renderInitializer(sig))
     }
@@ -184,7 +190,7 @@ extension Renderer {
       ? nil
       : {
         let lastIndex = sig.conformances.count - 1
-        let types = sig.conformances.enumerated().map { (index, conformance) in
+        let types = sig.conformances.enumerated().map { index, conformance in
           InheritedTypeSyntax(
             type: TypeSyntax(stringLiteral: conformance),
             trailingComma: index < lastIndex ? .commaToken(trailingTrivia: .space) : nil
@@ -199,10 +205,11 @@ extension Renderer {
       : {
         let requirements = sig.whereRequirements.map { req in
           GenericRequirementSyntax(
-            requirement: .init(ConformanceRequirementSyntax(
-              leftType: IdentifierTypeSyntax(name: .identifier(req.typeParameter)),
-              rightType: IdentifierTypeSyntax(name: .identifier(req.constraint))
-            ))
+            requirement: .init(
+              ConformanceRequirementSyntax(
+                leftType: IdentifierTypeSyntax(name: .identifier(req.typeParameter)),
+                rightType: IdentifierTypeSyntax(name: .identifier(req.constraint))
+              ))
           )
         }
         return GenericWhereClauseSyntax(
@@ -230,7 +237,7 @@ extension Renderer {
       ? nil
       : {
         let lastIndex = sig.conformances.count - 1
-        let types = sig.conformances.enumerated().map { (index, conformance) in
+        let types = sig.conformances.enumerated().map { index, conformance in
           InheritedTypeSyntax(
             type: TypeSyntax(stringLiteral: conformance),
             trailingComma: index < lastIndex ? .commaToken(trailingTrivia: .space) : nil
@@ -251,6 +258,55 @@ extension Renderer {
       inheritanceClause: inheritanceClause,
       memberBlock: MemberBlockSyntax(members: members)
     )
+  }
+
+  private static func renderEnum<A: Sendable>(_ sig: EnumSignature<A>) -> EnumDeclSyntax {
+    var members: [MemberBlockItemSyntax] = sig.cases.map { enumCase in
+      MemberBlockItemSyntax(decl: DeclSyntax(stringLiteral: renderEnumCaseDeclaration(enumCase)))
+    }
+
+    members.append(
+      contentsOf: sig.members.map { member in
+        MemberBlockItemSyntax(decl: render(member))
+      }
+    )
+
+    return EnumDeclSyntax(
+      modifiers: renderModifiers(accessLevel: sig.accessLevel),
+      name: .identifier(sig.name),
+      inheritanceClause: renderInheritanceClause(sig.conformances),
+      memberBlock: MemberBlockSyntax(members: MemberBlockItemListSyntax(members))
+    )
+  }
+
+  private static func renderEnumCaseDeclaration(_ sig: EnumCaseSignature) -> String {
+    var declaration = "case \(sig.name)"
+
+    if !sig.associatedTypes.isEmpty {
+      declaration += "(\(sig.associatedTypes.joined(separator: ", ")))"
+    }
+
+    if let rawValue = sig.rawValue {
+      declaration += " = \"\(rawValue)\""
+    }
+
+    return declaration
+  }
+
+  private static func renderTypeAlias(_ sig: TypeAliasSignature) -> String {
+    let prefix: String
+    switch sig.accessLevel {
+    case .internal:
+      prefix = ""
+    case .public:
+      prefix = "public "
+    case .private:
+      prefix = "private "
+    case .fileprivate:
+      prefix = "fileprivate "
+    }
+
+    return "\(prefix)typealias \(sig.name) = \(sig.existingType)"
   }
 
   private static func renderInitializer<A: Sendable>(
@@ -293,6 +349,22 @@ extension Renderer {
     return DeclModifierListSyntax([
       DeclModifierSyntax(name: .keyword(keyword))
     ])
+  }
+
+  private static func renderInheritanceClause(
+    _ conformances: [String]
+  ) -> InheritanceClauseSyntax? {
+    guard !conformances.isEmpty else { return nil }
+
+    let lastIndex = conformances.count - 1
+    let types = conformances.enumerated().map { index, conformance in
+      InheritedTypeSyntax(
+        type: TypeSyntax(stringLiteral: conformance),
+        trailingComma: index < lastIndex ? .commaToken(trailingTrivia: .space) : nil
+      )
+    }
+
+    return InheritanceClauseSyntax(inheritedTypes: InheritedTypeListSyntax(types))
   }
 
   // MARK: - Parameter Helpers

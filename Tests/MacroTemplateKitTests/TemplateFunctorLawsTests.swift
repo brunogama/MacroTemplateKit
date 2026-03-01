@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import MacroTemplateKit
 
 /// Property-based tests verifying Template<A> satisfies functor laws.
@@ -421,5 +422,66 @@ final class TemplateFunctorLawsTests: XCTestCase {
       XCTFail("Mapping changed variable declaration structure")
       return
     }
+  }
+
+  // MARK: - Functor Laws for tupleLiteral
+
+  func testFunctorIdentityLaw_tupleLiteral() {
+    let template: Template<Int> = .tupleLiteral([
+      .variable("x", payload: 1),
+      .literal(.integer(2)),
+    ])
+    XCTAssertEqual(template.map { $0 }, template)
+  }
+
+  func testFunctorCompositionLaw_tupleLiteral() {
+    let template: Template<Int> = .tupleLiteral([
+      .variable("x", payload: 3),
+      .variable("y", payload: 4),
+    ])
+    let f: (Int) -> Int = { $0 + 1 }
+    let g: (Int) -> Int = { $0 * 2 }
+    XCTAssertEqual(template.map(f).map(g), template.map { g(f($0)) })
+  }
+
+  // MARK: - Functor Laws for subscriptCall
+
+  func testFunctorIdentityLaw_subscriptCall() {
+    let template: Template<Int> = .subscriptCall(
+      base: .variable("d", payload: 1),
+      arguments: [(label: "default", value: .variable("x", payload: 2))]
+    )
+    XCTAssertEqual(template.map { $0 }, template)
+  }
+
+  func testFunctorCompositionLaw_subscriptCall() {
+    let template: Template<Int> = .subscriptCall(
+      base: .variable("d", payload: 1),
+      arguments: [(label: nil, value: .variable("k", payload: 2))]
+    )
+    let f: (Int) -> Int = { $0 + 1 }
+    let g: (Int) -> Int = { $0 * 2 }
+    XCTAssertEqual(template.map(f).map(g), template.map { g(f($0)) })
+  }
+
+  // MARK: - Functor Laws for enumDecl
+
+  func testMapPreservesEnumDeclarationStructure() {
+    let decl: Declaration<Int> = .enumDecl(
+      EnumSignature(
+        name: "Test",
+        cases: [EnumCaseSignature(name: "a")],
+        members: [
+          .property(
+            PropertySignature(name: "x", type: "Int", initializer: .variable("v", payload: 1)))
+        ]
+      ))
+    let mapped = decl.map { $0 * 2 }
+    guard case .enumDecl(let sig) = mapped else {
+      XCTFail("Expected enumDecl")
+      return
+    }
+    XCTAssertEqual(sig.name, "Test")
+    XCTAssertEqual(sig.cases.count, 1)
   }
 }

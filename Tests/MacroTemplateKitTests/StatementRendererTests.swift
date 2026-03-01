@@ -1,5 +1,6 @@
-import XCTest
 import SwiftSyntax
+import XCTest
+
 @testable import MacroTemplateKit
 
 /// Tests for Statement rendering to SwiftSyntax CodeBlockItemSyntax.
@@ -110,9 +111,12 @@ final class StatementRendererTests: XCTestCase {
         right: .literal(.integer(0))
       ),
       elseBody: [
-        .expression(.functionCall(function: "print", arguments: [
-          (label: nil, value: .literal(.string("Error")))
-        ])),
+        .expression(
+          .functionCall(
+            function: "print",
+            arguments: [
+              (label: nil, value: .literal(.string("Error")))
+            ])),
         .returnStatement(.literal(.nil)),
       ]
     )
@@ -131,9 +135,12 @@ final class StatementRendererTests: XCTestCase {
     let statement: Statement<Int> = .ifStatement(
       condition: .variable("shouldPrint", payload: 1),
       thenBody: [
-        .expression(.functionCall(function: "print", arguments: [
-          (label: nil, value: .literal(.string("true")))
-        ]))
+        .expression(
+          .functionCall(
+            function: "print",
+            arguments: [
+              (label: nil, value: .literal(.string("true")))
+            ]))
       ],
       elseBody: nil
     )
@@ -175,9 +182,12 @@ final class StatementRendererTests: XCTestCase {
       condition: .literal(.boolean(true)),
       thenBody: [
         .letBinding(name: "temp", type: nil, initializer: .literal(.integer(1))),
-        .expression(.functionCall(function: "process", arguments: [
-          (label: nil, value: .variable("temp", payload: "meta"))
-        ])),
+        .expression(
+          .functionCall(
+            function: "process",
+            arguments: [
+              (label: nil, value: .variable("temp", payload: "meta"))
+            ])),
       ],
       elseBody: [
         .letBinding(name: "other", type: nil, initializer: .literal(.integer(2))),
@@ -243,9 +253,11 @@ final class StatementRendererTests: XCTestCase {
 
   func testRenderThrowStatement_functionCall() {
     let statement: Statement<String> = .throwStatement(
-      .functionCall(function: "MyError", arguments: [
-        (label: "message", value: .literal(.string("Something failed")))
-      ])
+      .functionCall(
+        function: "MyError",
+        arguments: [
+          (label: "message", value: .literal(.string("Something failed")))
+        ])
     )
     let result = Renderer.render(statement)
 
@@ -260,9 +272,11 @@ final class StatementRendererTests: XCTestCase {
 
   func testRenderExpressionStatement_functionCall() {
     let statement: Statement<Void> = .expression(
-      .functionCall(function: "print", arguments: [
-        (label: nil, value: .literal(.string("hello")))
-      ])
+      .functionCall(
+        function: "print",
+        arguments: [
+          (label: nil, value: .literal(.string("hello")))
+        ])
     )
     let result = Renderer.render(statement)
 
@@ -341,5 +355,95 @@ final class StatementRendererTests: XCTestCase {
     XCTAssertTrue(fullDescription.contains("if"), "Should contain if statement")
     XCTAssertTrue(fullDescription.contains("var result"), "Should contain var binding")
     XCTAssertTrue(fullDescription.contains("throw"), "Should contain throw statement")
+  }
+
+  // MARK: - For-In Statement Tests
+
+  func testRenderForInStatement_simple() {
+    let stmt: Statement<Void> = .forInStatement(
+      variable: "item",
+      collection: .variable("items", payload: ()),
+      body: [
+        .expression(
+          .methodCall(
+            base: .variable("result", payload: ()),
+            method: "append",
+            arguments: [(label: nil, value: .variable("item", payload: ()))]
+          ))
+      ]
+    )
+    let result = Renderer.render(stmt)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("for item in items"), "Should contain for-in syntax")
+    XCTAssertTrue(text.contains("result.append(item)"), "Should contain body expression")
+  }
+
+  func testRenderForInStatement_withLetBinding() {
+    let stmt: Statement<Void> = .forInStatement(
+      variable: "element",
+      collection: .variable("array", payload: ()),
+      body: [
+        .letBinding(
+          name: "value", type: nil,
+          initializer: .propertyAccess(
+            base: .variable("element", payload: ()),
+            property: "value"
+          )),
+        .expression(
+          .methodCall(
+            base: .variable("output", payload: ()),
+            method: "append",
+            arguments: [(label: nil, value: .variable("value", payload: ()))]
+          )),
+      ]
+    )
+    let result = Renderer.render(stmt)
+    let text = result.formatted().description
+    XCTAssertTrue(
+      text.contains("for element in array"), "Should contain for-in syntax with element")
+  }
+
+  // MARK: - If-Let Binding Tests
+
+  func testRenderIfLetBinding_withoutElse() {
+    let stmt: Statement<Void> = .ifLetBinding(
+      name: "value",
+      type: nil,
+      initializer: .variable("optional", payload: ()),
+      thenBody: [.returnStatement(.variable("value", payload: ()))],
+      elseBody: nil
+    )
+    let result = Renderer.render(stmt)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("let value"), "Should contain let binding")
+    XCTAssertTrue(text.contains("optional"), "Should contain initializer")
+  }
+
+  func testRenderIfLetBinding_withElse() {
+    let stmt: Statement<Void> = .ifLetBinding(
+      name: "value",
+      type: nil,
+      initializer: .variable("optional", payload: ()),
+      thenBody: [.returnStatement(.variable("value", payload: ()))],
+      elseBody: [.returnStatement(.literal(.nil))]
+    )
+    let result = Renderer.render(stmt)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("let value"), "Should contain let binding")
+    XCTAssertTrue(text.contains("else"), "Should contain else branch")
+  }
+
+  func testRenderIfLetBinding_withType() {
+    let stmt: Statement<Void> = .ifLetBinding(
+      name: "value",
+      type: "String",
+      initializer: .variable("maybeString", payload: ()),
+      thenBody: [.returnStatement(.variable("value", payload: ()))],
+      elseBody: nil
+    )
+    let result = Renderer.render(stmt)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("let value"), "Should contain let binding")
+    XCTAssertTrue(text.contains("String"), "Should contain type annotation")
   }
 }

@@ -31,6 +31,14 @@ By participating in this project, you agree to maintain a respectful and inclusi
 - Xcode 16+ (recommended)
 - macOS 13+
 
+### Bootstrap (Recommended)
+
+Install the same tooling used in CI (SwiftLint, swift-format, Danger):
+
+```bash
+./scripts/bootstrap.sh
+```
+
 ### Building
 
 ```bash
@@ -43,6 +51,30 @@ swift build
 
 # Run tests
 swift test
+```
+
+### Local CI (Run Before Pushing)
+
+To avoid CI ping-pong, run the same checks CI runs for PRs:
+
+```bash
+./scripts/ci-local.sh
+```
+
+If you prefer running commands individually:
+
+```bash
+# Formatting (required on PRs)
+swift-format lint --strict --recursive Sources/ Tests/
+
+# Linting (required on PRs)
+swiftlint lint --strict Sources/ Tests/
+
+# Build with warnings treated as errors (required)
+swift build -Xswiftc -warnings-as-errors
+
+# Tests (required)
+swift test --parallel
 ```
 
 ### Running Tests
@@ -76,6 +108,15 @@ swift test --verbose
 ### Commit Messages
 
 This repository **enforces** [Conventional Commits](https://www.conventionalcommits.org/). All commits must follow this format or they will be **rejected by CI**.
+
+You can validate commit messages locally (requires Node.js):
+
+```bash
+npm install --no-save @commitlint/cli @commitlint/config-conventional
+
+# Validate the last commit message
+git log -1 --pretty=format:'%s' | npx commitlint --verbose
+```
 
 **Format:**
 ```
