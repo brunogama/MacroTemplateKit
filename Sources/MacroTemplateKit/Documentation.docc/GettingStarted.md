@@ -75,3 +75,5 @@ let expr: ExprSyntax = Renderer.render(template.map { _ in () })
 ## Next Steps
 
 Read <doc:ThreeLayerAST> to understand how the three template layers compose.
+
+The repository's `Examples/` directory contains over 20 complete macro implementations rewritten using MacroTemplateKit, covering all five macro roles: expression macros, accessor and body macros, extension macros, member macros, and peer macros. Each file is a self-contained reference for a specific pattern.

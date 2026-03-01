@@ -55,7 +55,9 @@ let binding: CodeBlockItemSyntax = Renderer.render(
 
 ## Declaration -- Top-Level Constructs
 
-``Declaration`` represents functions, properties, extensions, structs, and initializers. A declaration body is an array of ``Statement`` values. Each ``Declaration`` renders to a `DeclSyntax`.
+``Declaration`` represents functions, properties, extensions, structs, enums, type aliases, and initializers. It provides 8 cases: `.function`, `.property`, `.computedProperty`, `.extensionDecl`, `.structDecl`, `.enumDecl`, `.typeAlias`, and `.initDecl`. A declaration body is an array of ``Statement`` values. Each ``Declaration`` renders to a `DeclSyntax`.
+
+Use ``EnumSignature`` and ``EnumCaseSignature`` to build enum declarations, and ``TypeAliasSignature`` for type alias declarations. Both are covered by ``Declaration``'s `map` implementation, so payload transformations flow through them automatically.
 
 Declarations contain statements, which contain templates:
 

@@ -321,18 +321,23 @@ let expr: ExprSyntax = Renderer.render(enriched.map { _ in () })
 | `.propertyAccess(base:property:)` | `base.property` |
 | `.binaryOperation(left:operator:right:)` | `left op right` |
 | `.conditional(condition:thenBranch:elseBranch:)` | `cond ? then : else` |
+| `.loop(variable:collection:body:)` | `.forEach` closure over a collection |
 | `.tryExpression(_:)` | `try expr` |
 | `.awaitExpression(_:)` | `await expr` |
 | `.closure(_:)` | `{ params in body }` |
 | `.arrayLiteral(_:)` | `[elem1, elem2, ...]` |
+| `.tupleLiteral(_:)` | `(elem1, elem2, ...)` |
 | `.dictionaryLiteral(_:)` | `[k1: v1, k2: v2, ...]` |
 | `.stringInterpolation(_:)` | `"text\(expr)text"` |
 | `.genericCall(function:typeArguments:arguments:)` | `Fn<T>(...)` |
 | `.subscriptAccess(base:index:)` | `base[index]` |
+| `.subscriptCall(base:arguments:)` | `base[a, b]` or `base[key, default: value]` |
+| `.forceUnwrap(_:)` | `expr!` |
 | `.assignment(lhs:rhs:)` | `lhs = rhs` |
 | `.selfAccess(_:)` | `TypeName.self` |
+| `.variableDeclaration(name:type:initializer:)` | Initializer expression (in expression position) |
 
-Fluent factory shortcuts are available for common patterns: `Template.tryAwait(_:)`, `Template.array(_:)`, `Template.ternary(if:then:else:)`, `Template.closure(params:returnType:body:)`, and more. See `Template+FluentFactories.swift`.
+Fluent factory shortcuts are available for common patterns: `Template.tryAwait(_:)`, `Template.array(_:)`, `Template.tuple(_:)`, `Template.ternary(if:then:else:)`, `Template.closure(params:returnType:body:)`, `Template.subscriptCall(_:arguments:)`, and more. See `Template+FluentFactories.swift`.
 
 ### Statement Cases
 
@@ -343,6 +348,8 @@ Fluent factory shortcuts are available for common patterns: `Template.tryAwait(_
 | `.guardStatement(condition:elseBody:)` | `guard cond else { ... }` |
 | `.guardLetBinding(name:type:initializer:elseBody:)` | `guard let name = expr else { ... }` |
 | `.ifStatement(condition:thenBody:elseBody:)` | `if cond { ... } else { ... }` |
+| `.ifLetBinding(name:type:initializer:thenBody:elseBody:)` | `if let name = expr { ... } else { ... }` |
+| `.forInStatement(variable:collection:body:)` | `for x in collection { ... }` |
 | `.switchStatement(subject:cases:)` | `switch x { case ...: ... }` |
 | `.returnStatement(_:)` | `return expr` |
 | `.throwStatement(_:)` | `throw expr` |
@@ -360,6 +367,8 @@ Fluent factory shortcuts are available for common patterns: `Template.tryAwait(_
 | `.computedProperty(ComputedPropertySignature)` | `var name: T { get { ... } set { ... } }` |
 | `.extensionDecl(ExtensionSignature)` | `extension T: P where ... { ... }` |
 | `.structDecl(StructSignature)` | `struct Name: P { ... }` |
+| `.enumDecl(EnumSignature)` | `enum Name: P { case ...; members... }` |
+| `.typeAlias(TypeAliasSignature)` | `typealias Name = ExistingType` |
 | `.initDecl(InitializerSignature)` | `init?(params) throws { ... }` |
 
 ### Renderer
@@ -388,9 +397,26 @@ Renderer.render(_ declaration: Declaration<A>) -> DeclSyntax
 | `ComputedPropertySignature<A>` | `name`, `type`, `getter`, `setter`, `isStatic`, `accessLevel` |
 | `ExtensionSignature<A>` | `typeName`, `conformances`, `whereRequirements`, `members` |
 | `StructSignature<A>` | `name`, `conformances`, `members`, `accessLevel` |
+| `EnumSignature<A>` | `name`, `conformances`, `cases`, `members`, `accessLevel` |
+| `EnumCaseSignature` | `name`, `rawValue`, `associatedTypes` |
+| `TypeAliasSignature` | `name`, `existingType`, `accessLevel` |
 | `InitializerSignature<A>` | `parameters`, `canThrow`, `isFailable`, `body`, `accessLevel` |
 | `WhereRequirement` | `typeParameter`, `constraint` |
 | `AccessLevel` | `.public`, `.internal`, `.private`, `.fileprivate` |
+
+## Examples
+
+The `Examples/` directory contains complete macro implementations that use MacroTemplateKit, organized by macro role:
+
+| Category | Examples |
+|----------|----------|
+| `ExpressionMacros/` | `StringifyMacro`, `URLMacro`, `FontLiteralMacro`, `SourceLocationMacro`, `WarningMacro`, `AddBlockerMacro` |
+| `AccessorAndBodyMacros/` | `ObservablePropertyMacro`, `DictionaryStoragePropertyMacro`, `EnvironmentValueMacro`, `RemoteBodyMacro`, `ComputedPropertyAccessorMacro` |
+| `ExtensionMacros/` | `SendableExtensionMacro`, `HashableExtensionMacro`, `EquatableExtensionMacro`, `OptionSetExtensionMacro`, `DefaultFatalErrorImplementationMacro` |
+| `MemberMacros/` | `CustomCodableMacro`, `DictionaryStorageMacro`, `CaseDetectionMacro`, `MetaEnumMacro`, `NewTypeMacro` |
+| `PeerMacros/` | `AddAsyncMacro`, `AddCompletionHandlerMacro`, `PeerValueWithSuffixNameMacro` |
+
+Each file shows a real macro rewritten to use the template API, which makes them useful as starting points for your own macro implementations.
 
 ## Design Notes
 

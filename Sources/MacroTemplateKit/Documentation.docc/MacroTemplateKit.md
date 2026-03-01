@@ -44,6 +44,9 @@ All three types are generic over a payload parameter `A` that carries compile-ti
 - ``SetterSignature``
 - ``ExtensionSignature``
 - ``StructSignature``
+- ``EnumSignature``
+- ``EnumCaseSignature``
+- ``TypeAliasSignature``
 - ``InitializerSignature``
 - ``WhereRequirement``
 - ``AccessLevel``
