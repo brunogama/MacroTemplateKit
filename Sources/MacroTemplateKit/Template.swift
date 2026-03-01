@@ -267,10 +267,15 @@ public indirect enum Template<A> {
   /// - Parameter transform: Function applied to each variable payload
   /// - Returns: New template with transformed payloads and identical structure
   public func map<B>(_ transform: (A) -> B) -> Template<B> {
-    mapLiterals(transform) ?? mapVariables(transform) ?? mapControlFlow(transform) ?? mapOperations(
-      transform
-    ) ?? mapEffects(transform) ?? mapDeclarations(transform) ?? mapCollections(transform)
-      ?? mapExtensions(transform) ?? .literal(.nil)
+    if let result = mapLiterals(transform) { return result }
+    if let result = mapVariables(transform) { return result }
+    if let result = mapControlFlow(transform) { return result }
+    if let result = mapOperations(transform) { return result }
+    if let result = mapEffects(transform) { return result }
+    if let result = mapDeclarations(transform) { return result }
+    if let result = mapCollections(transform) { return result }
+    if let result = mapExtensions(transform) { return result }
+    return .literal(.nil)
   }
 
   private func mapLiterals<B>(_ transform: (A) -> B) -> Template<B>? {
