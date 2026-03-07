@@ -122,6 +122,11 @@ jobs:
     name: Danger
     runs-on: macos-14
     needs: [format-check, lint-check]
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
 
     steps:
       - name: Checkout
