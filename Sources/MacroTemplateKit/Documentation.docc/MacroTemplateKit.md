@@ -21,6 +21,10 @@ All three types are generic over a payload parameter `A` that carries compile-ti
 - <doc:GettingStarted>
 - <doc:ThreeLayerAST>
 
+### Tutorials
+
+- <doc:MacroTemplateKitTutorials>
+
 ### Templates
 
 - ``Template``
