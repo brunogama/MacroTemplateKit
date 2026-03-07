@@ -255,6 +255,34 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("Bool"), "Should contain return type")
   }
 
+  func testRenderClosure_withAttributes() {
+    let template: Template<Void> = .closure(
+      ClosureSignature<Void>(
+        attributes: [.sendable],
+        parameters: [(name: "value", type: "Int")],
+        returnType: "Void",
+        body: [
+          .expression(
+            .call(
+              "handle",
+              arguments: [
+                .unlabeled(.variable("value"))
+              ]
+            )
+          )
+        ]
+      ))
+    let result = Renderer.render(template)
+
+    XCTAssertTrue(result.is(ClosureExprSyntax.self), "Should render as ClosureExprSyntax")
+    let description = result.trimmedDescription
+    XCTAssertTrue(description.contains("@Sendable"), "Should contain closure attribute")
+    XCTAssertTrue(description.contains("value"), "Should contain parameter name")
+    XCTAssertTrue(description.contains("Int"), "Should contain parameter type")
+    XCTAssertTrue(description.contains("Void"), "Should contain return type")
+    XCTAssertTrue(description.contains("handle(value)"), "Should contain body call")
+  }
+
   func testFluentFactory_closure() {
     let template: Template<Void> = .closure(
       params: [(name: "x", type: "Int")],
