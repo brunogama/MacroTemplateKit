@@ -51,11 +51,11 @@ swift test --parallel
 
 - Follow the existing Swift style:
   - 2-space indentation
-  - meaningful names
+  - use descriptive names that clearly communicate purpose
   - avoid force unwraps in production code
   - add `///` docs for public APIs
 - Do not add `swiftlint:disable` / `swiftlint:enable` comments. PR validation explicitly rejects them.
-- Keep renderer changes pure and exhaustive.
+- Keep renderer changes side-effect-free, deterministic, and exhaustive over the cases they handle.
 - Compiler warnings are treated as errors in CI.
 
 When adding or changing AST surface area, check whether the same concept must be updated across:
