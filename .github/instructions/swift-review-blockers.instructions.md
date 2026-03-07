@@ -25,6 +25,6 @@ description: "Ultra-strict merge blockers, architecture gates, and test expectat
 - New concurrency code must cover isolation, cancellation, reentrancy-sensitive behavior, ordering assumptions, and timeout behavior.
 - Security-sensitive code must cover malformed input, authorization failure, and secret leakage.
 - SwiftUI stateful flows must be covered via view-model, reducer, or UI tests as appropriate.
-- Vec0 or routing changes need matrix tests plus equivalence against the SQL baseline.
-- Index changes need nearest-neighbor correctness tests plus a recall regression guard.
-- Quantization changes need precision and recall bounds plus round-trip property coverage.
+- Rendering changes must add targeted regression coverage in renderer-focused suites such as `RendererTests`, `DeclarationRendererTests`, `StatementRendererTests`, or `NewCasesRendererTests`.
+- Public API and example-facing changes should be covered in `PublicExamplesTests`.
+- Builder changes should be covered in `TemplateBuilderTests`, and `map` or payload propagation changes must preserve `TemplateFunctorLawsTests`.
