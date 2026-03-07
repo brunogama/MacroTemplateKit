@@ -132,40 +132,34 @@ For most macros, `Template<Void>`, `Statement<Void>`, and `Declaration<Void>` ar
 
 ### Expressions
 
-Build expressions with `.functionCall`, `.methodCall`, `.propertyAccess`, `.binaryOperation`, and more. Every expression type renders to an `ExprSyntax`.
+Build expressions with `.call`, chained `.property(_:)`, chained `.method(_:)`, `.binaryOperation`, and more. Every expression type renders to an `ExprSyntax`.
 
 ```swift
 // fetchUser(id: userId, cache: true)
 let call: ExprSyntax = Renderer.render(
-    Template<Void>.functionCall(
-        function: "fetchUser",
+    Template<Void>.call(
+        "fetchUser",
         arguments: [
-            (label: "id",    value: .variable("userId")),
-            (label: "cache", value: .literal(.boolean(true)))
+            .labeled("id", .variable("userId")),
+            .labeled("cache", .literal(true))
         ]
     )
 )
 
 // request.url.absoluteString
 let chain: ExprSyntax = Renderer.render(
-    Template<Void>.propertyAccess(
-        base: .propertyAccess(
-            base: .variable("request"),
-            property: "url"
-        ),
-        property: "absoluteString"
-    )
+    Template<Void>.variable("request")
+        .property("url")
+        .property("absoluteString")
 )
 
 // try await api.fetch(request)
 let effect: ExprSyntax = Renderer.render(
-    Template<Void>.tryAwait(
-        .methodCall(
-            base: .variable("api"),
-            method: "fetch",
-            arguments: [(label: nil, value: .variable("request"))]
-        )
-    )
+    Template<Void>.variable("api")
+        .method("fetch") {
+            TemplateArgument<Void>.unlabeled(.variable("request"))
+        }
+        .tryAwait()
 )
 ```
 
@@ -179,13 +173,11 @@ let binding: CodeBlockItemSyntax = Renderer.render(
     Statement<Void>.letBinding(
         name: "data",
         type: nil,
-        initializer: .tryAwait(
-            .methodCall(
-                base: .variable("api"),
-                method: "fetch",
-                arguments: [(label: "id", value: .variable("id"))]
-            )
-        )
+        initializer: Template<Void>.variable("api")
+            .method("fetch") {
+                TemplateArgument<Void>.labeled("id", .variable("id"))
+            }
+            .tryAwait()
     )
 )
 
@@ -224,23 +216,79 @@ let fn: DeclSyntax = Renderer.render(
             .letBinding(
                 name: "data",
                 type: nil,
-                initializer: .tryAwait(
-                    .methodCall(
-                        base: .variable("api"),
-                        method: "fetch",
-                        arguments: [(label: "id", value: .variable("id"))]
-                    )
-                )
+                initializer: Template<Void>.variable("api")
+                    .method("fetch") {
+                        TemplateArgument<Void>.labeled("id", .variable("id"))
+                    }
+                    .tryAwait()
             ),
             .returnStatement(
-                .functionCall(
-                    function: "User",
-                    arguments: [(label: "from", value: .variable("data"))]
+                .call(
+                    "User",
+                    arguments: [
+                        .labeled("from", .variable("data"))
+                    ]
                 )
             )
         ]
     ))
 )
+```
+
+### Generics, Parameter Packs, and Attributes
+
+Declaration signatures can model generic clauses, same-type requirements, parameter packs, and common `@...` attributes directly.
+
+```swift
+let register: DeclSyntax = Renderer.render(
+    Declaration.function(FunctionSignature(
+        accessLevel: .public,
+        attributes: [.mainActor],
+        name: "register",
+        genericParameters: [
+            GenericParameterSignature(name: "Service", constraint: "Sendable"),
+            GenericParameterSignature(name: "Dependency", isParameterPack: true)
+        ],
+        parameters: [
+            ParameterSignature(label: "_", name: "service", type: "Service"),
+            ParameterSignature(name: "dependencies", type: "repeat each Dependency"),
+            ParameterSignature(
+                name: "handler",
+                type: "() -> Void",
+                attributes: [.escaping]
+            )
+        ],
+        whereRequirements: [
+            .sameType("Service.ID", "String"),
+            .conformance("each Dependency", "Sendable")
+        ],
+        body: []
+    ))
+)
+// @MainActor public func register<Service: Sendable, each Dependency>(
+//     _ service: Service,
+//     dependencies: repeat each Dependency,
+//     handler: @escaping () -> Void
+// ) where Service.ID == String, each Dependency: Sendable {}
+
+let callback: ExprSyntax = Renderer.render(
+    Template<Void>.closure(
+        attributes: [.sendable],
+        params: [(name: "value", type: "Int")],
+        returnType: "Void",
+        body: [
+            .expression(
+                .call(
+                    "handle",
+                    arguments: [
+                        .unlabeled(.variable("value"))
+                    ]
+                )
+            )
+        ]
+    )
+)
+// { @Sendable (value: Int) -> Void in handle(value) }
 ```
 
 ### Extension with Protocol Conformance
@@ -326,8 +374,11 @@ let expr: ExprSyntax = Renderer.render(enriched.map { _ in () })
 | Type | Purpose | Renders to |
 |------|---------|------------|
 | `Template<A>` | Expression-level templates | `ExprSyntax` |
+| `TemplateArgument<A>` | Typed call/subscript arguments for fluent APIs | (embedded in `Template`) |
 | `Statement<A>` | Statement-level templates | `CodeBlockItemSyntax` |
 | `Declaration<A>` | Declaration-level templates | `DeclSyntax` |
+| `GenericParameterSignature` | Generic parameters and parameter packs | (embedded in declaration signatures) |
+| `AttributeSignature` | Common `@...` attributes on declarations, parameters, and closures | (embedded in signatures) |
 | `LiteralValue` | Integer, double, string, bool, nil | (embedded in `Template`) |
 | `Renderer` | Pure rendering functions | -- |
 
@@ -358,7 +409,7 @@ let expr: ExprSyntax = Renderer.render(enriched.map { _ in () })
 | `.selfAccess(_:)` | `TypeName.self` |
 | `.variableDeclaration(name:type:initializer:)` | Initializer expression (in expression position) |
 
-Fluent factory shortcuts are available for common patterns: `Template.tryAwait(_:)`, `Template.array(_:)`, `Template.tuple(_:)`, `Template.ternary(if:then:else:)`, `Template.closure(params:returnType:body:)`, `Template.subscriptCall(_:arguments:)`, `Template<Void>.variable(_:)`, and more. See `Template+FluentFactories.swift`.
+Fluent factory shortcuts are available for common patterns: `Template.call(_:arguments:)`, `Template.property(_:)`, `Template.method(_:, arguments:)`, `Template.trying()`, `Template.awaiting()`, `Template.tryAwait()`, `Template.unwrapped()`, `Template.array(_:)`, `Template.closure(params:returnType:body:)`, `Template<Void>.variable(_:)`, and more. See `Template+FluentFactories.swift`.
 
 ### Statement Cases
 
@@ -412,17 +463,20 @@ Renderer.render(_ declaration: Declaration<A>) -> DeclSyntax
 
 | Type | Key Properties |
 |------|---------------|
-| `FunctionSignature<A>` | `name`, `parameters`, `isAsync`, `canThrow`, `returnType`, `body`, `accessLevel`, `isStatic`, `isMutating` |
-| `ParameterSignature` | `label`, `name`, `type`, `isInout`, `defaultValue` |
-| `PropertySignature<A>` | `name`, `type`, `isLet`, `isStatic`, `initializer`, `accessLevel` |
-| `ComputedPropertySignature<A>` | `name`, `type`, `getter`, `setter`, `isStatic`, `accessLevel` |
+| `FunctionSignature<A>` | `attributes`, `name`, `genericParameters`, `parameters`, `isAsync`, `canThrow`, `returnType`, `whereRequirements`, `body`, `accessLevel`, `isStatic`, `isMutating` |
+| `ParameterSignature` | `label`, `name`, `type`, `attributes`, `isInout`, `defaultValue` |
+| `PropertySignature<A>` | `attributes`, `name`, `type`, `isLet`, `isStatic`, `initializer`, `accessLevel` |
+| `ComputedPropertySignature<A>` | `attributes`, `name`, `type`, `getter`, `setter`, `isStatic`, `accessLevel` |
+| `ClosureSignature<A>` | `attributes`, `parameters`, `returnType`, `body` |
 | `ExtensionSignature<A>` | `typeName`, `conformances`, `whereRequirements`, `members` |
-| `StructSignature<A>` | `name`, `conformances`, `members`, `accessLevel` |
-| `EnumSignature<A>` | `name`, `conformances`, `cases`, `members`, `accessLevel` |
+| `StructSignature<A>` | `attributes`, `name`, `genericParameters`, `conformances`, `whereRequirements`, `members`, `accessLevel` |
+| `EnumSignature<A>` | `attributes`, `name`, `genericParameters`, `conformances`, `whereRequirements`, `cases`, `members`, `accessLevel` |
 | `EnumCaseSignature` | `name`, `rawValue`, `associatedTypes` |
-| `TypeAliasSignature` | `name`, `existingType`, `accessLevel` |
-| `InitializerSignature<A>` | `parameters`, `canThrow`, `isFailable`, `body`, `accessLevel` |
-| `WhereRequirement` | `typeParameter`, `constraint` |
+| `TypeAliasSignature` | `attributes`, `name`, `genericParameters`, `existingType`, `whereRequirements`, `accessLevel` |
+| `InitializerSignature<A>` | `attributes`, `genericParameters`, `parameters`, `canThrow`, `isFailable`, `whereRequirements`, `body`, `accessLevel` |
+| `GenericParameterSignature` | `name`, `isParameterPack`, `constraint` |
+| `WhereRequirement` | `leftType`, `relation`, `rightType` plus compatibility accessors |
+| `AttributeSignature` | `name`, `arguments` plus helpers like `.escaping`, `.sendable`, `.mainActor`, `.available(...)` |
 | `AccessLevel` | `.public`, `.internal`, `.private`, `.fileprivate` |
 
 ## Examples
