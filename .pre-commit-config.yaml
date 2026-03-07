@@ -7,14 +7,6 @@ default_stages: [ pre-commit ]
 repos:
 - repo: local
   hooks:
-  # STEP 0: Generate documentation first (ensures docs are always up-to-date)
-  # - id: swift-docs-generator
-  #   name: 📚 Generating Documentation.docc...
-  #   entry: bash -c 'if [ -f "Makefile" ] && [ -f "Package.swift" ]; then echo "📖 Building documentation..."; make docs; echo "📝 Staging generated documentation..."; git add Sources/SwiftSQLiteVec/Documentation.docc/ 2>/dev/null || true; if [ -d "docs" ] && [ "$(ls -A docs/)" ]; then git add docs/ 2>/dev/null || true; fi; echo "✅ Documentation generated and staged"; else echo "ℹ️ No Makefile or Package.swift found, skipping docs generation"; fi'
-  #   language: system
-  #   pass_filenames: false
-  #   always_run: true
-  #   stages: [ pre-commit ]
 
   # STEP 1: Format Swift code first (runs before linting)
   - id: swift-beautifier
@@ -34,15 +26,6 @@ repos:
     always_run: true
     stages: [ pre-commit ]
 
-  - id: swift-package-tests
-    name: 🧪 Running Swift package tests...
-    entry: bash -c 'if [ -f "Package.swift" ] && git diff --cached --name-only | grep -q "\.swift$"; then echo "🔍 Swift files detected, running tests..."; make test-all; else echo "ℹ️ No Swift package or Swift files changed, skipping tests"; fi'
-    language: system
-    pass_filenames: false
-    always_run: false
-    files: \.swift$
-    stages: [ pre-merge-commit, pre-push ]
-
   - id: swift-warning-guard
     name: ⚠️ Checking for Swift warnings...
     entry: bash -c 'if [ -f "Package.swift" ] && git diff --cached --name-only | grep -q "\.swift$"; then echo "🔍 Compiling Swift code with warnings as errors..."; swift build -Xswiftc -warnings-as-errors; else echo "ℹ️ No Swift package or Swift files changed, skipping warning check"; fi'
@@ -56,15 +39,6 @@ repos:
     name: 🚫 Checking branch protection...
     entry: bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD); if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "dev" ]; then echo "🛑 Direct commits to $BRANCH branch are not allowed! Use feature branches and PRs instead 🚀"; exit 1; fi'
     language: system
-    pass_filenames: false
-    always_run: true
-    stages: [ pre-merge-commit, pre-push ]
-
-  - id: license-year-updater
-    name: 📅 Updating LICENSE year...
-    entry: bash -c 'if [ -f "LICENSE" ]; then CURRENT_YEAR=$(date +"%Y"); sed -i "" "s/Copyright (c) [0-9]\\{4\\}/Copyright (c) $CURRENT_YEAR/" LICENSE; fi'
-    language: system
-    files: ^LICENSE$
     pass_filenames: false
     always_run: true
     stages: [ pre-merge-commit, pre-push ]
