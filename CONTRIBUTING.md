@@ -218,8 +218,8 @@ Releases are managed by maintainers:
 
 1. Update version in documentation
 2. Update CHANGELOG.md
-3. Create git tag: `git tag v0.0.1`
-4. Push tag: `git push origin v0.0.1`
+3. Create git tag: `git tag v0.0.6`
+4. Push tag: `git push origin v0.0.6`
 5. Create GitHub release
 
 ## Getting Help
