@@ -64,22 +64,41 @@ Each layer contains only the constructs that belong at that level. A `Statement`
 
 ## Quick Start
 
-**Add to your macro target in `Package.swift`:**
+**Add the tagged binary release to your package:**
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.4")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.5"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
 ],
 targets: [
     .macro(
         name: "YourMacros",
         dependencies: [
             .product(name: "MacroTemplateKit", package: "MacroTemplateKit"),
+            .product(name: "SwiftSyntax", package: "swift-syntax"),
             .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         ]
     )
 ]
 ```
+
+### Using The Binary Release
+
+Tagged releases resolve to a prebuilt `MacroTemplateKit.xcframework`. That means
+`MacroTemplateKit` itself does not pull in this repository's `swift-syntax`
+constraint, so your macro package can keep using the `swift-syntax` version it
+already needs.
+
+Use the tagged release path when you are consuming MacroTemplateKit from another
+macro package and need to stay compatible with a different `swift-syntax`
+version. Use a branch, local checkout, or source dependency only when you are
+contributing to MacroTemplateKit itself.
+
+### Using The Source Package For Development
+
+If you are working on MacroTemplateKit, depend on the source package instead of
+the release tag so you build the library and its tests directly from this repo.
 
 **Generate your first declaration:**
 
@@ -440,9 +459,12 @@ Each file shows a real macro rewritten to use the template API, which makes them
 
 ### Swift Package Manager
 
+For downstream macro packages, prefer the tagged binary release:
+
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.4")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.5"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
 ]
 ```
 
@@ -459,9 +481,20 @@ Add to your macro target:
 )
 ```
 
+Tagged releases resolve to a prebuilt XCFramework, so MacroTemplateKit does not
+force your package onto this repo's `swift-syntax` range. Your macro target
+still declares its own `swift-syntax` products as usual.
+
+If you are contributing to MacroTemplateKit itself, use a branch or local
+checkout of the repository so SwiftPM builds the source package instead of the
+binary release.
+
 ### Xcode
 
-**File > Add Package Dependencies**, enter `https://github.com/brunogama/MacroTemplateKit.git`, select version 0.0.4 or later.
+**File > Add Package Dependencies**, enter `https://github.com/brunogama/MacroTemplateKit.git`, then:
+
+- select version `0.0.5` or later to consume the binary release
+- use a branch or local checkout only when developing MacroTemplateKit itself
 
 ## Contributing
 
