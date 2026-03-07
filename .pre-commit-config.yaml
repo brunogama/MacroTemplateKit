@@ -1,0 +1,109 @@
+# Pre-commit hooks configuration
+# Install with: pip install pre-commit && pre-commit install
+
+default_install_hook_types: [ pre-commit ]
+default_stages: [ pre-commit ]
+
+repos:
+- repo: local
+  hooks:
+  # STEP 0: Generate documentation first (ensures docs are always up-to-date)
+  # - id: swift-docs-generator
+  #   name: 📚 Generating Documentation.docc...
+  #   entry: bash -c 'if [ -f "Makefile" ] && [ -f "Package.swift" ]; then echo "📖 Building documentation..."; make docs; echo "📝 Staging generated documentation..."; git add Sources/SwiftSQLiteVec/Documentation.docc/ 2>/dev/null || true; if [ -d "docs" ] && [ "$(ls -A docs/)" ]; then git add docs/ 2>/dev/null || true; fi; echo "✅ Documentation generated and staged"; else echo "ℹ️ No Makefile or Package.swift found, skipping docs generation"; fi'
+  #   language: system
+  #   pass_filenames: false
+  #   always_run: true
+  #   stages: [ pre-commit ]
+
+  # STEP 1: Format Swift code first (runs before linting)
+  - id: swift-beautifier
+    name: ✨ Formatting Swift code...
+    entry: swift-format -i --configuration .swift-format
+    language: system
+    files: \.swift$
+    pass_filenames: true
+    stages: [ pre-commit ]
+
+  # STEP 2: Lint Swift code after formatting (uses Makefile with proper configs)
+  - id: swift-sheriff
+    name: 🤠 Linting Swift code...
+    entry: bash -c 'make lint'
+    language: system
+    pass_filenames: false
+    always_run: true
+    stages: [ pre-commit ]
+
+  - id: swift-package-tests
+    name: 🧪 Running Swift package tests...
+    entry: bash -c 'if [ -f "Package.swift" ] && git diff --cached --name-only | grep -q "\.swift$"; then echo "🔍 Swift files detected, running tests..."; make test-all; else echo "ℹ️ No Swift package or Swift files changed, skipping tests"; fi'
+    language: system
+    pass_filenames: false
+    always_run: false
+    files: \.swift$
+    stages: [ pre-merge-commit, pre-push ]
+
+  - id: swift-warning-guard
+    name: ⚠️ Checking for Swift warnings...
+    entry: bash -c 'if [ -f "Package.swift" ] && git diff --cached --name-only | grep -q "\.swift$"; then echo "🔍 Compiling Swift code with warnings as errors..."; swift build -Xswiftc -warnings-as-errors; else echo "ℹ️ No Swift package or Swift files changed, skipping warning check"; fi'
+    language: system
+    pass_filenames: false
+    always_run: false
+    files: \.swift$
+    stages: [ pre-merge-commit, pre-push ]
+
+  - id: branch-guardian
+    name: 🚫 Checking branch protection...
+    entry: bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD); if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "dev" ]; then echo "🛑 Direct commits to $BRANCH branch are not allowed! Use feature branches and PRs instead 🚀"; exit 1; fi'
+    language: system
+    pass_filenames: false
+    always_run: true
+    stages: [ pre-merge-commit, pre-push ]
+
+  - id: license-year-updater
+    name: 📅 Updating LICENSE year...
+    entry: bash -c 'if [ -f "LICENSE" ]; then CURRENT_YEAR=$(date +"%Y"); sed -i "" "s/Copyright (c) [0-9]\\{4\\}/Copyright (c) $CURRENT_YEAR/" LICENSE; fi'
+    language: system
+    files: ^LICENSE$
+    pass_filenames: false
+    always_run: true
+    stages: [ pre-merge-commit, pre-push ]
+
+  - id: changelog-enforcer
+    name: 📝 Checking CHANGELOG updates...
+    entry: bash -c 'if [ -f "CHANGELOG.md" ] && git diff --cached --name-only | grep -v "CHANGELOG.md" | grep -q "\."; then if ! git diff --cached --name-only | grep -q "CHANGELOG.md"; then echo "🛑 Changes detected but CHANGELOG.md was not updated! Please update the changelog."; exit 1; fi; fi'
+    language: system
+    pass_filenames: false
+    always_run: true
+    exclude: '^(\.pre-commit-config\.yaml|\.gitignore|CHANGELOG\.md)$'
+    stages: [ pre-merge-commit, pre-push ]
+
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v6.0.0
+  hooks:
+  - id: trailing-whitespace
+    name: 🧹 Removing trailing whitespace...
+    exclude: \.md$
+    stages: [ commit-msg ]
+  - id: end-of-file-fixer
+    name: 📝 Adding final newlines...
+    stages: [ commit-msg ]
+  - id: check-yaml
+    name: 🔍 Checking YAML syntax...
+    stages: [ commit-msg ]
+  - id: check-added-large-files
+    name: 📏 Checking file sizes...
+    args: [ '--maxkb=1000' ]
+    stages: [ commit-msg ]
+  - id: check-merge-conflict
+    name: ⚔️ Checking for merge conflicts...
+    stages: [ commit-msg ]
+  - id: check-case-conflict
+    name: 🔤 Checking filename case conflicts...
+    stages: [ commit-msg ]
+  - id: mixed-line-ending
+    name: 📐 Fixing line endings...
+    args: [ '--fix=lf' ]
+    stages: [ commit-msg ]
+# Global configuration
+fail_fast: true
