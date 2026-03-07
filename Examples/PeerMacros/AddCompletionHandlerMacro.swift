@@ -68,31 +68,27 @@ public struct AddCompletionHandlerMacro: PeerMacro {
         // AFTER: MacroTemplateKit
         //
         // Build: await fetchUser(id: id)
-        let awaitedCall: Template<Void> = .awaitExpression(
-            .functionCall(
-                function: functionName,
-                arguments: callArguments.map { (label: $0.label, value: .variable($0.argName)) }
-            )
+        let awaitedCall: Template<Void> = .call(
+            functionName,
+            arguments: callArguments.map { .init(label: $0.label, value: .variable($0.argName)) }
         )
+        .awaiting()
 
         // Build: completionHandler(await fetchUser(id: id))
-        let completionCall: Template<Void> = .functionCall(
-            function: "completionHandler",
-            arguments: [(label: nil, value: awaitedCall)]
+        let completionCall: Template<Void> = .call(
+            "completionHandler",
+            arguments: [
+                .unlabeled(awaitedCall)
+            ]
         )
 
         // Build Task { completionHandler(await fetchUser(id: id)) }
-        let taskBody: Template<Void> = .functionCall(
-            function: "Task",
+        let taskBody: Template<Void> = .call(
+            "Task",
             arguments: [
-                (
-                    label: nil,
-                    value: .closure(
-                        ClosureSignature(
-                            parameters: [],
-                            returnType: nil,
-                            body: [.expression(completionCall)]
-                        )
+                .unlabeled(
+                    .closure(
+                        body: [.expression(completionCall)]
                     )
                 )
             ]
@@ -160,15 +156,16 @@ private func extractReturnTypeName(from funcDecl: FunctionDeclSyntax) -> String 
 
 private func buildCompletionHandlerParameter(returnTypeName: String) -> ParameterSignature {
     let handlerType = returnTypeName == "Void"
-        ? "@escaping () -> Void"
-        : "@escaping (\(returnTypeName)) -> Void"
+        ? "() -> Void"
+        : "(\(returnTypeName)) -> Void"
     // label: nil means firstName == name, rendering as:  completionHandler: @escaping (T) -> Void
     // label: "completionHandler" with name: "completionHandler" would render firstName secondName:,
     // i.e. `completionHandler completionHandler:` — which is wrong. Use nil label when they match.
     return ParameterSignature(
         label: nil,
         name: "completionHandler",
-        type: handlerType
+        type: handlerType,
+        attributes: [.escaping]
     )
 }
 

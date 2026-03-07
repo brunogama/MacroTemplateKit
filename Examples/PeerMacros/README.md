@@ -32,7 +32,8 @@ func fetchUser(id: String, completionHandler: @escaping (User) -> Void) {
 | Concept | API |
 |---|---|
 | Async call site | `Template.awaitExpression(_:)` |
-| Function call | `Template.functionCall(function:arguments:)` |
+| Function call | `Template.call(_:arguments:)` |
+| Escaping closure parameter | `ParameterSignature(attributes: [.escaping], ...)` |
 | Trailing closure | `Template.closure(ClosureSignature(...))` |
 | Full function declaration | `Declaration.function(FunctionSignature(...))` |
 | Emit DeclSyntax | `Renderer.render(_: Declaration<Void>)` |
@@ -158,8 +159,8 @@ let resumeReturning: Template<Void> = .methodCall(
     arguments: [(label: "returning", value: .variable("value"))]
 )
 let continuationCall: Template<Void> = .tryAwait(
-    .functionCall(function: "withCheckedThrowingContinuation", arguments: [
-        (label: nil, value: .closure(ClosureSignature(...)))
+    .call("withCheckedThrowingContinuation", arguments: [
+        .unlabeled(.closure(ClosureSignature(...)))
     ])
 )
 ```
