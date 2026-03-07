@@ -3,16 +3,16 @@
 ## What this repository is
 
 - `MacroTemplateKit` is a Swift Package Manager library for building Swift macro output with a typed AST instead of string interpolation.
-- Main package manifest: `/home/runner/work/MacroTemplateKit/MacroTemplateKit/Package.swift`
-- Primary source: `/home/runner/work/MacroTemplateKit/MacroTemplateKit/Sources/MacroTemplateKit`
-- Tests: `/home/runner/work/MacroTemplateKit/MacroTemplateKit/Tests/MacroTemplateKitTests`
-- Examples: `/home/runner/work/MacroTemplateKit/MacroTemplateKit/Examples`
+- Main package manifest: `Package.swift`
+- Primary source: `Sources/MacroTemplateKit`
+- Tests: `Tests/MacroTemplateKitTests`
+- Examples: `Examples`
 
 Start by reading:
 
-1. `/home/runner/work/MacroTemplateKit/MacroTemplateKit/README.md`
-2. `/home/runner/work/MacroTemplateKit/MacroTemplateKit/CONTRIBUTING.md`
-3. `/home/runner/work/MacroTemplateKit/MacroTemplateKit/LLMS.txt`
+1. `README.md`
+2. `CONTRIBUTING.md`
+3. `LLMS.txt`
 
 ## Recommended workflow for coding agents
 
@@ -65,7 +65,7 @@ When adding or changing AST surface area, check whether the same concept must be
 - `Declaration.swift`
 - renderer files such as `Renderer.swift`, `DeclarationRenderer.swift`, and `StatementRenderer.swift`
 - conformance/helpers such as `Template+Conformances.swift` and fluent factory extensions
-- tests in `/home/runner/work/MacroTemplateKit/MacroTemplateKit/Tests/MacroTemplateKitTests`
+- tests in `Tests/MacroTemplateKitTests`
 
 ## Testing expectations
 
