@@ -143,10 +143,10 @@ public struct DictionaryStoragePropertyMacro: AccessorMacro {
   private static func buildAccessorDeclarations(
     for info: PropertyInfo
   ) -> [AccessorDeclSyntax] {
-    let storageVariable: Template<Void> = .variable("_storage", payload: ())
+    let storageVariable: Template<Void> = .variable("_storage")
     let propertyKey: Template<Void> = .literal(.string(info.name))
-    let defaultValue: Template<Void> = .variable(info.defaultValueText, payload: ())
-    let newValueVariable: Template<Void> = .variable("newValue", payload: ())
+    let defaultValue: Template<Void> = .variable(info.defaultValueText)
+    let newValueVariable: Template<Void> = .variable("newValue")
 
     // Model _storage["name", default: defaultValue] as a subscript with
     // the two-argument form modelled as a method call on _storage.
@@ -175,7 +175,7 @@ public struct DictionaryStoragePropertyMacro: AccessorMacro {
     // emitted as the body of the generated accessor. The original swift-syntax example
     // uses this pattern unconditionally.
     let castGetterText = "\(defaultedSubscriptText) as! \(info.typeName)"
-    let getterExpression: Template<Void> = .variable(castGetterText, payload: ())
+    let getterExpression: Template<Void> = .variable(castGetterText)
 
     // Getter statements: return _storage["name", default: val] as! Type
     let getterStatements: [Statement<Void>] = [

@@ -89,7 +89,7 @@ public enum ObservablePropertyMacroExpansionError: Error, Sendable {
 /// MacroTemplateKit approach:
 /// - Key-path expressions (`\.name`) are not natively representable in Template<A>
 ///   because key-path literals require first-class language support. They are
-///   modelled as `.variable("\\.\(name)", payload: ())` which emits the correct
+///   modelled as `.variable("\\.\(name)")` which emits the correct
 ///   identifier token text via `DeclReferenceExprSyntax`.
 /// - Method calls on `_registrar` use `.methodCall(base:method:arguments:)`.
 /// - `defer` blocks use `.deferStatement([Statement<Void>])`.
@@ -124,13 +124,13 @@ public struct ObservablePropertyMacro: AccessorMacro {
   private static func buildAccessorDeclarations(
     propertyName: String
   ) -> [AccessorDeclSyntax] {
-    let registrar: Template<Void> = .variable("_registrar", payload: ())
-    let storage: Template<Void> = .variable("_storage", payload: ())
-    let selfVariable: Template<Void> = .variable("self", payload: ())
-    let newValue: Template<Void> = .variable("newValue", payload: ())
+    let registrar: Template<Void> = .variable("_registrar")
+    let storage: Template<Void> = .variable("_storage")
+    let selfVariable: Template<Void> = .variable("self")
+    let newValue: Template<Void> = .variable("newValue")
 
     // Key-path literals are represented as verbatim identifier text.
-    let keyPath: Template<Void> = .variable("\\.\(propertyName)", payload: ())
+    let keyPath: Template<Void> = .variable("\\.\(propertyName)")
 
     // _registrar.beginAccess(\.propertyName)
     let beginAccess: Template<Void> = .methodCall(

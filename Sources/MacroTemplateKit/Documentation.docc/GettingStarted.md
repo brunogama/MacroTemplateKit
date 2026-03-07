@@ -12,7 +12,7 @@ Add MacroTemplateKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.3")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.4")
 ]
 ```
 
@@ -30,7 +30,7 @@ Then add it to your macro target:
 
 ## Render a Function
 
-Build a ``Declaration`` and pass it to ``Renderer``:
+Build a ``Declaration`` and pass it to ``Renderer``. In the common case, use `Template<Void>` and the `Void` convenience factories like `.variable("name")`.
 
 ```swift
 import MacroTemplateKit
@@ -47,7 +47,7 @@ let decl: DeclSyntax = Renderer.render(
                 .binaryOperation(
                     left: .literal("Hello, "),
                     operator: "+",
-                    right: .variable("name", payload: ())
+                    right: .variable("name")
                 )
             )
         ]
@@ -65,7 +65,7 @@ public func greet(name: String) -> String {
 
 ## Use Metadata
 
-The type parameter `A` on ``Template``, ``Statement``, and ``Declaration`` lets you attach arbitrary data to variable references. Strip metadata with `map` before rendering:
+The type parameter `A` on ``Template``, ``Statement``, and ``Declaration`` lets you attach arbitrary data to variable references. Treat `Void` as the default mode; switch to a custom payload only when you need compile-time metadata, then strip it with `map` before rendering:
 
 ```swift
 let template: Template<String> = .variable("x", payload: "from user input")

@@ -143,10 +143,10 @@ public struct ClampedAccessorMacro: AccessorMacro {
     maximumBound: String
   ) -> [AccessorDeclSyntax] {
     let backingName = "_\(propertyName)"
-    let backingVariable: Template<Void> = .variable(backingName, payload: ())
-    let newValue: Template<Void> = .variable("newValue", payload: ())
-    let minimumValue: Template<Void> = .variable(minimumBound, payload: ())
-    let maximumValue: Template<Void> = .variable(maximumBound, payload: ())
+    let backingVariable: Template<Void> = .variable(backingName)
+    let newValue: Template<Void> = .variable("newValue")
+    let minimumValue: Template<Void> = .variable(minimumBound)
+    let maximumValue: Template<Void> = .variable(maximumBound)
 
     // Getter: return _propertyName
     let getterStatements: [Statement<Void>] = [
@@ -222,10 +222,10 @@ public enum ComputedPropertyFromDeclarationExample {
     minimumBound: String,
     maximumBound: String
   ) -> DeclSyntax {
-    let backingVariable: Template<Void> = .variable(backingName, payload: ())
-    let newValue: Template<Void> = .variable("newValue", payload: ())
-    let minimumValue: Template<Void> = .variable(minimumBound, payload: ())
-    let maximumValue: Template<Void> = .variable(maximumBound, payload: ())
+    let backingVariable: Template<Void> = .variable(backingName)
+    let newValue: Template<Void> = .variable("newValue")
+    let minimumValue: Template<Void> = .variable(minimumBound)
+    let maximumValue: Template<Void> = .variable(maximumBound)
 
     // Getter: return _backingName
     let getterBody: [Statement<Void>] = [

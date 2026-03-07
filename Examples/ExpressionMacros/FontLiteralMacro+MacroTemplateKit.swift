@@ -104,7 +104,7 @@ public enum FontLiteralMacro: ExpressionMacro {
   ) -> [(label: String?, value: Template<Void>)] {
     arguments.enumerated().map { index, element in
       let label = resolvedLabel(for: element, at: index)
-      let value = Template<Void>.variable(element.expression.description, payload: ())
+      let value = Template<Void>.variable(element.expression.description)
       return (label: label, value: value)
     }
   }

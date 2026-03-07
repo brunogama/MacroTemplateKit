@@ -153,9 +153,9 @@ return [Renderer.render(peerProperty)]
 
 // Complex case — composable, each piece is a named value:
 let resumeReturning: Template<Void> = .methodCall(
-    base: .variable("continuation", payload: ()),
+    base: .variable("continuation"),
     method: "resume",
-    arguments: [(label: "returning", value: .variable("value", payload: ()))]
+    arguments: [(label: "returning", value: .variable("value"))]
 )
 let continuationCall: Template<Void> = .tryAwait(
     .functionCall(function: "withCheckedThrowingContinuation", arguments: [

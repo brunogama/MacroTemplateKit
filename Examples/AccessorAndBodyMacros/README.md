@@ -55,7 +55,7 @@ Key MacroTemplateKit patterns:
 - `.methodCall(base:method:arguments:)` for `_registrar.beginAccess(...)` etc.
 - `.deferStatement(_:)` for the `defer { _registrar.endAccess() }` block
 - `.propertyAccess(base:property:)` for `_storage.propertyName`
-- Key-path literals (`\.name`) modelled as verbatim `.variable("\\.\(name)", payload: ())`
+- Key-path literals (`\.name`) modelled as verbatim `.variable("\\.\(name)")`
 
 ---
 
@@ -99,7 +99,7 @@ Key MacroTemplateKit patterns:
 Use `Renderer.renderStatements(_:)` to build the `CodeBlockItemListSyntax` body for each:
 
 ```swift
-let getterStatements: [Statement<Void>] = [.returnStatement(.variable("backing", payload: ()))]
+let getterStatements: [Statement<Void>] = [.returnStatement(.variable("backing"))]
 let getter = AccessorDeclSyntax(
     accessorSpecifier: .keyword(.get),
     body: CodeBlockSyntax(statements: Renderer.renderStatements(getterStatements))
@@ -114,7 +114,7 @@ let declaration: Declaration<Void> = .computedProperty(
     ComputedPropertySignature(
         name: "myProp",
         type: "String",
-        getter: [.returnStatement(.variable("_myProp", payload: ()))],
+        getter: [.returnStatement(.variable("_myProp"))],
         setter: SetterSignature(body: [.assignmentStatement(lhs: ..., rhs: ...)])
     )
 )

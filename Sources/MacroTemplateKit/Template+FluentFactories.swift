@@ -194,3 +194,18 @@ extension Template {
     .closure(ClosureSignature<A>(parameters: params, returnType: returnType, body: body))
   }
 }
+
+// MARK: - Void Convenience Factories
+
+extension Template where A == Void {
+
+  /// Creates a variable reference without explicitly spelling the `Void` payload.
+  public static func variable(_ name: String) -> Template<Void> {
+    .variable(name, payload: ())
+  }
+
+  /// Creates a property access from a variable name without explicitly spelling the payload.
+  public static func property(_ name: String, on baseName: String) -> Template<Void> {
+    .propertyAccess(base: .variable(baseName), property: name)
+  }
+}

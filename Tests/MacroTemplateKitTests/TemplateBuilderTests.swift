@@ -99,6 +99,22 @@ final class TemplateBuilderTests: XCTestCase {
       ))
   }
 
+  func testVoidVariableConvenience() {
+    let template: Template<Void> = .variable("user")
+    guard case .variable("user", _) = template else {
+      return XCTFail("Expected variable convenience to create a variable template")
+    }
+  }
+
+  func testVoidPropertyOnNameConvenience() {
+    let template: Template<Void> = .property("name", on: "user")
+    guard case .propertyAccess(let base, "name") = template,
+      case .variable("user", _) = base
+    else {
+      return XCTFail("Expected property convenience to create a property access on a variable")
+    }
+  }
+
   func testFunction_varargs() {
     let template: Template<Int> = .function("print", .literal("hello"))
     XCTAssertEqual(

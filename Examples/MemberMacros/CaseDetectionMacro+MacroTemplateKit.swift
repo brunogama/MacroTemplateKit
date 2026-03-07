@@ -90,7 +90,7 @@ public enum CaseDetectionMacroMTK: MemberMacro {
     let ifCaseExpr: ExprSyntax = buildIfCaseExpr(caseName: caseName)
 
     let getter: [Statement<Void>] = [
-      .expression(.variable("__placeholder__", payload: ())),  // replaced below
+      .expression(.variable("__placeholder__")),  // replaced below
       .returnStatement(.literal(.boolean(false))),
     ]
 

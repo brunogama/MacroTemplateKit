@@ -28,7 +28,7 @@ let decl: DeclSyntax = Renderer.render(
         returnType: returnType,
         body: [
             .letBinding(name: "result", type: nil, initializer: .tryAwait(call)),
-            .returnStatement(.variable("result", payload: ()))
+            .returnStatement(.variable("result"))
         ]
     ))
 )
@@ -68,7 +68,7 @@ Each layer contains only the constructs that belong at that level. A `Statement`
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.3")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.4")
 ],
 targets: [
     .macro(
@@ -99,13 +99,15 @@ let decl: DeclSyntax = Renderer.render(
                 .binaryOperation(
                     left: .literal("Hello, "),
                     operator: "+",
-                    right: .variable("name", payload: ())
+                    right: .variable("name")
                 )
             )
         ]
     ))
 )
 ```
+
+For most macros, `Template<Void>`, `Statement<Void>`, and `Declaration<Void>` are the default path. Use a non-`Void` payload only when you want to carry compile-time metadata through template construction.
 
 ## Usage Examples
 
@@ -119,7 +121,7 @@ let call: ExprSyntax = Renderer.render(
     Template<Void>.functionCall(
         function: "fetchUser",
         arguments: [
-            (label: "id",    value: .variable("userId", payload: ())),
+            (label: "id",    value: .variable("userId")),
             (label: "cache", value: .literal(.boolean(true)))
         ]
     )
@@ -129,7 +131,7 @@ let call: ExprSyntax = Renderer.render(
 let chain: ExprSyntax = Renderer.render(
     Template<Void>.propertyAccess(
         base: .propertyAccess(
-            base: .variable("request", payload: ()),
+            base: .variable("request"),
             property: "url"
         ),
         property: "absoluteString"
@@ -140,9 +142,9 @@ let chain: ExprSyntax = Renderer.render(
 let effect: ExprSyntax = Renderer.render(
     Template<Void>.tryAwait(
         .methodCall(
-            base: .variable("api", payload: ()),
+            base: .variable("api"),
             method: "fetch",
-            arguments: [(label: nil, value: .variable("request", payload: ()))]
+            arguments: [(label: nil, value: .variable("request"))]
         )
     )
 )
@@ -160,9 +162,9 @@ let binding: CodeBlockItemSyntax = Renderer.render(
         type: nil,
         initializer: .tryAwait(
             .methodCall(
-                base: .variable("api", payload: ()),
+                base: .variable("api"),
                 method: "fetch",
-                arguments: [(label: "id", value: .variable("id", payload: ()))]
+                arguments: [(label: "id", value: .variable("id"))]
             )
         )
     )
@@ -172,7 +174,7 @@ let binding: CodeBlockItemSyntax = Renderer.render(
 let guard_: CodeBlockItemSyntax = Renderer.render(
     Statement<Void>.guardStatement(
         condition: .binaryOperation(
-            left: .propertyAccess(base: .variable("items", payload: ()), property: "isEmpty"),
+            left: .propertyAccess(base: .variable("items"), property: "isEmpty"),
             operator: "==",
             right: .literal(.boolean(false))
         ),
@@ -205,16 +207,16 @@ let fn: DeclSyntax = Renderer.render(
                 type: nil,
                 initializer: .tryAwait(
                     .methodCall(
-                        base: .variable("api", payload: ()),
+                        base: .variable("api"),
                         method: "fetch",
-                        arguments: [(label: "id", value: .variable("id", payload: ()))]
+                        arguments: [(label: "id", value: .variable("id"))]
                     )
                 )
             ),
             .returnStatement(
                 .functionCall(
                     function: "User",
-                    arguments: [(label: "from", value: .variable("data", payload: ()))]
+                    arguments: [(label: "from", value: .variable("data"))]
                 )
             )
         ]
@@ -315,7 +317,7 @@ let expr: ExprSyntax = Renderer.render(enriched.map { _ in () })
 | Case | Output |
 |------|--------|
 | `.literal(LiteralValue)` | Integer, double, string, bool, or nil literal |
-| `.variable(String, payload: A)` | Identifier reference |
+| `.variable(String, payload: A)` | Identifier reference with optional metadata |
 | `.functionCall(function:arguments:)` | `name(label: value, ...)` |
 | `.methodCall(base:method:arguments:)` | `base.method(...)` |
 | `.propertyAccess(base:property:)` | `base.property` |
@@ -337,7 +339,7 @@ let expr: ExprSyntax = Renderer.render(enriched.map { _ in () })
 | `.selfAccess(_:)` | `TypeName.self` |
 | `.variableDeclaration(name:type:initializer:)` | Initializer expression (in expression position) |
 
-Fluent factory shortcuts are available for common patterns: `Template.tryAwait(_:)`, `Template.array(_:)`, `Template.tuple(_:)`, `Template.ternary(if:then:else:)`, `Template.closure(params:returnType:body:)`, `Template.subscriptCall(_:arguments:)`, and more. See `Template+FluentFactories.swift`.
+Fluent factory shortcuts are available for common patterns: `Template.tryAwait(_:)`, `Template.array(_:)`, `Template.tuple(_:)`, `Template.ternary(if:then:else:)`, `Template.closure(params:returnType:body:)`, `Template.subscriptCall(_:arguments:)`, `Template<Void>.variable(_:)`, and more. See `Template+FluentFactories.swift`.
 
 ### Statement Cases
 
@@ -430,7 +432,7 @@ Each file shows a real macro rewritten to use the template API, which makes them
 
 ## Requirements
 
-- Swift 5.10+
+- Swift 5.10+ (Swift 6.x recommended for contributors)
 - SwiftSyntax 510.0 or later (tested up to 700.0)
 - macOS 13+ / iOS 16+ / tvOS 16+ / watchOS 9+
 
@@ -440,7 +442,7 @@ Each file shows a real macro rewritten to use the template API, which makes them
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.3")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.4")
 ]
 ```
 
@@ -459,7 +461,7 @@ Add to your macro target:
 
 ### Xcode
 
-**File > Add Package Dependencies**, enter `https://github.com/brunogama/MacroTemplateKit.git`, select version 0.0.3 or later.
+**File > Add Package Dependencies**, enter `https://github.com/brunogama/MacroTemplateKit.git`, select version 0.0.4 or later.
 
 ## Contributing
 

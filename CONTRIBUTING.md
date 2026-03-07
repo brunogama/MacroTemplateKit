@@ -27,7 +27,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 
 ### Prerequisites
 
-- Swift 6.0+
+- Swift 5.10+ (Swift 6.x recommended)
 - Xcode 16+ (recommended)
 - macOS 13+
 

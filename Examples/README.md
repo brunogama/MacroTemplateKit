@@ -63,7 +63,7 @@ Attached accessor macros (`@attached(accessor)`) and body macros (`@attached(bod
 
 ```swift
 // Expression templates (Template<A>)
-Template.variable("name", payload: ())
+Template<Void>.variable("name")
 Template.literal(.string("text"))
 Template.literal(.integer(42))
 Template.functionCall(function: "fn", arguments: [(label: "x", value: expr)])

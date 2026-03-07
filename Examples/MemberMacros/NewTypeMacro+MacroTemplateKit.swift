@@ -175,10 +175,10 @@ public enum NewTypeMacroMTK: MemberMacro {
   private static func buildInitializer(accessLevel: AccessLevel) -> DeclSyntax {
     // `self.rawValue = rawValue`
     let selfRawValue = Template<Void>.propertyAccess(
-      base: .variable("self", payload: ()),
+      base: .variable("self"),
       property: "rawValue"
     )
-    let rawValueReference = Template<Void>.variable("rawValue", payload: ())
+    let rawValueReference = Template<Void>.variable("rawValue")
 
     let assignBody = Statement<Void>.assignmentStatement(
       lhs: selfRawValue,

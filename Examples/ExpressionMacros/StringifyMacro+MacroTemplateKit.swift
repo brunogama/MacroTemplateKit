@@ -68,7 +68,7 @@ public enum StringifyMacro: ExpressionMacro {
     let tupleTemplate: Template<Void> = .functionCall(
       function: "",
       arguments: [
-        (label: nil, value: .variable(sourceText, payload: ())),
+        (label: nil, value: .variable(sourceText)),
         (label: nil, value: .literal(.string(sourceText))),
       ]
     )

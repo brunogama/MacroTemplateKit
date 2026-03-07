@@ -25,7 +25,7 @@ let call: ExprSyntax = Renderer.render(
     Template<Void>.functionCall(
         function: "fetchUser",
         arguments: [
-            (label: "id", value: .variable("userId", payload: ()))
+            (label: "id", value: .variable("userId"))
         ]
     )
 )
@@ -44,9 +44,9 @@ let binding: CodeBlockItemSyntax = Renderer.render(
         type: nil,
         initializer: .tryAwait(
             .methodCall(
-                base: .variable("api", payload: ()),
+                base: .variable("api"),
                 method: "fetch",
-                arguments: [(label: "id", value: .variable("id", payload: ()))]
+                arguments: [(label: "id", value: .variable("id"))]
             )
         )
     )
@@ -78,16 +78,16 @@ let fn: DeclSyntax = Renderer.render(
                 type: nil,
                 initializer: .tryAwait(
                     .methodCall(
-                        base: .variable("api", payload: ()),
+                        base: .variable("api"),
                         method: "fetch",
-                        arguments: [(label: "id", value: .variable("id", payload: ()))]
+                        arguments: [(label: "id", value: .variable("id"))]
                     )
                 )
             ),
             .returnStatement(
                 .functionCall(
                     function: "User",
-                    arguments: [(label: "from", value: .variable("data", payload: ()))]
+                    arguments: [(label: "from", value: .variable("data"))]
                 )
             )
         ]
@@ -97,7 +97,7 @@ let fn: DeclSyntax = Renderer.render(
 
 ## The Payload Parameter
 
-All three layers share the same type parameter `A`. This parameter is attached to every `.variable` case and flows through `map` transformations. The renderer ignores it entirely -- a `Template<Int>` and a `Template<String>` with the same variable name produce identical output.
+All three layers share the same type parameter `A`. `Void` is the default when you do not need metadata. When you do, the payload attaches to each `.variable` case and flows through `map` transformations. The renderer ignores it entirely -- a `Template<Int>` and a `Template<String>` with the same variable name produce identical output.
 
 Use the payload to carry metadata during template construction (type information, source locations, validation state), then discard it with `map { _ in () }` before rendering.
 

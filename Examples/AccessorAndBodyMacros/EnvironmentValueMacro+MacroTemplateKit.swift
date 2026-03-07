@@ -98,13 +98,13 @@ public struct EnvironmentValueMacro: AccessorMacro {
   ) -> [AccessorDeclSyntax] {
     // Model self[KeyType.self] as a subscript access expression.
     // The key expression text is preserved verbatim from the attribute argument.
-    let selfVariable: Template<Void> = .variable("self", payload: ())
-    let keyExpression: Template<Void> = .variable(keyExpressionText, payload: ())
+    let selfVariable: Template<Void> = .variable("self")
+    let keyExpression: Template<Void> = .variable(keyExpressionText)
     let subscriptAccess: Template<Void> = .subscriptAccess(
       base: selfVariable,
       index: keyExpression
     )
-    let newValueVariable: Template<Void> = .variable("newValue", payload: ())
+    let newValueVariable: Template<Void> = .variable("newValue")
 
     // Getter statements: return self[KeyType.self]
     let getterStatements: [Statement<Void>] = [

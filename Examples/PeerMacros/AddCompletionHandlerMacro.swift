@@ -71,7 +71,7 @@ public struct AddCompletionHandlerMacro: PeerMacro {
         let awaitedCall: Template<Void> = .awaitExpression(
             .functionCall(
                 function: functionName,
-                arguments: callArguments.map { (label: $0.label, value: .variable($0.argName, payload: ())) }
+                arguments: callArguments.map { (label: $0.label, value: .variable($0.argName)) }
             )
         )
 

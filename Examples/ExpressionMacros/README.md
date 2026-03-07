@@ -55,7 +55,7 @@ Implements `#addBlocker(expr)` — warns on `+` operators and rewrites them to `
 AST traversal and Fix-It emission remain in a `SyntaxRewriter` subclass (`AddVisitor`)
 because structural rewriting is outside the scope of the template algebra. MacroTemplateKit
 is used only for the output path: the rewritten expression text is forwarded through
-`.variable(description, payload: ())` and rendered via `Renderer.render(_:)`, keeping
+`.variable(description)` and rendered via `Renderer.render(_:)`, keeping
 the output pipeline consistent and avoiding force casts/unwraps in the public API.
 
 ---

@@ -14,7 +14,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.3")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.4")
 ]
 ```
 
@@ -32,7 +32,7 @@ Then add it to your macro target:
 
 ## Building Expressions with Template\<A\>
 
-`Template<A>` represents expression-level Swift code. The type parameter `A` is metadata you can attach to variable references—it is erased during rendering.
+`Template<A>` represents expression-level Swift code. In the common case, use `Template<Void>`. The type parameter `A` becomes useful when you want to attach metadata to variable references; it is erased during rendering.
 
 ```swift
 import MacroTemplateKit
@@ -41,7 +41,7 @@ import MacroTemplateKit
 let one: Template<Void> = .literal(.integer(1))
 
 // A variable reference
-let x: Template<Void> = .variable("x", payload: ())
+let x: Template<Void> = .variable("x")
 
 // x + 1
 let sum: Template<Void> = .binaryOperation(left: x, operator: "+", right: one)
@@ -55,18 +55,18 @@ print(expr.description) // x + 1
 ```swift
 // fetchUser(id: userId, cache: true)
 let call: Template<Void> = .functionCall(
-    function: "fetchUser",
-    arguments: [
-        (label: "id",    value: .variable("userId", payload: ())),
+        function: "fetchUser",
+        arguments: [
+        (label: "id",    value: .variable("userId")),
         (label: "cache", value: .literal(.boolean(true)))
     ]
 )
 
 // api.fetch(request)
 let method: Template<Void> = .methodCall(
-    base: .variable("api", payload: ()),
+    base: .variable("api"),
     method: "fetch",
-    arguments: [(label: nil, value: .variable("request", payload: ()))]
+    arguments: [(label: nil, value: .variable("request"))]
 )
 ```
 
@@ -80,9 +80,9 @@ let stmt: Statement<Void> = .letBinding(
     name: "result",
     type: nil,
     initializer: .methodCall(
-        base: .variable("api", payload: ()),
+        base: .variable("api"),
         method: "fetch",
-        arguments: [(label: nil, value: .variable("request", payload: ()))]
+        arguments: [(label: nil, value: .variable("request"))]
     )
 )
 
@@ -107,13 +107,13 @@ let function: Declaration<Void> = .function(FunctionSignature(
     body: [
         .letBinding(name: "data", type: nil,
                     initializer: .methodCall(
-                        base: .variable("api", payload: ()),
+                        base: .variable("api"),
                         method: "fetch",
-                        arguments: [(label: "id", value: .variable("id", payload: ()))]
+                        arguments: [(label: "id", value: .variable("id"))]
                     )),
         .returnStatement(.functionCall(
             function: "User",
-            arguments: [(label: "from", value: .variable("data", payload: ()))]
+            arguments: [(label: "from", value: .variable("data"))]
         ))
     ]
 ))

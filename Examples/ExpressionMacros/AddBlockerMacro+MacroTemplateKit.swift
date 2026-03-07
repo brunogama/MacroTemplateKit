@@ -85,10 +85,7 @@ public struct AddBlockerMacro: ExpressionMacro {
 
     // MacroTemplateKit output path: wrap the rewritten ExprSyntax description
     // in a variable template and render it, preserving the operator substitution.
-    let outputTemplate: Template<Void> = .variable(
-      firstExpression.description,
-      payload: ()
-    )
+    let outputTemplate: Template<Void> = .variable(firstExpression.description)
 
     return Renderer.render(outputTemplate)
   }

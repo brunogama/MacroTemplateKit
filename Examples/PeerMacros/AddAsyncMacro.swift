@@ -187,28 +187,28 @@ private func buildResultBody(
 ) -> [Statement<Void>] {
     // Build: continuation.resume(returning: value)
     let resumeReturning: Template<Void> = .methodCall(
-        base: .variable("continuation", payload: ()),
+        base: .variable("continuation"),
         method: "resume",
-        arguments: [(label: "returning", value: .variable("value", payload: ()))]
+        arguments: [(label: "returning", value: .variable("value"))]
     )
 
     // Build: continuation.resume(throwing: error)
     let resumeThrowing: Template<Void> = .methodCall(
-        base: .variable("continuation", payload: ()),
+        base: .variable("continuation"),
         method: "resume",
-        arguments: [(label: "throwing", value: .variable("error", payload: ()))]
+        arguments: [(label: "throwing", value: .variable("error"))]
     )
 
     // Build: switch returnValue { case .success(let value): ...; case .failure(let error): ... }
     let switchStatement: Statement<Void> = .switchStatement(
-        subject: .variable("returnValue", payload: ()),
+        subject: .variable("returnValue"),
         cases: [
             SwitchCase(
-                pattern: .expression(.variable(".success(let value)", payload: ())),
+                pattern: .expression(.variable(".success(let value)")),
                 body: [.expression(resumeReturning)]
             ),
             SwitchCase(
-                pattern: .expression(.variable(".failure(let error)", payload: ())),
+                pattern: .expression(.variable(".failure(let error)")),
                 body: [.expression(resumeThrowing)]
             ),
         ]
@@ -253,11 +253,11 @@ private func buildPlainBody(
 ) -> [Statement<Void>] {
     // Build: continuation.resume(returning: returnValue)  OR  continuation.resume(returning: ())
     let resumeArg: Template<Void> = hasPayload
-        ? .variable("returnValue", payload: ())
+        ? .variable("returnValue")
         : .functionCall(function: "()", arguments: [])
 
     let resumeReturning: Template<Void> = .methodCall(
-        base: .variable("continuation", payload: ()),
+        base: .variable("continuation"),
         method: "resume",
         arguments: [(label: "returning", value: resumeArg)]
     )
@@ -318,7 +318,7 @@ private func buildSyncCall(
     )
 
     var args = callArguments.map { info -> (label: String?, value: Template<Void>) in
-        (label: info.label, value: .variable(info.argName, payload: ()))
+        (label: info.label, value: .variable(info.argName))
     }
     args.append((label: nil, value: handlerClosure))
 

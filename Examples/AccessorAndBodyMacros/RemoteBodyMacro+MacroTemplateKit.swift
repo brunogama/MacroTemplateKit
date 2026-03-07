@@ -82,7 +82,7 @@ public enum RemoteBodyMacroExpansionError: Error, Sendable {
 /// MacroTemplateKit approach:
 /// - The arguments dictionary is built with `.dictionaryLiteral([(key:value:)])`,
 ///   where each key is `.literal(.string(paramName))` and each value is
-///   `.variable(paramName, payload: ())`.
+///   `.variable(paramName)`.
 /// - The `remoteCall` invocation uses `.functionCall(function:arguments:)`.
 /// - `try await` wrapping is expressed with `.tryExpression(.awaitExpression(...))`,
 ///   or equivalently the `.tryAwait(_:)` fluent factory.
@@ -129,7 +129,7 @@ public struct RemoteBodyMacro: BodyMacro {
       parameterNames.map { name in
         (
           key: Template<Void>.literal(.string(name)),
-          value: Template<Void>.variable(name, payload: ())
+          value: Template<Void>.variable(name)
         )
       }
     )

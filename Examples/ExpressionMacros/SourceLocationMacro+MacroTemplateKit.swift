@@ -125,7 +125,7 @@ public struct NativeLineMacro: ExpressionMacro {
     // We forward it through a variable template so the output path passes
     // through Renderer.render consistently with the rest of the macro.
     let lineDescription = location.line.description
-    let template: Template<Void> = .variable(lineDescription, payload: ())
+    let template: Template<Void> = .variable(lineDescription)
     return Renderer.render(template)
   }
 }
@@ -156,7 +156,7 @@ public struct NativeColumnMacro: ExpressionMacro {
     }
 
     let columnDescription = location.column.description
-    let template: Template<Void> = .variable(columnDescription, payload: ())
+    let template: Template<Void> = .variable(columnDescription)
     return Renderer.render(template)
   }
 }

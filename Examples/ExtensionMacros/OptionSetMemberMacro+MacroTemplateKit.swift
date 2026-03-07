@@ -295,7 +295,7 @@ public enum OptionSetMemberMacro: MemberMacro {
   private static func makeDefaultInit(accessLevel: AccessLevel) -> Declaration<Void> {
     let body: [Statement<Void>] = [
       .assignmentStatement(
-        lhs: .propertyAccess(base: .variable("self", payload: ()), property: "rawValue"),
+        lhs: .propertyAccess(base: .variable("self"), property: "rawValue"),
         rhs: .literal(.integer(0))
       )
     ]
@@ -314,8 +314,8 @@ public enum OptionSetMemberMacro: MemberMacro {
   private static func makeRawValueInit(accessLevel: AccessLevel) -> Declaration<Void> {
     let body: [Statement<Void>] = [
       .assignmentStatement(
-        lhs: .propertyAccess(base: .variable("self", payload: ()), property: "rawValue"),
-        rhs: .variable("rawValue", payload: ())
+        lhs: .propertyAccess(base: .variable("self"), property: "rawValue"),
+        rhs: .variable("rawValue")
       )
     ]
     return .initDecl(
@@ -340,7 +340,7 @@ public enum OptionSetMemberMacro: MemberMacro {
   ///   operator: "<<",
   ///   right:    .propertyAccess(
   ///               base:     .propertyAccess(
-  ///                           base:     .variable("Options", payload: ()),
+  ///                           base:     .variable("Options"),
   ///                           property: caseName
   ///                         ),
   ///               property: "rawValue"
@@ -354,7 +354,7 @@ public enum OptionSetMemberMacro: MemberMacro {
   ) -> Declaration<Void> {
     // Options.caseName
     let enumMemberAccess: Template<Void> = .propertyAccess(
-      base: .variable(optionsEnumName, payload: ()),
+      base: .variable(optionsEnumName),
       property: caseName
     )
 

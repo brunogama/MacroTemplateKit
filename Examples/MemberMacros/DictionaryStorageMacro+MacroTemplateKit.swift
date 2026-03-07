@@ -191,7 +191,7 @@ public struct DictionaryStoragePropertyMacroMTK: AccessorMacro {
     )
     let subscriptWithDefault = SubscriptCallExprSyntax(
       calledExpression: Renderer.render(
-        Template<Void>.variable("_storage", payload: ())
+        Template<Void>.variable("_storage")
       ),
       arguments: LabeledExprListSyntax([
         LabeledExprSyntax(expression: ExprSyntax(StringLiteralExprSyntax(content: propertyName))),
@@ -235,10 +235,10 @@ public struct DictionaryStoragePropertyMacroMTK: AccessorMacro {
   private static func buildSetter(propertyName: String) -> AccessorDeclSyntax {
     // `_storage["propertyName"] = newValue`
     let lhs = Template<Void>.subscriptAccess(
-      base: .variable("_storage", payload: ()),
+      base: .variable("_storage"),
       index: .literal(.string(propertyName))
     )
-    let rhs = Template<Void>.variable("newValue", payload: ())
+    let rhs = Template<Void>.variable("newValue")
 
     let assignmentStatement = Statement<Void>.assignmentStatement(lhs: lhs, rhs: rhs)
     let setterBody = CodeBlockSyntax(

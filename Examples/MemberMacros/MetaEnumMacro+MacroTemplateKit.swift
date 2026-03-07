@@ -178,7 +178,7 @@ public struct MetaEnumMacroMTK: MemberMacro {
     }
 
     let switchStatement = Statement<Void>.switchStatement(
-      subject: .variable(paramName, payload: ()),
+      subject: .variable(paramName),
       cases: switchCases
     )
 
@@ -207,15 +207,15 @@ public struct MetaEnumMacroMTK: MemberMacro {
   private static func buildSwitchCase(caseName: String) -> SwitchCase<Void> {
     // Pattern: `.caseName` — member access on implicit base.
     let casePattern = Template<Void>.propertyAccess(
-      base: .variable("", payload: ()),
+      base: .variable(""),
       property: caseName
     )
 
     // Body: `self = .caseName`
     let selfAssignment = Statement<Void>.assignmentStatement(
-      lhs: .variable("self", payload: ()),
+      lhs: .variable("self"),
       rhs: .propertyAccess(
-        base: .variable("", payload: ()),
+        base: .variable(""),
         property: caseName
       )
     )
