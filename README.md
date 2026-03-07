@@ -573,4 +573,4 @@ MIT License. See [LICENSE](LICENSE).
 
 ## Author
 
-Bruno Rocha ([@brunogama](https://github.com/brunogama))
+Bruno Gama ([@brunogama](https://github.com/brunogama))
