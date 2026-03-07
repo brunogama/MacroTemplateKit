@@ -138,6 +138,9 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
+  /// Declaration attributes (e.g. `@MainActor`).
+  public let attributes: [AttributeSignature]
+
   /// Whether function is static.
   public let isStatic: Bool
 
@@ -146,6 +149,9 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
 
   /// Function name.
   public let name: String
+
+  /// Generic parameter clause (e.g. `<T, each Element>`).
+  public let genericParameters: [GenericParameterSignature]
 
   /// Parameter list with labels, names, and types.
   public let parameters: [ParameterSignature]
@@ -159,28 +165,37 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Return type (nil for Void).
   public let returnType: String?
 
+  /// Generic `where` clause requirements.
+  public let whereRequirements: [WhereRequirement]
+
   /// Function body statements.
   public let body: [Statement<A>]
 
   public init(
     accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
     isStatic: Bool = false,
     isMutating: Bool = false,
     name: String,
+    genericParameters: [GenericParameterSignature] = [],
     parameters: [ParameterSignature] = [],
     isAsync: Bool = false,
     canThrow: Bool = false,
     returnType: String? = nil,
+    whereRequirements: [WhereRequirement] = [],
     body: [Statement<A>] = []
   ) {
     self.accessLevel = accessLevel
+    self.attributes = attributes
     self.isStatic = isStatic
     self.isMutating = isMutating
     self.name = name
+    self.genericParameters = genericParameters
     self.parameters = parameters
     self.isAsync = isAsync
     self.canThrow = canThrow
     self.returnType = returnType
+    self.whereRequirements = whereRequirements
     self.body = body
   }
 }
@@ -196,6 +211,9 @@ public struct ParameterSignature: Equatable, Hashable, Sendable {
   /// Parameter type.
   public let type: String
 
+  /// Parameter attributes that prefix the type (e.g. `@escaping`).
+  public let attributes: [AttributeSignature]
+
   /// Whether parameter is inout.
   public let isInout: Bool
 
@@ -206,12 +224,14 @@ public struct ParameterSignature: Equatable, Hashable, Sendable {
     label: String? = nil,
     name: String,
     type: String,
+    attributes: [AttributeSignature] = [],
     isInout: Bool = false,
     defaultValue: String? = nil
   ) {
     self.label = label
     self.name = name
     self.type = type
+    self.attributes = attributes
     self.isInout = isInout
     self.defaultValue = defaultValue
   }
@@ -221,6 +241,7 @@ public struct ParameterSignature: Equatable, Hashable, Sendable {
 public struct PropertySignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
+  public let attributes: [AttributeSignature]
   public let name: String
   public let type: String?
   public let isStatic: Bool
@@ -229,6 +250,7 @@ public struct PropertySignature<A>: Sendable where A: Sendable {
 
   public init(
     accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
     name: String,
     type: String? = nil,
     isStatic: Bool = false,
@@ -236,6 +258,7 @@ public struct PropertySignature<A>: Sendable where A: Sendable {
     initializer: Template<A>? = nil
   ) {
     self.accessLevel = accessLevel
+    self.attributes = attributes
     self.name = name
     self.type = type
     self.isStatic = isStatic
@@ -248,6 +271,7 @@ public struct PropertySignature<A>: Sendable where A: Sendable {
 public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
+  public let attributes: [AttributeSignature]
   public let name: String
   public let type: String
   public let isStatic: Bool
@@ -256,6 +280,7 @@ public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
 
   public init(
     accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
     name: String,
     type: String,
     isStatic: Bool = false,
@@ -263,6 +288,7 @@ public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
     setter: SetterSignature<A>? = nil
   ) {
     self.accessLevel = accessLevel
+    self.attributes = attributes
     self.name = name
     self.type = type
     self.isStatic = isStatic
@@ -282,20 +308,6 @@ public struct SetterSignature<A>: Sendable where A: Sendable {
   public init(parameterName: String = "newValue", body: [Statement<A>]) {
     self.parameterName = parameterName
     self.body = body
-  }
-}
-
-/// A generic where clause conformance requirement (e.g., `Tier: TierAtLeastPerformance`).
-public struct WhereRequirement: Equatable, Hashable, Sendable {
-  /// The type parameter name (left side of `:`, e.g., `"Tier"`).
-  public let typeParameter: String
-
-  /// The constraint protocol name (right side of `:`, e.g., `"TierAtLeastPerformance"`).
-  public let constraint: String
-
-  public init(typeParameter: String, constraint: String) {
-    self.typeParameter = typeParameter
-    self.constraint = constraint
   }
 }
 
@@ -323,19 +335,28 @@ public struct ExtensionSignature<A>: Sendable where A: Sendable {
 public struct StructSignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
+  public let attributes: [AttributeSignature]
   public let name: String
+  public let genericParameters: [GenericParameterSignature]
   public let conformances: [String]
+  public let whereRequirements: [WhereRequirement]
   public let members: [Declaration<A>]
 
   public init(
     accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
     name: String,
+    genericParameters: [GenericParameterSignature] = [],
     conformances: [String] = [],
+    whereRequirements: [WhereRequirement] = [],
     members: [Declaration<A>] = []
   ) {
     self.accessLevel = accessLevel
+    self.attributes = attributes
     self.name = name
+    self.genericParameters = genericParameters
     self.conformances = conformances
+    self.whereRequirements = whereRequirements
     self.members = members
   }
 }
@@ -345,8 +366,14 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
+  /// Declaration attributes (e.g. `@MainActor`).
+  public let attributes: [AttributeSignature]
+
   /// Whether the initializer is failable (`init?`).
   public let isFailable: Bool
+
+  /// Generic parameter clause (e.g. `<T, each Element>`).
+  public let genericParameters: [GenericParameterSignature]
 
   /// Parameter list with labels, names, types, and default values.
   public let parameters: [ParameterSignature]
@@ -354,20 +381,29 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
   /// Whether initializer can throw.
   public let canThrow: Bool
 
+  /// Generic `where` clause requirements.
+  public let whereRequirements: [WhereRequirement]
+
   /// Initializer body statements.
   public let body: [Statement<A>]
 
   public init(
     accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
     isFailable: Bool = false,
+    genericParameters: [GenericParameterSignature] = [],
     parameters: [ParameterSignature] = [],
     canThrow: Bool = false,
+    whereRequirements: [WhereRequirement] = [],
     body: [Statement<A>] = []
   ) {
     self.accessLevel = accessLevel
+    self.attributes = attributes
     self.isFailable = isFailable
+    self.genericParameters = genericParameters
     self.parameters = parameters
     self.canThrow = canThrow
+    self.whereRequirements = whereRequirements
     self.body = body
   }
 }
@@ -413,13 +449,16 @@ extension FunctionSignature {
   where A: Sendable, B: Sendable {
     FunctionSignature<B>(
       accessLevel: accessLevel,
+      attributes: attributes,
       isStatic: isStatic,
       isMutating: isMutating,
       name: name,
+      genericParameters: genericParameters,
       parameters: parameters,
       isAsync: isAsync,
       canThrow: canThrow,
       returnType: returnType,
+      whereRequirements: whereRequirements,
       body: body.map { $0.map(transform) }
     )
   }
@@ -430,6 +469,7 @@ extension PropertySignature {
   where A: Sendable, B: Sendable {
     PropertySignature<B>(
       accessLevel: accessLevel,
+      attributes: attributes,
       name: name,
       type: type,
       isStatic: isStatic,
@@ -444,6 +484,7 @@ extension ComputedPropertySignature {
   where A: Sendable, B: Sendable {
     ComputedPropertySignature<B>(
       accessLevel: accessLevel,
+      attributes: attributes,
       name: name,
       type: type,
       isStatic: isStatic,
@@ -480,8 +521,11 @@ extension StructSignature {
   where A: Sendable, B: Sendable {
     StructSignature<B>(
       accessLevel: accessLevel,
+      attributes: attributes,
       name: name,
+      genericParameters: genericParameters,
       conformances: conformances,
+      whereRequirements: whereRequirements,
       members: members.map { $0.map(transform) }
     )
   }
@@ -492,9 +536,12 @@ extension InitializerSignature {
   where A: Sendable, B: Sendable {
     InitializerSignature<B>(
       accessLevel: accessLevel,
+      attributes: attributes,
       isFailable: isFailable,
+      genericParameters: genericParameters,
       parameters: parameters,
       canThrow: canThrow,
+      whereRequirements: whereRequirements,
       body: body.map { $0.map(transform) }
     )
   }

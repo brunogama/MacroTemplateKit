@@ -189,6 +189,65 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("inout Int"), "Should contain inout modifier on parameters")
   }
 
+  func testRenderFunction_withAttributesGenericParametersAndWhereClause() {
+    let function = Declaration<Void>.function(
+      FunctionSignature(
+        accessLevel: .public,
+        attributes: [
+          .mainActor,
+          .available([.platform("macOS", version: "14.0"), .token("*")]),
+        ],
+        name: "register",
+        genericParameters: [
+          GenericParameterSignature(name: "Service", constraint: "Sendable"),
+          GenericParameterSignature(name: "Dependency", isParameterPack: true),
+        ],
+        parameters: [
+          ParameterSignature(label: "_", name: "service", type: "Service"),
+          ParameterSignature(name: "dependencies", type: "repeat each Dependency"),
+          ParameterSignature(
+            name: "handler",
+            type: "() -> Void",
+            attributes: [.escaping]
+          ),
+        ],
+        whereRequirements: [
+          .sameType("Service.ID", "String"),
+          .conformance("each Dependency", "Sendable"),
+        ],
+        body: []
+      )
+    )
+    let result = Renderer.render(function)
+
+    let description = result.formatted().description
+    XCTAssertTrue(description.contains("@MainActor"), "Should contain MainActor attribute")
+    XCTAssertTrue(description.contains("@available"), "Should contain availability attribute")
+    XCTAssertTrue(description.contains("macOS"), "Should contain availability platform")
+    XCTAssertTrue(description.contains("14.0"), "Should contain availability version")
+    XCTAssertTrue(description.contains("public func register"), "Should contain function name")
+    XCTAssertTrue(
+      description.contains("<Service: Sendable, each Dependency>"),
+      "Should contain generic parameters with pack"
+    )
+    XCTAssertTrue(
+      description.contains("_ service: Service"),
+      "Should contain unlabeled service parameter"
+    )
+    XCTAssertTrue(
+      description.contains("dependencies: repeat each Dependency"),
+      "Should contain parameter-pack type"
+    )
+    XCTAssertTrue(
+      description.contains("handler: @escaping () -> Void"),
+      "Should contain parameter attribute"
+    )
+    XCTAssertTrue(
+      description.contains("where Service.ID == String, each Dependency: Sendable"),
+      "Should contain same-type and conformance requirements"
+    )
+  }
+
   // MARK: - Property Declaration Tests
 
   func testRenderProperty_letWithType() {
@@ -457,6 +516,28 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("func greet"), "Should contain function member")
   }
 
+  func testRenderExtension_withLegacyWhereRequirement() {
+    let extensionDecl = Declaration<Void>.extensionDecl(
+      ExtensionSignature(
+        typeName: "Box",
+        conformances: ["Sendable"],
+        whereRequirements: [
+          WhereRequirement(typeParameter: "Value", constraint: "Sendable")
+        ],
+        members: []
+      )
+    )
+    let result = Renderer.render(extensionDecl)
+
+    let description = result.formatted().description
+    XCTAssertTrue(description.contains("extension Box"), "Should contain extension keyword")
+    XCTAssertTrue(description.contains("Sendable"), "Should contain conformance")
+    XCTAssertTrue(
+      description.contains("where Value: Sendable"),
+      "Legacy WhereRequirement initializer should still render a conformance clause"
+    )
+  }
+
   // MARK: - Struct Declaration Tests
 
   func testRenderStruct_empty() {
@@ -537,6 +618,40 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("let y: Double"), "Should contain y property")
     XCTAssertTrue(description.contains("func distance"), "Should contain function member")
     XCTAssertTrue(description.contains("to other: Point"), "Should contain function parameter")
+  }
+
+  func testRenderStruct_withAttributesGenericsAndWhereClause() {
+    let structDecl = Declaration<Void>.structDecl(
+      StructSignature(
+        accessLevel: .public,
+        attributes: [
+          .available([.platform("macOS", version: "14.0"), .token("*")])
+        ],
+        name: "Registry",
+        genericParameters: [
+          GenericParameterSignature(name: "Service", constraint: "Sendable")
+        ],
+        conformances: ["Sendable"],
+        whereRequirements: [
+          .sameType("Service.ID", "String")
+        ],
+        members: []
+      )
+    )
+    let result = Renderer.render(structDecl)
+
+    let description = result.formatted().description
+    XCTAssertTrue(description.contains("@available"), "Should contain availability attribute")
+    XCTAssertTrue(description.contains("macOS"), "Should contain availability platform")
+    XCTAssertTrue(description.contains("14.0"), "Should contain availability version")
+    XCTAssertTrue(
+      description.contains("public struct Registry<Service: Sendable>: Sendable"),
+      "Should contain generic parameter and conformance"
+    )
+    XCTAssertTrue(
+      description.contains("where Service.ID == String"),
+      "Should contain same-type requirement"
+    )
   }
 
   // MARK: - Nested Declaration Tests
@@ -681,6 +796,30 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(text.contains("var label"))
   }
 
+  func testRenderEnum_withAttributesParameterPackAndWhereClause() {
+    let decl: Declaration<Void> = .enumDecl(
+      EnumSignature(
+        attributes: [.mainActor],
+        name: "Event",
+        genericParameters: [
+          GenericParameterSignature(name: "Payload", isParameterPack: true)
+        ],
+        whereRequirements: [
+          .conformance("each Payload", "Sendable")
+        ],
+        cases: [
+          EnumCaseSignature(name: "values", associatedTypes: ["repeat each Payload"])
+        ]
+      )
+    )
+    let result = Renderer.render(decl)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("@MainActor"))
+    XCTAssertTrue(text.contains("enum Event<each Payload>"))
+    XCTAssertTrue(text.contains("where each Payload: Sendable"))
+    XCTAssertTrue(text.contains("case values(repeat each Payload)"))
+  }
+
   // MARK: - Type Alias Declaration Tests
 
   func testRenderTypeAlias_simple() {
@@ -720,6 +859,32 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(text.contains("Array<String>"))
   }
 
+  func testRenderTypeAlias_withAttributesGenericsAndWhereClause() {
+    let decl: Declaration<Void> = .typeAlias(
+      TypeAliasSignature(
+        accessLevel: .public,
+        attributes: [
+          .available([.platform("macOS", version: "14.0"), .token("*")])
+        ],
+        name: "Callback",
+        genericParameters: [
+          GenericParameterSignature(name: "Input", isParameterPack: true)
+        ],
+        existingType: "@Sendable (repeat each Input) -> Void",
+        whereRequirements: [
+          .conformance("each Input", "Sendable")
+        ]
+      ))
+    let result = Renderer.render(decl)
+    let text = result.formatted().description
+    XCTAssertTrue(text.contains("@available"))
+    XCTAssertTrue(text.contains("macOS"))
+    XCTAssertTrue(text.contains("14.0"))
+    XCTAssertTrue(text.contains("public typealias Callback<each Input>"))
+    XCTAssertTrue(text.contains("@Sendable (repeat each Input) -> Void"))
+    XCTAssertTrue(text.contains("where each Input: Sendable"))
+  }
+
   func testRenderTypeAlias_mapPreservesStructure() {
     let decl: Declaration<Int> = .typeAlias(
       TypeAliasSignature(
@@ -733,5 +898,47 @@ final class DeclarationRendererTests: XCTestCase {
     } else {
       XCTFail("Expected typeAlias case after map")
     }
+  }
+
+  func testRenderInitializer_withAttributesGenericsAndWhereClause() {
+    let decl: Declaration<Void> = .initDecl(
+      InitializerSignature(
+        accessLevel: .public,
+        attributes: [.mainActor],
+        genericParameters: [
+          GenericParameterSignature(name: "Value", isParameterPack: true)
+        ],
+        parameters: [
+          ParameterSignature(name: "values", type: "repeat each Value"),
+          ParameterSignature(
+            name: "handler",
+            type: "() -> Void",
+            attributes: [.escaping]
+          ),
+        ],
+        canThrow: true,
+        whereRequirements: [
+          .conformance("each Value", "Sendable")
+        ],
+        body: []
+      ))
+    let result = Renderer.render(decl)
+
+    let description = result.formatted().description
+    XCTAssertTrue(description.contains("@MainActor"), "Should contain initializer attribute")
+    XCTAssertTrue(description.contains("public init<each Value>"), "Should contain pack generic")
+    XCTAssertTrue(
+      description.contains("values: repeat each Value"),
+      "Should contain pack-expanded parameter type"
+    )
+    XCTAssertTrue(
+      description.contains("handler: @escaping () -> Void"),
+      "Should contain parameter attribute"
+    )
+    XCTAssertTrue(description.contains("throws"), "Should contain throws keyword")
+    XCTAssertTrue(
+      description.contains("where each Value: Sendable"),
+      "Should contain generic where clause"
+    )
   }
 }

@@ -141,6 +141,70 @@ final class TemplateBuilderTests: XCTestCase {
       ))
   }
 
+  func testTemplateArgumentBuilder_mixedLabeledAndUnlabeled() {
+    @TemplateArgumentBuilder<Int> func buildArguments() -> [TemplateArgument<Int>] {
+      TemplateArgument<Int>.labeled("id", .variable("userId", payload: 1))
+      Template<Int>.literal(true)
+      (label: "mode", value: .variable("mode", payload: 2))
+    }
+
+    XCTAssertEqual(
+      buildArguments(),
+      [
+        .labeled("id", .variable("userId", payload: 1)),
+        .unlabeled(.literal(true)),
+        .labeled("mode", .variable("mode", payload: 2)),
+      ]
+    )
+  }
+
+  func testCall_typedArguments() {
+    let template: Template<Int> = .call(
+      "User",
+      arguments: [
+        .labeled("from", .variable("data", payload: 1))
+      ]
+    )
+
+    XCTAssertEqual(
+      template,
+      .functionCall(
+        function: "User",
+        arguments: [
+          (label: "from", value: .variable("data", payload: 1))
+        ]
+      )
+    )
+  }
+
+  func testMethod_builderAndChaining() {
+    let template = Template<Void>.variable("client")
+      .property("api")
+      .method("fetch") {
+        TemplateArgument<Void>.labeled("id", .variable("userId"))
+        TemplateArgument<Void>.labeled("cache", .literal(true))
+      }
+      .tryAwait()
+
+    XCTAssertEqual(
+      Renderer.render(template).trimmedDescription,
+      "tryawaitclient.api.fetch(id:userId,cache:true)"
+    )
+  }
+
+  func testEffectAndUnwrapInstanceFluency() {
+    XCTAssertEqual(
+      Renderer.render(Template<Void>.variable("work").trying()).trimmedDescription, "trywork")
+    XCTAssertEqual(
+      Renderer.render(Template<Void>.variable("task").awaiting()).trimmedDescription,
+      "awaittask"
+    )
+    XCTAssertEqual(
+      Renderer.render(Template<Void>.variable("value").unwrapped()).trimmedDescription,
+      "value!"
+    )
+  }
+
   func testOperation() {
     let template: Template<Int> = .operation(.literal(1), "+", .literal(2))
     XCTAssertEqual(

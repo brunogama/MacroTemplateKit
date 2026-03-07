@@ -13,19 +13,34 @@ public struct TypeAliasSignature: Equatable, Hashable, Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
+  /// Declaration attributes (e.g. `@available`).
+  public let attributes: [AttributeSignature]
+
   /// Alias name.
   public let name: String
+
+  /// Generic parameter clause (e.g. `<T, each Element>`).
+  public let genericParameters: [GenericParameterSignature]
 
   /// Existing type being aliased (as raw string, e.g., "UInt8", "Array<String>").
   public let existingType: String
 
+  /// Generic `where` clause requirements.
+  public let whereRequirements: [WhereRequirement]
+
   public init(
     accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
     name: String,
-    existingType: String
+    genericParameters: [GenericParameterSignature] = [],
+    existingType: String,
+    whereRequirements: [WhereRequirement] = []
   ) {
     self.accessLevel = accessLevel
+    self.attributes = attributes
     self.name = name
+    self.genericParameters = genericParameters
     self.existingType = existingType
+    self.whereRequirements = whereRequirements
   }
 }

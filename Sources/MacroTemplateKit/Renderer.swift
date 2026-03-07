@@ -399,7 +399,7 @@ public struct Renderer {
   }
 
   private static func renderClosure<A: Sendable>(_ sig: ClosureSignature<A>) -> ExprSyntax {
-    let hasSignature = !sig.parameters.isEmpty || sig.returnType != nil
+    let hasSignature = !sig.attributes.isEmpty || !sig.parameters.isEmpty || sig.returnType != nil
 
     let closureSignature: ClosureSignatureSyntax? =
       hasSignature
@@ -419,7 +419,7 @@ public struct Renderer {
   {
     let params = sig.parameters.enumerated().map { index, param -> ClosureParameterSyntax in
       let paramType: TypeSyntax? = param.type.map { typeName in
-        TypeSyntax(IdentifierTypeSyntax(name: .identifier(typeName)))
+        TypeSyntax(stringLiteral: typeName)
       }
       return ClosureParameterSyntax(
         firstName: .identifier(param.name),
@@ -433,10 +433,11 @@ public struct Renderer {
     )
 
     let returnClause: ReturnClauseSyntax? = sig.returnType.map { typeName in
-      ReturnClauseSyntax(type: TypeSyntax(IdentifierTypeSyntax(name: .identifier(typeName))))
+      ReturnClauseSyntax(type: TypeSyntax(stringLiteral: typeName))
     }
 
     return ClosureSignatureSyntax(
+      attributes: renderAttributes(sig.attributes),
       parameterClause: .parameterClause(parameterClause),
       returnClause: returnClause
     )
@@ -480,6 +481,181 @@ extension Renderer {
         calledExpression: render(base),
         arguments: renderedArguments
       )
+    )
+  }
+
+  fileprivate static func renderAttributes(_ attributes: [AttributeSignature])
+    -> AttributeListSyntax
+  {
+    AttributeListSyntax(
+      attributes.map { attribute in
+        AttributeListSyntax.Element(
+          AttributeSyntax(stringLiteral: renderAttributeSource(attribute))
+        )
+      }
+    )
+  }
+
+  fileprivate static func renderAttributeSource(_ attribute: AttributeSignature) -> String {
+    var source = "@\(attribute.name)"
+    if let arguments = attribute.arguments {
+      source += "(\(renderAttributeArgumentsSource(arguments)))"
+    }
+    return source
+  }
+
+  fileprivate static func renderAttributeArgumentsSource(
+    _ arguments: AttributeSignature.Arguments
+  ) -> String {
+    switch arguments {
+    case .argumentList(let arguments):
+      return arguments.map { argument in
+        if let label = argument.label {
+          return "\(label): \(argument.value)"
+        }
+        return argument.value
+      }.joined(separator: ", ")
+    case .availability(let arguments):
+      return arguments.map(renderAvailabilityArgumentSource).joined(separator: ", ")
+    }
+  }
+
+  fileprivate static func renderAvailabilityArgumentSource(
+    _ argument: AttributeSignature.AvailabilityArgument
+  ) -> String {
+    switch argument {
+    case .token(let token):
+      return token
+    case .platform(let platform, let version):
+      guard let version else { return platform }
+      return "\(platform) \(version)"
+    case .labeled(let label, let value):
+      return "\(label): \(renderAvailabilityValueSource(value))"
+    }
+  }
+
+  fileprivate static func renderAvailabilityValueSource(
+    _ value: AttributeSignature.AvailabilityValue
+  ) -> String {
+    switch value {
+    case .string(let string):
+      return "\"\(string)\""
+    case .version(let version):
+      return version
+    }
+  }
+
+  fileprivate static func renderAttributeArguments(
+    _ arguments: AttributeSignature.Arguments?
+  ) -> AttributeSyntax.Arguments? {
+    guard let arguments else { return nil }
+
+    switch arguments {
+    case .argumentList(let arguments):
+      return .argumentList(
+        LabeledExprListSyntax(
+          arguments.enumerated().map { index, argument in
+            LabeledExprSyntax(
+              label: argument.label.map { .identifier($0) },
+              colon: argument.label != nil ? .colonToken() : nil,
+              expression: ExprSyntax(stringLiteral: argument.value),
+              trailingComma: index < arguments.count - 1
+                ? .commaToken(trailingTrivia: .space)
+                : nil
+            )
+          }
+        )
+      )
+    case .availability(let arguments):
+      return .availability(
+        AvailabilityArgumentListSyntax(
+          arguments.enumerated().map { index, argument in
+            renderAvailabilityArgument(argument, isLast: index == arguments.count - 1)
+          }
+        )
+      )
+    }
+  }
+
+  fileprivate static func renderAvailabilityArgument(
+    _ argument: AttributeSignature.AvailabilityArgument,
+    isLast: Bool
+  ) -> AvailabilityArgumentSyntax {
+    let trailingComma = isLast ? nil : TokenSyntax.commaToken(trailingTrivia: .space)
+
+    switch argument {
+    case .token(let token):
+      return AvailabilityArgumentSyntax(
+        argument: .token(renderAvailabilityToken(token)),
+        trailingComma: trailingComma
+      )
+    case .platform(let platform, let version):
+      return AvailabilityArgumentSyntax(
+        argument: .availabilityVersionRestriction(
+          PlatformVersionSyntax(
+            platform: .identifier(platform),
+            version: version.map(renderVersionTuple)
+          )),
+        trailingComma: trailingComma
+      )
+    case .labeled(let label, let value):
+      return AvailabilityArgumentSyntax(
+        argument: .availabilityLabeledArgument(
+          AvailabilityLabeledArgumentSyntax(
+            label: .identifier(label),
+            value: renderAvailabilityValue(value)
+          )),
+        trailingComma: trailingComma
+      )
+    }
+  }
+
+  fileprivate static func renderAvailabilityToken(_ token: String) -> TokenSyntax {
+    switch token {
+    case "*":
+      return .wildcardToken()
+    case "deprecated":
+      return .keyword(.deprecated)
+    case "unavailable":
+      return .keyword(.unavailable)
+    default:
+      return .identifier(token)
+    }
+  }
+
+  fileprivate static func renderAvailabilityValue(
+    _ value: AttributeSignature.AvailabilityValue
+  ) -> AvailabilityLabeledArgumentSyntax.Value {
+    switch value {
+    case .string(let string):
+      return .string(renderSimpleStringLiteral(string))
+    case .version(let version):
+      return .version(renderVersionTuple(version))
+    }
+  }
+
+  fileprivate static func renderSimpleStringLiteral(_ string: String)
+    -> SimpleStringLiteralExprSyntax
+  {
+    SimpleStringLiteralExprSyntax(
+      openingQuote: .stringQuoteToken(),
+      segments: SimpleStringLiteralSegmentListSyntax([
+        StringSegmentSyntax(content: .stringSegment(string))
+      ]),
+      closingQuote: .stringQuoteToken()
+    )
+  }
+
+  fileprivate static func renderVersionTuple(_ version: String) -> VersionTupleSyntax {
+    let parts = version.split(separator: ".").map(String.init)
+    let major = parts.first ?? "0"
+    let components = parts.dropFirst().map { component in
+      VersionComponentSyntax(number: .integerLiteral(component))
+    }
+
+    return VersionTupleSyntax(
+      major: .integerLiteral(major),
+      components: VersionComponentListSyntax(components)
     )
   }
 }
