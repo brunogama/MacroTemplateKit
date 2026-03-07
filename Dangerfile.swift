@@ -31,7 +31,7 @@ let swiftFiles = editedFiles.filter { $0.hasSuffix(".swift") }
 
 // Check for SwiftLint disable/enable tags - STRICTLY FORBIDDEN
 for file in swiftFiles {
-    guard let content = danger.utils.readFile(file) else { continue }
+    let content = danger.utils.readFile(file)
 
     let forbiddenPatterns = [
         "swiftlint:disable",
@@ -51,7 +51,7 @@ for file in swiftFiles {
 
 // Check for force unwrapping in production code
 for file in swiftFiles where !file.contains("Tests/") {
-    guard let content = danger.utils.readFile(file) else { continue }
+    let content = danger.utils.readFile(file)
 
     // Simple heuristic: check for ! that's likely force unwrap
     let lines = content.components(separatedBy: "\n")
@@ -71,7 +71,7 @@ for file in swiftFiles where !file.contains("Tests/") {
 
 // Check for fatalError in production code
 for file in swiftFiles where !file.contains("Tests/") {
-    guard let content = danger.utils.readFile(file) else { continue }
+    let content = danger.utils.readFile(file)
 
     if content.contains("fatalError(") {
         fail("**\(file)** contains `fatalError()`. This is forbidden in production code.")
@@ -104,7 +104,7 @@ if hasSourceChanges && !hasTestChanges {
 
 let hasReadmeChanges = editedFiles.contains("README.md")
 let hasPublicAPIChanges = swiftFiles.contains { file in
-    guard let content = danger.utils.readFile(file) else { return false }
+    let content = danger.utils.readFile(file)
     return content.contains("public func") || content.contains("public var") ||
            content.contains("public struct") || content.contains("public enum") ||
            content.contains("public class") || content.contains("public protocol")
