@@ -22,10 +22,10 @@ Template<A>             ───>  ExprSyntax
 
 ```swift
 let call: ExprSyntax = Renderer.render(
-    Template<Void>.functionCall(
-        function: "fetchUser",
+    Template<Void>.call(
+        "fetchUser",
         arguments: [
-            (label: "id", value: .variable("userId"))
+            .labeled("id", .variable("userId"))
         ]
     )
 )
@@ -42,13 +42,11 @@ let binding: CodeBlockItemSyntax = Renderer.render(
     Statement<Void>.letBinding(
         name: "data",
         type: nil,
-        initializer: .tryAwait(
-            .methodCall(
-                base: .variable("api"),
-                method: "fetch",
-                arguments: [(label: "id", value: .variable("id"))]
-            )
-        )
+        initializer: Template<Void>.variable("api")
+            .method("fetch") {
+                TemplateArgument<Void>.labeled("id", .variable("id"))
+            }
+            .tryAwait()
     )
 )
 ```
@@ -76,18 +74,18 @@ let fn: DeclSyntax = Renderer.render(
             .letBinding(
                 name: "data",
                 type: nil,
-                initializer: .tryAwait(
-                    .methodCall(
-                        base: .variable("api"),
-                        method: "fetch",
-                        arguments: [(label: "id", value: .variable("id"))]
-                    )
-                )
+                initializer: Template<Void>.variable("api")
+                    .method("fetch") {
+                        TemplateArgument<Void>.labeled("id", .variable("id"))
+                    }
+                    .tryAwait()
             ),
             .returnStatement(
-                .functionCall(
-                    function: "User",
-                    arguments: [(label: "from", value: .variable("data"))]
+                .call(
+                    "User",
+                    arguments: [
+                        .labeled("from", .variable("data"))
+                    ]
                 )
             )
         ]

@@ -1,0 +1,43 @@
+@Tutorial(time: 12) {
+    @Intro(title: "Model Advanced Signatures") {
+        Use first-class models for generic parameters, parameter packs, `where`
+        clauses, and common `@...` attributes.
+    }
+
+    @Section(title: "Describe complex declarations without raw strings") {
+        @ContentAndMedia {
+            Advanced macro output often fails when it is assembled as strings.
+            MacroTemplateKit keeps those signatures structured all the way until
+            rendering.
+        }
+
+        @Steps {
+            @Step {
+                Start with generic parameters and requirements, including
+                parameter packs and same-type constraints.
+
+                @Code(name: "Describe the generic signature", file: ModelAdvancedSignatures-Step1.swift)
+            }
+
+            @Step {
+                Add parameter attributes directly on the signature instead of
+                embedding them inside the raw type string.
+
+                @Code(name: "Add an escaping callback parameter", file: ModelAdvancedSignatures-Step2.swift)
+            }
+
+            @Step {
+                Attributes also work on closures, which is useful when a macro
+                needs to emit `@Sendable` or actor-isolated callback code.
+
+                @Code(name: "Create an attributed closure", file: ModelAdvancedSignatures-Step3.swift)
+            }
+
+            @Step {
+                Render the final declaration once the full signature is modeled.
+
+                @Code(name: "Render the advanced declaration", file: ModelAdvancedSignatures-Step4.swift)
+            }
+        }
+    }
+}

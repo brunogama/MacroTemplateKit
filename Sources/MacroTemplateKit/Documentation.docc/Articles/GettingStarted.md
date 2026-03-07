@@ -14,7 +14,8 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.4")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.5"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
 ]
 ```
 
@@ -25,10 +26,16 @@ Then add it to your macro target:
     name: "MyMacros",
     dependencies: [
         .product(name: "MacroTemplateKit", package: "MacroTemplateKit"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
     ]
 )
 ```
+
+Tagged releases resolve to a prebuilt XCFramework, which keeps MacroTemplateKit
+from imposing this repository's `swift-syntax` version range on your macro
+package. Use a branch or local checkout only when you are developing
+MacroTemplateKit itself.
 
 ## Building Expressions with Template\<A\>
 
@@ -54,20 +61,24 @@ print(expr.description) // x + 1
 
 ```swift
 // fetchUser(id: userId, cache: true)
-let call: Template<Void> = .functionCall(
-        function: "fetchUser",
-        arguments: [
-        (label: "id",    value: .variable("userId")),
-        (label: "cache", value: .literal(.boolean(true)))
+let call: Template<Void> = .call(
+    "fetchUser",
+    arguments: [
+        .labeled("id", .variable("userId")),
+        .labeled("cache", .literal(true))
     ]
 )
 
 // api.fetch(request)
-let method: Template<Void> = .methodCall(
-    base: .variable("api"),
-    method: "fetch",
-    arguments: [(label: nil, value: .variable("request"))]
-)
+let method: Template<Void> = .variable("api")
+    .method("fetch") {
+        TemplateArgument<Void>.unlabeled(.variable("request"))
+    }
+
+// request.url.absoluteString
+let chain: Template<Void> = .variable("request")
+    .property("url")
+    .property("absoluteString")
 ```
 
 ## Building Statements with Statement\<A\>
@@ -79,11 +90,11 @@ let method: Template<Void> = .methodCall(
 let stmt: Statement<Void> = .letBinding(
     name: "result",
     type: nil,
-    initializer: .methodCall(
-        base: .variable("api"),
-        method: "fetch",
-        arguments: [(label: nil, value: .variable("request"))]
-    )
+    initializer: Template<Void>.variable("api")
+        .method("fetch") {
+            TemplateArgument<Void>.unlabeled(.variable("request"))
+        }
+        .tryAwait()
 )
 
 let codeItem: CodeBlockItemSyntax = Renderer.render(stmt)
@@ -106,19 +117,61 @@ let function: Declaration<Void> = .function(FunctionSignature(
     returnType: "User",
     body: [
         .letBinding(name: "data", type: nil,
-                    initializer: .methodCall(
-                        base: .variable("api"),
-                        method: "fetch",
-                        arguments: [(label: "id", value: .variable("id"))]
-                    )),
-        .returnStatement(.functionCall(
-            function: "User",
-            arguments: [(label: "from", value: .variable("data"))]
+                    initializer: Template<Void>.variable("api")
+                        .method("fetch") {
+                            TemplateArgument<Void>.labeled("id", .variable("id"))
+                        }
+                        .tryAwait()),
+        .returnStatement(.call(
+            "User",
+            arguments: [
+                .labeled("from", .variable("data"))
+            ]
         ))
     ]
 ))
 
 let decl: DeclSyntax = Renderer.render(function)
+```
+
+## Generics, Parameter Packs, and Attributes
+
+Use first-class signature models when your macro needs generics, parameter packs,
+same-type requirements, or attributes:
+
+```swift
+let register: Declaration<Void> = .function(FunctionSignature(
+    accessLevel: .public,
+    attributes: [.mainActor],
+    name: "register",
+    genericParameters: [
+        GenericParameterSignature(name: "Service", constraint: "Sendable"),
+        GenericParameterSignature(name: "Dependency", isParameterPack: true)
+    ],
+    parameters: [
+        ParameterSignature(label: "_", name: "service", type: "Service"),
+        ParameterSignature(name: "dependencies", type: "repeat each Dependency"),
+        ParameterSignature(
+            name: "handler",
+            type: "() -> Void",
+            attributes: [.escaping]
+        )
+    ],
+    whereRequirements: [
+        .sameType("Service.ID", "String"),
+        .conformance("each Dependency", "Sendable")
+    ],
+    body: []
+))
+
+let callback: Template<Void> = .closure(
+    attributes: [.sendable],
+    params: [(name: "value", type: "Int")],
+    returnType: "Void",
+    body: [
+        .expression(.call("handle", arguments: [.unlabeled(.variable("value"))]))
+    ]
+)
 ```
 
 ## Attaching Metadata with Functors

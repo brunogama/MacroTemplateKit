@@ -1,0 +1,16 @@
+@Tutorials(name: "MacroTemplateKit Tutorials") {
+    @Intro(title: "Learn MacroTemplateKit by Building Real Templates") {
+        Follow these tutorials to move from a basic rendered declaration to
+        advanced signatures with generics, parameter packs, and attributes.
+    }
+
+    @Chapter(name: "Core Workflows") {
+        Start with the fluent expression API, then move to advanced declaration
+        signatures once you are comfortable with the three-layer AST.
+
+        @Image(source: TutorialsFlow.svg, alt: "Flow from MacroTemplateKit templates to rendered SwiftSyntax output")
+
+        @TutorialReference(tutorial: "doc:BuildAMacroDeclaration")
+        @TutorialReference(tutorial: "doc:ModelAdvancedSignatures")
+    }
+}

@@ -34,12 +34,16 @@ extension ClosureSignature: Equatable where A: Equatable {
     let paramsEqual = zip(lhs.parameters, rhs.parameters).allSatisfy {
       $0.name == $1.name && $0.type == $1.type
     }
-    return paramsEqual && lhs.returnType == rhs.returnType && lhs.body == rhs.body
+    return lhs.attributes == rhs.attributes
+      && paramsEqual
+      && lhs.returnType == rhs.returnType
+      && lhs.body == rhs.body
   }
 }
 
 extension ClosureSignature: Hashable where A: Hashable {
   public func hash(into hasher: inout Hasher) {
+    hasher.combine(attributes)
     for param in parameters {
       hasher.combine(param.name)
       hasher.combine(param.type)
