@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- Bump version references to 0.0.6
+- Update changelog [skip ci]
 - Fix author name in readme
 - Add docc tutorials for common workflows
 - Refresh guides and examples for the new dx
@@ -19,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Miscellaneous Tasks
 
+- Regenerate llms.txt
 - Fix danger validation
 - Update pre-commit settings
 - Pre-commits
