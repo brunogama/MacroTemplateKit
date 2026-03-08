@@ -519,4 +519,4 @@ MIT License. See [LICENSE](LICENSE).
 
 ## Author
 
-Bruno Rocha ([@brunogama](https://github.com/brunogama))
+Bruno da Gama Porciuncula ([@brunogama](https://github.com/brunogama))
