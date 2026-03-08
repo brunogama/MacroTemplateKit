@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Add copilot code review instructions
+- Update changelog [skip ci]
+
 ### Miscellaneous Tasks
 
 - Code review
