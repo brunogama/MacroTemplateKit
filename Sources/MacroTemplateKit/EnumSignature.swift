@@ -20,11 +20,20 @@ public struct EnumSignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
+  /// Declaration attributes (e.g. `@available`).
+  public let attributes: [AttributeSignature]
+
   /// Enum name.
   public let name: String
 
+  /// Generic parameter clause (e.g. `<T, each Element>`).
+  public let genericParameters: [GenericParameterSignature]
+
   /// Protocol conformances.
   public let conformances: [String]
+
+  /// Generic `where` clause requirements.
+  public let whereRequirements: [WhereRequirement]
 
   /// Enum cases.
   public let cases: [EnumCaseSignature]
@@ -42,14 +51,20 @@ public struct EnumSignature<A>: Sendable where A: Sendable {
   ///   - members: Nested member declarations (functions, properties, etc.).
   public init(
     accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
     name: String,
+    genericParameters: [GenericParameterSignature] = [],
     conformances: [String] = [],
+    whereRequirements: [WhereRequirement] = [],
     cases: [EnumCaseSignature] = [],
     members: [Declaration<A>] = []
   ) {
     self.accessLevel = accessLevel
+    self.attributes = attributes
     self.name = name
+    self.genericParameters = genericParameters
     self.conformances = conformances
+    self.whereRequirements = whereRequirements
     self.cases = cases
     self.members = members
   }
@@ -108,8 +123,11 @@ extension EnumSignature {
   where A: Sendable, B: Sendable {
     EnumSignature<B>(
       accessLevel: accessLevel,
+      attributes: attributes,
       name: name,
+      genericParameters: genericParameters,
       conformances: conformances,
+      whereRequirements: whereRequirements,
       cases: cases,
       members: members.map { $0.map(transform) }
     )

@@ -1,0 +1,44 @@
+@Tutorial(time: 10) {
+    @Intro(title: "Build a Macro Declaration") {
+        Render a complete declaration by combining `Template`, `Statement`, and
+        `Declaration` with the fluent API.
+    }
+
+    @Section(title: "Assemble a rendered function") {
+        @ContentAndMedia {
+            This workflow mirrors a common macro task: build a call expression,
+            store the result, and return a new value from the generated
+            function.
+        }
+
+        @Steps {
+            @Step {
+                Import MacroTemplateKit alongside SwiftSyntax, because the final
+                rendered value is still a `DeclSyntax`.
+
+                @Code(name: "Import the modules", file: BuildAMacroDeclaration-Step1.swift)
+            }
+
+            @Step {
+                Build the expression with the chainable API and typed
+                `TemplateArgument` values.
+
+                @Code(name: "Build the fetch expression", file: BuildAMacroDeclaration-Step2.swift)
+            }
+
+            @Step {
+                Wrap that expression in a declaration and render it to
+                `DeclSyntax`.
+
+                @Code(name: "Render the declaration", file: BuildAMacroDeclaration-Step3.swift)
+            }
+
+            @Step {
+                The rendered declaration contains the exact Swift you would
+                otherwise hand-write with string interpolation.
+
+                @Code(name: "Rendered output", file: BuildAMacroDeclaration-Step4.swift)
+            }
+        }
+    }
+}

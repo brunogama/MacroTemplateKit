@@ -12,7 +12,8 @@ Add MacroTemplateKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.4")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
 ]
 ```
 
@@ -23,10 +24,16 @@ Then add it to your macro target:
     name: "YourMacros",
     dependencies: [
         .product(name: "MacroTemplateKit", package: "MacroTemplateKit"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
     ]
 )
 ```
+
+Tagged releases resolve to a prebuilt XCFramework. Use that path when you want
+MacroTemplateKit without inheriting this repository's `swift-syntax` version
+range. Use a branch or local checkout only when you are contributing to
+MacroTemplateKit itself.
 
 ## Render a Function
 
@@ -61,6 +68,53 @@ This produces:
 public func greet(name: String) -> String {
     return "Hello, " + name
 }
+```
+
+## Use Fluent Expressions
+
+The chainable API is the recommended style for common expression assembly:
+
+```swift
+let expr: ExprSyntax = Renderer.render(
+    Template<Void>.variable("api")
+        .method("fetch") {
+            TemplateArgument<Void>.labeled("id", .variable("userId"))
+        }
+        .tryAwait()
+)
+```
+
+## Model Generics and Attributes
+
+Generic clauses, parameter packs, `where` requirements, and common `@...`
+attributes are first-class parts of declaration signatures:
+
+```swift
+let decl: DeclSyntax = Renderer.render(
+    Declaration.function(FunctionSignature(
+        accessLevel: .public,
+        attributes: [.mainActor],
+        name: "register",
+        genericParameters: [
+            GenericParameterSignature(name: "Service", constraint: "Sendable"),
+            GenericParameterSignature(name: "Dependency", isParameterPack: true)
+        ],
+        parameters: [
+            ParameterSignature(label: "_", name: "service", type: "Service"),
+            ParameterSignature(name: "dependencies", type: "repeat each Dependency"),
+            ParameterSignature(
+                name: "handler",
+                type: "() -> Void",
+                attributes: [.escaping]
+            )
+        ],
+        whereRequirements: [
+            .sameType("Service.ID", "String"),
+            .conformance("each Dependency", "Sendable")
+        ],
+        body: []
+    ))
+)
 ```
 
 ## Use Metadata

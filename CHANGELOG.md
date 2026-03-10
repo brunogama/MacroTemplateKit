@@ -10,11 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Add copilot code review instructions
-- Update changelog [skip ci]
+- Fix author name in readme
+- Add docc tutorials for common workflows
+- Refresh guides and examples for the new dx
+
+### Features
+
+- Add typed signatures and fluent templates
 
 ### Miscellaneous Tasks
 
 - Code review
+- Fix danger validation
+- Update pre-commit settings
+- Pre-commits
+- Regenerate LLMS.txt [skip ci]
 
 ## [0.0.5] - 2026-03-07
 

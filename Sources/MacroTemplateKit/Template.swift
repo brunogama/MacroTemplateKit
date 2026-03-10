@@ -14,6 +14,8 @@ public enum StringInterpolationSegment<A> {
 /// Carries parameter names, optional type annotations, optional return type,
 /// and body statements for rendering as a `ClosureExprSyntax`.
 public struct ClosureSignature<A> {
+  /// Closure attributes (e.g. `@Sendable`, `@MainActor`).
+  public let attributes: [AttributeSignature]
   /// Named parameters with optional type annotations.
   public let parameters: [(name: String, type: String?)]
   /// Optional explicit return type annotation.
@@ -23,8 +25,12 @@ public struct ClosureSignature<A> {
 
   /// Creates a closure signature.
   public init(
-    parameters: [(name: String, type: String?)], returnType: String?, body: [Statement<A>]
+    attributes: [AttributeSignature] = [],
+    parameters: [(name: String, type: String?)],
+    returnType: String?,
+    body: [Statement<A>]
   ) {
+    self.attributes = attributes
     self.parameters = parameters
     self.returnType = returnType
     self.body = body
@@ -400,6 +406,7 @@ public indirect enum Template<A> {
     case .closure(let sig):
       return .closure(
         ClosureSignature<B>(
+          attributes: sig.attributes,
           parameters: sig.parameters,
           returnType: sig.returnType,
           body: sig.body.map { $0.map(transform) }

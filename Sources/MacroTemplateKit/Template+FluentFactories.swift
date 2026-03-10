@@ -36,6 +36,11 @@ extension Template {
     .propertyAccess(base: base, property: name)
   }
 
+  /// Creates a chained property access template (`base.property`).
+  public func property(_ name: String) -> Template<A> {
+    .propertyAccess(base: self, property: name)
+  }
+
   /// Creates a property access template from variable name.
   public static func property(_ name: String, on baseName: String, payload: A) -> Template<A> {
     .propertyAccess(base: .variable(baseName, payload: payload), property: name)
@@ -49,6 +54,22 @@ extension Template {
     arguments: [(label: String?, value: Template<A>)]
   ) -> Template<A> {
     .functionCall(function: name, arguments: arguments)
+  }
+
+  /// Creates a function call template with typed arguments.
+  public static func call(
+    _ name: String,
+    arguments: [TemplateArgument<A>] = []
+  ) -> Template<A> {
+    .functionCall(function: name, arguments: arguments.map(\.tupleValue))
+  }
+
+  /// Creates a function call template with a typed argument builder.
+  public static func call(
+    _ name: String,
+    @TemplateArgumentBuilder<A> arguments: () -> [TemplateArgument<A>]
+  ) -> Template<A> {
+    .call(name, arguments: arguments())
   }
 
   /// Creates a function call template with unlabeled arguments.
@@ -107,6 +128,21 @@ extension Template {
     .tryExpression(.awaitExpression(expression))
   }
 
+  /// Wraps this expression in `try`.
+  public func trying() -> Template<A> {
+    .tryExpression(self)
+  }
+
+  /// Wraps this expression in `await`.
+  public func awaiting() -> Template<A> {
+    .awaitExpression(self)
+  }
+
+  /// Wraps this expression in `try await`.
+  public func tryAwait() -> Template<A> {
+    .tryExpression(.awaitExpression(self))
+  }
+
   // MARK: - Generic Calls
 
   /// Creates a generic function call template (e.g., `SQVField<String>("name")`).
@@ -116,6 +152,44 @@ extension Template {
     arguments: [(label: String?, value: Template<A>)]
   ) -> Template<A> {
     .genericCall(function: function, typeArguments: typeArguments, arguments: arguments)
+  }
+
+  /// Creates a generic function call template with typed arguments.
+  public static func genericCall(
+    _ function: String,
+    typeArguments: [String],
+    arguments: [TemplateArgument<A>]
+  ) -> Template<A> {
+    .genericCall(
+      function: function,
+      typeArguments: typeArguments,
+      arguments: arguments.map(\.tupleValue)
+    )
+  }
+
+  /// Creates a generic function call template with a typed argument builder.
+  public static func genericCall(
+    _ function: String,
+    typeArguments: [String],
+    @TemplateArgumentBuilder<A> arguments: () -> [TemplateArgument<A>]
+  ) -> Template<A> {
+    .genericCall(function, typeArguments: typeArguments, arguments: arguments())
+  }
+
+  /// Creates a chained method call template.
+  public func method(
+    _ name: String,
+    arguments: [TemplateArgument<A>] = []
+  ) -> Template<A> {
+    .methodCall(base: self, method: name, arguments: arguments.map(\.tupleValue))
+  }
+
+  /// Creates a chained method call template with a typed argument builder.
+  public func method(
+    _ name: String,
+    @TemplateArgumentBuilder<A> arguments: () -> [TemplateArgument<A>]
+  ) -> Template<A> {
+    self.method(name, arguments: arguments())
   }
 
   // MARK: - Collections
@@ -158,11 +232,24 @@ extension Template {
     .subscriptCall(base: base, arguments: arguments)
   }
 
+  /// Creates a subscript call template with typed arguments.
+  public static func subscriptCall(
+    _ base: Template<A>,
+    arguments: [TemplateArgument<A>]
+  ) -> Template<A> {
+    .subscriptCall(base: base, arguments: arguments.map(\.tupleValue))
+  }
+
   // MARK: - Force Unwrap
 
   /// Creates a force-unwrap template (`expr!`).
   public static func unwrapped(_ expr: Template<A>) -> Template<A> {
     .forceUnwrap(expr)
+  }
+
+  /// Creates a chained force-unwrap template (`expr!`).
+  public func unwrapped() -> Template<A> {
+    .forceUnwrap(self)
   }
 
   // MARK: - String Interpolation
@@ -187,11 +274,18 @@ extension Template {
   ///
   /// When parameters is empty and returnType is nil, renders as `{ body }`.
   public static func closure(
+    attributes: [AttributeSignature] = [],
     params: [(name: String, type: String?)] = [],
     returnType: String? = nil,
     body: [Statement<A>]
   ) -> Template<A> {
-    .closure(ClosureSignature<A>(parameters: params, returnType: returnType, body: body))
+    .closure(
+      ClosureSignature<A>(
+        attributes: attributes,
+        parameters: params,
+        returnType: returnType,
+        body: body
+      ))
   }
 }
 
@@ -207,5 +301,11 @@ extension Template where A == Void {
   /// Creates a property access from a variable name without explicitly spelling the payload.
   public static func property(_ name: String, on baseName: String) -> Template<Void> {
     .propertyAccess(base: .variable(baseName), property: name)
+  }
+}
+
+extension TemplateArgument {
+  fileprivate var tupleValue: (label: String?, value: Template<A>) {
+    (label: label, value: value)
   }
 }
