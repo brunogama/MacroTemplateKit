@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Align review tests with macro template kit
+- Add copilot code review instructions
+- Update changelog [skip ci]
+- Align review tests with macro template kit
 - Bump version references to 0.0.6
 - Update changelog [skip ci]
 - Add docc tutorials for common workflows
