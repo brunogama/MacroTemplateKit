@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Add copilot code review instructions
-- Fix author name in readme
+- Align review tests with macro template kit
+- Bump version references to 0.0.6
+- Update changelog [skip ci]
 - Add docc tutorials for common workflows
 - Refresh guides and examples for the new dx
+- Update changelog [skip ci]
+- Add copilot code review instructions
+- Update changelog [skip ci]
 
 ### Features
 
@@ -20,11 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Miscellaneous Tasks
 
-- Code review
+- Regenerate llms.txt
+- Simplify macos build matrix
 - Fix danger validation
 - Update pre-commit settings
 - Pre-commits
 - Regenerate LLMS.txt [skip ci]
+- Update readme
+- Code review
 
 ## [0.0.5] - 2026-03-07
 
