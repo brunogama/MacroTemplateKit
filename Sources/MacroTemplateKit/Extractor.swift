@@ -8,13 +8,17 @@ import SwiftSyntax
 ///
 /// ## Limitations
 ///
-/// - **Bodies**: Extracted declarations always have empty bodies (`[]`).
-///   Use `.map` to swap `Never` for your payload type and attach body statements.
-/// - **Initializers**: Stored property initializers (e.g. `var x = 42`) are not extracted.
-///   The `initializer` field will be `nil`. Attach initializers after extraction via
-///   `withInitializer(_:)` or by constructing a new `PropertySignature`.
+/// - **Bodies and implementations**: Extracted declarations always have empty bodies (`[]`)
+///   and drop other implementation details such as stored-property initializers and
+///   computed-property accessor bodies. No executable code or initializer expressions are
+///   preserved in the extracted model. Use `.map` to swap `Never` for your payload type
+///   and attach body statements or initializers after extraction.
 /// - **Untyped computed properties**: Computed properties without explicit type annotations
 ///   (e.g. `var x { 1 }`) are skipped because `ComputedPropertySignature` requires a type.
+/// - **`open` access level**: `AccessLevel` does not model `open`. Declarations marked
+///   `open` are extracted as `.public` to avoid surprising access-level downgrade.
+/// - **`class` modifier**: `class func` members are treated as static during extraction
+///   since `FunctionSignature.isStatic` covers both `static` and `class` dispatch.
 public enum Extractor {
 
     // MARK: - Top-level dispatch
@@ -192,28 +196,43 @@ public enum Extractor {
         let type = binding.typeAnnotation?.type.trimmedDescription
 
         if let accessorBlock = binding.accessorBlock {
-            guard let resolvedType = type else {
-                return nil
-            }
+            var hasGetterOrSetter = false
             var setter: SetterSignature<Never>?
-            if case .accessors(let accessorList) = accessorBlock.accessors {
-                for accessor in accessorList
-                where accessor.accessorSpecifier.tokenKind == .keyword(.set) {
-                    let paramName = accessor.parameters?.name.text ?? "newValue"
-                    setter = SetterSignature<Never>(parameterName: paramName, body: [])
+
+            switch accessorBlock.accessors {
+            case .accessors(let accessorList):
+                for accessor in accessorList {
+                    switch accessor.accessorSpecifier.tokenKind {
+                    case .keyword(.get):
+                        hasGetterOrSetter = true
+                    case .keyword(.set):
+                        hasGetterOrSetter = true
+                        let paramName = accessor.parameters?.name.text ?? "newValue"
+                        setter = SetterSignature<Never>(parameterName: paramName, body: [])
+                    default:
+                        break
+                    }
                 }
+            case .getter:
+                hasGetterOrSetter = true
             }
-            return .computedProperty(
-                ComputedPropertySignature<Never>(
-                    accessLevel: accessLevel,
-                    attributes: attributes,
-                    name: name,
-                    type: resolvedType,
-                    isStatic: isStatic,
-                    getter: [],
-                    setter: setter
+
+            if hasGetterOrSetter {
+                guard let resolvedType = type else {
+                    return nil
+                }
+                return .computedProperty(
+                    ComputedPropertySignature<Never>(
+                        accessLevel: accessLevel,
+                        attributes: attributes,
+                        name: name,
+                        type: resolvedType,
+                        isStatic: isStatic,
+                        getter: [],
+                        setter: setter
+                    )
                 )
-            )
+            }
         }
 
         return .property(
@@ -258,7 +277,7 @@ public enum Extractor {
     private static func extractAccessLevel(from modifiers: DeclModifierListSyntax) -> AccessLevel {
         for modifier in modifiers {
             switch modifier.name.tokenKind {
-            case .keyword(.public): return .public
+            case .keyword(.public), .keyword(.open): return .public
             case .keyword(.private): return .private
             case .keyword(.fileprivate): return .fileprivate
             case .keyword(.internal): return .internal
@@ -441,7 +460,9 @@ public enum Extractor {
     }
 
     private static func extractIsStatic(from modifiers: DeclModifierListSyntax) -> Bool {
-        modifiers.contains { $0.name.tokenKind == .keyword(.static) }
+        modifiers.contains {
+            $0.name.tokenKind == .keyword(.static) || $0.name.tokenKind == .keyword(.class)
+        }
     }
 
     private static func extractIsMutating(from modifiers: DeclModifierListSyntax) -> Bool {

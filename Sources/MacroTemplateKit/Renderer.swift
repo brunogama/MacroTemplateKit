@@ -9,7 +9,12 @@ import SwiftSyntaxBuilder
 ///
 /// This transformation is natural: it preserves the structure of the template
 /// while translating to SwiftSyntax's representation.
-public enum Renderer {
+public struct Renderer {
+    @available(
+    *, unavailable, message: "Renderer cannot be instantiated; use static methods instead."
+    )
+    public init() {}
+
     /// Renders a template into SwiftSyntax expression syntax.
     ///
     /// This is a pure function with no side effects. The rendering process:

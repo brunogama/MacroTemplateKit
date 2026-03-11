@@ -580,4 +580,42 @@ final class ExtractorTests: XCTestCase {
             XCTFail("Expected .labeled argument")
         }
     }
+
+    // MARK: - willSet/didSet observers are stored properties
+
+    func testExtractProperty_withWillSetDidSet_isStoredProperty() {
+        let decl = DeclSyntax("var count: Int { willSet {} didSet {} }")
+        let result = Extractor.extract(decl)
+
+        guard case .property(let sig) = result else {
+            return XCTFail("Expected .property, got \(String(describing: result))")
+        }
+        XCTAssertEqual(sig.name, "count")
+        XCTAssertEqual(sig.type, "Int")
+        XCTAssertFalse(sig.isLet)
+    }
+
+    // MARK: - open access level maps to public
+
+    func testExtractFunction_openAccessLevel_mapsToPublic() {
+        let decl = DeclSyntax("open func foo() {}")
+        let result = Extractor.extract(decl)
+
+        guard case .function(let sig) = result else {
+            return XCTFail("Expected .function")
+        }
+        XCTAssertEqual(sig.accessLevel, .public)
+    }
+
+    // MARK: - class func treated as static
+
+    func testExtractFunction_classFunc_treatedAsStatic() {
+        let decl = DeclSyntax("class func bar() {}")
+        let result = Extractor.extract(decl)
+
+        guard case .function(let sig) = result else {
+            return XCTFail("Expected .function")
+        }
+        XCTAssertTrue(sig.isStatic)
+    }
 }
