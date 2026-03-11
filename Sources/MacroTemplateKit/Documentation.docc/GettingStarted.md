@@ -126,6 +126,44 @@ let template: Template<String> = .variable("x", payload: "from user input")
 let expr: ExprSyntax = Renderer.render(template.map { _ in () })
 ```
 
+## Extract, Transform, Render
+
+Many macro roles receive existing declarations from the compiler and need to produce modified versions of them. ``Extractor`` converts any `DeclSyntax` node back into the kit's typed model so you can read its signature, modify it with wither methods, and render new output -- without touching SwiftSyntax internals directly.
+
+```swift
+import MacroTemplateKit
+import SwiftSyntax
+
+// Received from a member macro's `declaration` parameter
+guard let extracted: Declaration<Never> = Extractor.extract(declaration) else {
+    return []  // unsupported declaration kind
+}
+
+if case .function(let sig) = extracted {
+    // sig is FunctionSignature<Never>
+    // Use wither methods to produce a modified copy
+    let asyncVariant: DeclSyntax = sig
+        .withName(sig.name + "Async")
+        .withIsAsync(true)
+        .withCanThrow(true)
+        .withBody([])
+        .rendered  // shortcut for Renderer.render(sig.asDeclaration)
+    return [asyncVariant]
+}
+```
+
+For variables with multiple bindings (`var x = 1, y = 2`), use ``Extractor/extractAll(_:)`` to get one ``Declaration`` per binding. Typed overloads are also available when you already have a concrete syntax node type:
+
+```swift
+// Extract directly to a signature type
+let sig: FunctionSignature<Never> = Extractor.extract(funcDeclSyntax)
+
+// map converts Declaration<Never> to Declaration<Void> for wither methods
+let base: Declaration<Void> = extracted.map { _ in () }
+```
+
+Extracted declarations always have empty bodies -- the extractor captures structure (name, parameters, access level, generics, attributes) but drops executable code. Attach body statements after extraction using wither methods.
+
 ## Next Steps
 
 Read <doc:ThreeLayerAST> to understand how the three template layers compose.

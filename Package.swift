@@ -28,11 +28,17 @@ let package = Package(
       dependencies: [
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+      ],
+      swiftSettings: [
+        .enableExperimentalFeature("StrictConcurrency")
       ]
     ),
     .testTarget(
       name: "MacroTemplateKitTests",
-      dependencies: ["MacroTemplateKit"]
+      dependencies: ["MacroTemplateKit"],
+      swiftSettings: [
+        .enableExperimentalFeature("StrictConcurrency")
+      ]
     ),
   ]
 )
