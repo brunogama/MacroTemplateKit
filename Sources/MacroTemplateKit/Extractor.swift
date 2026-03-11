@@ -15,23 +15,34 @@ public enum Extractor {
     /// Extracts a `DeclSyntax` into the kit's declaration model.
     ///
     /// Returns `nil` for unsupported declaration kinds (class, protocol, `#if`, etc.).
+    /// For multi-binding variable declarations (e.g. `var x, y: Int`), returns the
+    /// first binding. Use ``extractAll(_:)`` to get all bindings.
     public static func extract(_ decl: DeclSyntax) -> Declaration<Never>? {
+        extractAll(decl).first
+    }
+
+    /// Extracts all declarations from a single `DeclSyntax` node.
+    ///
+    /// Most declaration kinds produce exactly one result. `VariableDeclSyntax` with
+    /// multiple bindings (e.g. `var x = 1, y = 2`) produces one declaration per binding.
+    /// Returns an empty array for unsupported declaration kinds.
+    public static func extractAll(_ decl: DeclSyntax) -> [Declaration<Never>] {
         if let funcDecl = decl.as(FunctionDeclSyntax.self) {
-            return .function(extract(funcDecl))
+            return [.function(extract(funcDecl))]
         } else if let initDecl = decl.as(InitializerDeclSyntax.self) {
-            return .initDecl(extract(initDecl))
+            return [.initDecl(extract(initDecl))]
         } else if let extDecl = decl.as(ExtensionDeclSyntax.self) {
-            return .extensionDecl(extract(extDecl))
+            return [.extensionDecl(extract(extDecl))]
         } else if let structDecl = decl.as(StructDeclSyntax.self) {
-            return .structDecl(extract(structDecl))
+            return [.structDecl(extract(structDecl))]
         } else if let enumDecl = decl.as(EnumDeclSyntax.self) {
-            return .enumDecl(extract(enumDecl))
+            return [.enumDecl(extract(enumDecl))]
         } else if let typeAliasDecl = decl.as(TypeAliasDeclSyntax.self) {
-            return .typeAlias(extract(typeAliasDecl))
+            return [.typeAlias(extract(typeAliasDecl))]
         } else if let varDecl = decl.as(VariableDeclSyntax.self) {
-            return extractVariable(varDecl)
+            return extractVariableBindings(varDecl)
         }
-        return nil
+        return []
     }
 
     // MARK: - Typed overloads
@@ -70,8 +81,8 @@ public enum Extractor {
 
     /// Extracts an extension declaration into an `ExtensionSignature<Never>`.
     public static func extract(_ decl: ExtensionDeclSyntax) -> ExtensionSignature<Never> {
-        let members = decl.memberBlock.members.compactMap { member -> Declaration<Never>? in
-            extract(member.decl)
+        let members = decl.memberBlock.members.flatMap { member in
+            extractAll(member.decl)
         }
         return ExtensionSignature<Never>(
             typeName: decl.extendedType.trimmedDescription,
@@ -83,8 +94,8 @@ public enum Extractor {
 
     /// Extracts a struct declaration into a `StructSignature<Never>`.
     public static func extract(_ decl: StructDeclSyntax) -> StructSignature<Never> {
-        let members = decl.memberBlock.members.compactMap { member -> Declaration<Never>? in
-            extract(member.decl)
+        let members = decl.memberBlock.members.flatMap { member in
+            extractAll(member.decl)
         }
         return StructSignature<Never>(
             accessLevel: extractAccessLevel(from: decl.modifiers),
@@ -105,8 +116,8 @@ public enum Extractor {
         for member in decl.memberBlock.members {
             if let caseDecl = member.decl.as(EnumCaseDeclSyntax.self) {
                 cases.append(contentsOf: extractEnumCases(from: caseDecl))
-            } else if let extracted = extract(member.decl) {
-                members.append(extracted)
+            } else {
+                members.append(contentsOf: extractAll(member.decl))
             }
         }
 
@@ -136,18 +147,32 @@ public enum Extractor {
 
     // MARK: - Variable extraction
 
-    /// Extracts a variable declaration into a property or computed property.
+    /// Extracts all bindings from a variable declaration.
     ///
-    /// Only the first binding is extracted. Multi-binding declarations
-    /// (e.g. `var x, y: Int`) produce a result for the first binding only.
-    private static func extractVariable(_ decl: VariableDeclSyntax) -> Declaration<Never>? {
-        guard let binding = decl.bindings.first else { return nil }
-
+    /// Each binding in the `PatternBindingListSyntax` produces its own declaration.
+    /// For `var x = 1, y = 2`, this returns two `.property` declarations.
+    private static func extractVariableBindings(
+        _ decl: VariableDeclSyntax
+    ) -> [Declaration<Never>] {
         let isLet = decl.bindingSpecifier.tokenKind == .keyword(.let)
         let isStatic = extractIsStatic(from: decl.modifiers)
         let accessLevel = extractAccessLevel(from: decl.modifiers)
         let attributes = extractAttributes(from: decl.attributes)
 
+        return decl.bindings.compactMap { binding in
+            extractBinding(
+                binding, isLet: isLet, isStatic: isStatic,
+                accessLevel: accessLevel, attributes: attributes
+            )
+        }
+    }
+
+    private static func extractBinding(
+        _ binding: PatternBindingSyntax,
+        isLet: Bool, isStatic: Bool,
+        accessLevel: AccessLevel,
+        attributes: [AttributeSignature]
+    ) -> Declaration<Never>? {
         guard let name = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier.text else {
             return nil
         }

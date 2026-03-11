@@ -288,6 +288,73 @@ final class ExtractorTests: XCTestCase {
         XCTAssertEqual(sig.existingType, "() -> Void")
     }
 
+    // MARK: - Multi-binding extraction
+
+    func testExtractAll_multiBindingVar() {
+        let decl = DeclSyntax("var x: Int, y: Int")
+        let results = Extractor.extractAll(decl)
+
+        XCTAssertEqual(results.count, 2)
+
+        guard case .property(let first) = results[0] else {
+            return XCTFail("Expected .property for first binding")
+        }
+        XCTAssertEqual(first.name, "x")
+        XCTAssertEqual(first.type, "Int")
+        XCTAssertFalse(first.isLet)
+
+        guard case .property(let second) = results[1] else {
+            return XCTFail("Expected .property for second binding")
+        }
+        XCTAssertEqual(second.name, "y")
+        XCTAssertEqual(second.type, "Int")
+    }
+
+    func testExtractAll_multiBindingLet() {
+        let decl = DeclSyntax("public static let a: String, b: String")
+        let results = Extractor.extractAll(decl)
+
+        XCTAssertEqual(results.count, 2)
+
+        guard case .property(let first) = results[0] else {
+            return XCTFail("Expected .property")
+        }
+        XCTAssertEqual(first.name, "a")
+        XCTAssertTrue(first.isLet)
+        XCTAssertTrue(first.isStatic)
+        XCTAssertEqual(first.accessLevel, .public)
+
+        guard case .property(let second) = results[1] else {
+            return XCTFail("Expected .property")
+        }
+        XCTAssertEqual(second.name, "b")
+        XCTAssertTrue(second.isLet)
+        XCTAssertTrue(second.isStatic)
+        XCTAssertEqual(second.accessLevel, .public)
+    }
+
+    func testExtract_multiBinding_returnsFirst() {
+        let decl = DeclSyntax("var x: Int, y: Int")
+        let result = Extractor.extract(decl)
+
+        guard case .property(let sig) = result else {
+            return XCTFail("Expected .property")
+        }
+        XCTAssertEqual(sig.name, "x")
+    }
+
+    func testExtractAll_nonVariable_returnsSingleElement() {
+        let decl = DeclSyntax("func foo() {}")
+        let results = Extractor.extractAll(decl)
+        XCTAssertEqual(results.count, 1)
+    }
+
+    func testExtractAll_unsupported_returnsEmpty() {
+        let decl = DeclSyntax("class Foo {}")
+        let results = Extractor.extractAll(decl)
+        XCTAssertTrue(results.isEmpty)
+    }
+
     // MARK: - Unsupported
 
     func testExtractUnsupported_returnsNil() {
