@@ -58,8 +58,13 @@ extension EnumSignature where A: Sendable {
 
 extension TypeAliasSignature {
     /// Wraps this signature in a `.typeAlias` declaration case.
-    public var asDeclaration: Declaration<Never> { .typeAlias(self) }
+    ///
+    /// `TypeAliasSignature` is not generic, so the resulting declaration
+    /// can use any payload type.
+    public func asDeclaration<A: Sendable>(_ payloadType: A.Type = Never.self) -> Declaration<A> {
+        .typeAlias(self)
+    }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration) }
+    public var rendered: DeclSyntax { Renderer.render(asDeclaration()) }
 }

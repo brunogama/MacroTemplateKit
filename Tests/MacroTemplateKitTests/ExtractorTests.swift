@@ -288,9 +288,9 @@ final class ExtractorTests: XCTestCase {
         XCTAssertEqual(sig.existingType, "() -> Void")
     }
 
-    // MARK: - Stored property with initializer
+    // MARK: - Stored property initializer (intentionally not extracted)
 
-    func testExtractStoredProperty_withInitializer() {
+    func testExtractStoredProperty_initializerIsNotExtracted() {
         let decl = DeclSyntax("var count: Int = 42")
         let result = Extractor.extract(decl)
 
@@ -300,6 +300,8 @@ final class ExtractorTests: XCTestCase {
         XCTAssertEqual(sig.name, "count")
         XCTAssertEqual(sig.type, "Int")
         XCTAssertFalse(sig.isLet)
+        // Initializers are intentionally not extracted; attach them after
+        // extraction via withInitializer(_:) or by constructing a new signature.
         XCTAssertNil(sig.initializer)
     }
 
@@ -368,6 +370,14 @@ final class ExtractorTests: XCTestCase {
         let decl = DeclSyntax("class Foo {}")
         let results = Extractor.extractAll(decl)
         XCTAssertTrue(results.isEmpty)
+    }
+
+    // MARK: - Untyped computed property (skipped)
+
+    func testExtractComputedProperty_withoutTypeAnnotation_returnsNil() {
+        let decl = DeclSyntax("var x { 1 }")
+        let result = Extractor.extract(decl)
+        XCTAssertNil(result, "Untyped computed properties cannot be represented and should be skipped")
     }
 
     // MARK: - Unsupported

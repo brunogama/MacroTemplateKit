@@ -1,13 +1,20 @@
 import SwiftSyntax
 
-/// Inverse of `Renderer` — extracts `Declaration<Never>` from SwiftSyntax `DeclSyntax`.
+/// Extracts `Declaration<Never>` signatures from SwiftSyntax `DeclSyntax`.
 ///
 /// Completes the extract-transform-render pipeline: receive `DeclSyntax` from a Swift
 /// macro protocol, extract it into the kit's model types, transform with first-class
 /// functions, then render back via `Renderer`.
 ///
-/// Body handling: extracted declarations always have empty bodies (`[]`).
-/// Use `.map` to swap `Never` for your payload type.
+/// ## Limitations
+///
+/// - **Bodies**: Extracted declarations always have empty bodies (`[]`).
+///   Use `.map` to swap `Never` for your payload type and attach body statements.
+/// - **Initializers**: Stored property initializers (e.g. `var x = 42`) are not extracted.
+///   The `initializer` field will be `nil`. Attach initializers after extraction via
+///   `withInitializer(_:)` or by constructing a new `PropertySignature`.
+/// - **Untyped computed properties**: Computed properties without explicit type annotations
+///   (e.g. `var x { 1 }`) are skipped because `ComputedPropertySignature` requires a type.
 public enum Extractor {
 
     // MARK: - Top-level dispatch
@@ -185,6 +192,9 @@ public enum Extractor {
         let type = binding.typeAnnotation?.type.trimmedDescription
 
         if let accessorBlock = binding.accessorBlock {
+            guard let resolvedType = type else {
+                return nil
+            }
             var setter: SetterSignature<Never>?
             if case .accessors(let accessorList) = accessorBlock.accessors {
                 for accessor in accessorList
@@ -198,7 +208,7 @@ public enum Extractor {
                     accessLevel: accessLevel,
                     attributes: attributes,
                     name: name,
-                    type: type ?? "Any",
+                    type: resolvedType,
                     isStatic: isStatic,
                     getter: [],
                     setter: setter
