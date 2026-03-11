@@ -343,4 +343,96 @@ final class ExtractorTests: XCTestCase {
             sig.parameters[0].attributes.contains { $0.name == "escaping" }
         )
     }
+
+    // MARK: - Availability attribute round-trip
+
+    func testExtractFunction_withAvailableAttribute() {
+        let original = Declaration<Void>.function(
+            FunctionSignature(
+                attributes: [
+                    .available([
+                        .platform("macOS", version: "13"),
+                        .token("*"),
+                    ])
+                ],
+                name: "newer",
+                body: []
+            )
+        )
+        let rendered = Renderer.render(original)
+        let extracted = Extractor.extract(rendered)
+
+        guard case .function(let sig) = extracted else {
+            return XCTFail("Expected .function")
+        }
+        XCTAssertEqual(sig.attributes.count, 1)
+        XCTAssertEqual(sig.attributes[0].name, "available")
+
+        guard case .availability(let args) = sig.attributes[0].arguments else {
+            return XCTFail("Expected .availability arguments")
+        }
+        XCTAssertEqual(args.count, 2)
+
+        if case .platform(let platform, let version) = args[0] {
+            XCTAssertEqual(platform, "macOS")
+            XCTAssertEqual(version, "13")
+        } else {
+            XCTFail("Expected .platform, got \(args[0])")
+        }
+
+        if case .token(let token) = args[1] {
+            XCTAssertEqual(token, "*")
+        } else {
+            XCTFail("Expected .token(*), got \(args[1])")
+        }
+    }
+
+    func testExtractFunction_withAvailableDeprecated() {
+        let original = Declaration<Void>.function(
+            FunctionSignature(
+                attributes: [
+                    .available([
+                        .token("*"),
+                        .token("deprecated"),
+                        .labeled("message", .string("Use newMethod")),
+                    ])
+                ],
+                name: "oldMethod",
+                body: []
+            )
+        )
+        let rendered = Renderer.render(original)
+        let extracted = Extractor.extract(rendered)
+
+        guard case .function(let sig) = extracted else {
+            return XCTFail("Expected .function")
+        }
+        guard case .availability(let args) = sig.attributes[0].arguments else {
+            return XCTFail("Expected .availability arguments")
+        }
+        XCTAssertEqual(args.count, 3)
+
+        if case .token(let token) = args[0] {
+            XCTAssertEqual(token, "*")
+        } else {
+            XCTFail("Expected .token(*)")
+        }
+
+        if case .token(let token) = args[1] {
+            XCTAssertEqual(token, "deprecated")
+        } else {
+            XCTFail("Expected .token(deprecated)")
+        }
+
+        if case .labeled(let label, let value) = args[2] {
+            XCTAssertEqual(label, "message")
+            if case .string(let msg) = value {
+                XCTAssertEqual(msg, "Use newMethod")
+            } else {
+                XCTFail("Expected .string value")
+            }
+        } else {
+            XCTFail("Expected .labeled argument")
+        }
+    }
 }

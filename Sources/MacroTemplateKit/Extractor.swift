@@ -136,6 +136,10 @@ public enum Extractor {
 
     // MARK: - Variable extraction
 
+    /// Extracts a variable declaration into a property or computed property.
+    ///
+    /// Only the first binding is extracted. Multi-binding declarations
+    /// (e.g. `var x, y: Int`) produce a result for the first binding only.
     private static func extractVariable(_ decl: VariableDeclSyntax) -> Declaration<Never>? {
         guard let binding = decl.bindings.first else { return nil }
 
