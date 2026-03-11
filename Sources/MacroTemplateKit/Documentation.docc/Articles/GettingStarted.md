@@ -200,8 +200,66 @@ template.map { $0 } == template
 template.map(f).map(g) == template.map { g(f($0)) }
 ```
 
+## Extracting Existing Declarations
+
+``Extractor`` converts a `DeclSyntax` node into the kit's typed model. Use it in macros that receive existing declarations from the compiler and need to inspect or transform them before generating new output.
+
+```swift
+import MacroTemplateKit
+import SwiftSyntax
+
+// Received from a member macro's `declaration` parameter
+guard let extracted: Declaration<Never> = Extractor.extract(declaration) else {
+    return []  // unsupported declaration kind (class, protocol, #if, etc.)
+}
+
+if case .function(let sig) = extracted {
+    // sig.name, sig.parameters, sig.accessLevel, sig.isAsync, etc. are all available
+    let newSig: DeclSyntax = sig
+        .withName(sig.name + "Cached")
+        .withBody([
+            .returnStatement(.call("cache", arguments: [.unlabeled(.variable("id"))]))
+        ])
+        .rendered
+    return [newSig]
+}
+```
+
+For variables with multiple bindings (`var x = 1, y = 2`), use ``Extractor/extractAll(_:)`` to receive one ``Declaration`` per binding. Typed overloads skip the pattern match when you already hold a concrete syntax node:
+
+```swift
+let funcSig: FunctionSignature<Never> = Extractor.extract(funcDeclSyntax)
+let varDecls: [Declaration<Never>] = Extractor.extract(varDeclSyntax)
+```
+
+`Extractor` always produces `Declaration<Never>`. Use `map` to convert to `Declaration<Void>` (or any other payload) before calling wither methods or attaching body statements:
+
+```swift
+let base: Declaration<Void> = extracted.map { _ in () }
+```
+
+**Limitations.** Extracted declarations have empty bodies -- the extractor captures signature structure (name, parameters, access level, generics, attributes) but drops executable code. `open` access maps to `.public`. `class func` members are extracted as static.
+
+## Wither Methods
+
+Every signature type has `with*` and `adding*` methods that return a modified copy. They are the standard way to transform extracted declarations before re-rendering.
+
+```swift
+// Build a public async throwing variant from an extracted signature
+let variant: DeclSyntax = sig
+    .withAccessLevel(.public)
+    .withIsAsync(true)
+    .withCanThrow(true)
+    .withReturnType("User?")
+    .addingParameter(ParameterSignature(label: "cache", name: "useCache", type: "Bool"))
+    .addingAttribute(.mainActor)
+    .rendered  // shortcut for Renderer.render(sig.asDeclaration)
+```
+
+The `.rendered` property and `.asDeclaration` are available on every signature type, so you rarely need to wrap a signature in `Declaration.function(...)` manually.
+
 ## Next Steps
 
 - Explore the full list of ``Template``, ``Statement``, and ``Declaration`` cases to find the construct you need.
 - Use ``TemplateBuilder`` for a declarative DSL syntax.
-- Check the ``Renderer`` documentation for all available render overloads.
+- Check the ``Renderer`` and ``Extractor`` documentation for all available overloads.

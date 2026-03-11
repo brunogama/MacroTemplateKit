@@ -42,6 +42,7 @@ MacroTemplateKit eliminates that failure mode:
 
 - **Syntactically correct by construction.** You build an AST. The renderer handles tokens, commas, braces, and whitespace. There is no way to produce a mismatched brace or a missing comma.
 - **Type-checked template composition.** The three-layer type hierarchy (`Template<A>`, `Statement<A>`, `Declaration<A>`) mirrors Swift's own expression/statement/declaration hierarchy. Misusing a layer is a compile error, not a runtime surprise.
+- **Bidirectional.** `Extractor` converts `DeclSyntax` nodes back into the kit's typed model. Receive existing declarations from a macro protocol, extract them, transform with wither methods, then render new output -- without touching SwiftSyntax internals.
 - **Parametric metadata for free.** The type parameter `A` lets you attach arbitrary compile-time data -- variable origins, type info, source locations -- to variable references without changing what gets rendered. Strip it with `map` before handing off to the renderer.
 - **Pure, deterministic rendering.** `Renderer.render` has no side effects. The same template always produces the same syntax. This makes macro output straightforward to test.
 - **Sendable throughout.** All three template types conditionally conform to `Sendable` when their payload does, making them safe to use in Swift 6 concurrent macro implementations.
@@ -61,6 +62,21 @@ Template<A>             ───►  ExprSyntax
 ```
 
 Each layer contains only the constructs that belong at that level. A `Statement` can contain `Template` expressions. A `Declaration` body is a `[Statement]`. The types enforce this structure at compile time.
+
+The extract-transform-render pipeline completes the picture. `Extractor` runs the arrow in reverse -- from `DeclSyntax` back into `Declaration<Never>` -- so you can work with declarations that arrive from a macro's context:
+
+```
+DeclSyntax  ──►  Extractor.extract  ──►  Declaration<Never>
+                                             │  .map { _ in () }
+                                             ▼
+                                    Declaration<Void>
+                                             │  wither methods
+                                             ▼
+                                    Declaration<Void>
+                                             │  Renderer.render
+                                             ▼
+                                         DeclSyntax
+```
 
 ## Quick Start
 
@@ -318,6 +334,99 @@ let ext: DeclSyntax = Renderer.render(
 )
 ```
 
+### Extracting Existing Declarations
+
+`Extractor` converts a `DeclSyntax` node into the kit's typed model. Use it in macro implementations that receive existing declarations from the compiler and need to inspect or transform them before generating new output.
+
+```swift
+import MacroTemplateKit
+import SwiftSyntax
+
+// Received from a member macro's `declaration` parameter (DeclSyntax)
+guard let extracted: Declaration<Never> = Extractor.extract(declaration) else {
+    return []  // unsupported declaration kind
+}
+
+// Pattern-match the result to read signature properties
+if case .function(let sig) = extracted {
+    // sig is FunctionSignature<Never>
+    // Access name, parameters, accessLevel, isAsync, canThrow, etc.
+    let newName = sig.name + "Async"
+    // Use wither methods to produce a modified copy (see next section)
+    let asyncVariant = sig
+        .withName(newName)
+        .withIsAsync(true)
+        .withReturnType("Void")
+        .withBody([])
+    return [asyncVariant.rendered]
+}
+```
+
+For variables with multiple bindings (`var x = 1, y = 2`), use `extractAll` to get one `Declaration` per binding:
+
+```swift
+let all: [Declaration<Never>] = Extractor.extractAll(declaration)
+```
+
+Typed overloads let you extract directly to a specific signature type when you already know the declaration kind:
+
+```swift
+// When you have a FunctionDeclSyntax directly:
+let sig: FunctionSignature<Never> = Extractor.extract(funcDeclSyntax)
+```
+
+**Limitations to know about.** Extracted declarations always have empty bodies -- the extractor captures the signature structure (name, parameters, access level, generics, attributes) but drops executable code. Attach body statements after extraction using wither methods. `open` maps to `.public` since `AccessLevel` has no `open` case. `class func` members are extracted as static.
+
+### Wither Methods -- Immutable Updates
+
+Every signature type has `with*` and `adding*` methods that return a modified copy of the signature. They are the standard way to transform extracted declarations or adjust ones you constructed manually.
+
+```swift
+// Build a public async throwing variant from an existing signature
+let original = FunctionSignature<Void>(
+    name: "loadUser",
+    parameters: [ParameterSignature(name: "id", type: "String")],
+    returnType: "User"
+)
+
+let variant: DeclSyntax = original
+    .withAccessLevel(.public)
+    .withIsAsync(true)
+    .withCanThrow(true)
+    .withReturnType("User?")
+    .addingParameter(ParameterSignature(label: "cache", name: "cache", type: "Bool"))
+    .addingAttribute(.mainActor)
+    .rendered  // shortcut for Renderer.render(sig.asDeclaration)
+// @MainActor public func loadUser(id: String, cache cache: Bool) async throws -> User?
+```
+
+Wither methods are available on `FunctionSignature`, `InitializerSignature`, `PropertySignature`, `ComputedPropertySignature`, `ExtensionSignature`, `StructSignature`, `EnumSignature`, and `TypeAliasSignature`. Each type exposes the methods that apply to its fields. The `adding*` and `removing*` variants append to or filter collections.
+
+### Convenience Rendering on Signatures
+
+Every signature type has `asDeclaration` and `rendered` computed properties so you do not need to wrap the signature in a `Declaration` case before passing it to `Renderer`.
+
+```swift
+let sig = FunctionSignature<Void>(
+    accessLevel: .public,
+    name: "greet",
+    parameters: [ParameterSignature(name: "name", type: "String")],
+    returnType: "String",
+    body: [.returnStatement(.binaryOperation(left: .literal("Hello, "), operator: "+", right: .variable("name")))]
+)
+
+// These two lines produce the same DeclSyntax:
+let a: DeclSyntax = Renderer.render(Declaration.function(sig))
+let b: DeclSyntax = sig.rendered  // shortcut
+```
+
+`TypeAliasSignature.asDeclaration` is generic over payload type since `TypeAliasSignature` itself is not parameterized:
+
+```swift
+let alias = TypeAliasSignature(name: "UserID", existingType: "String")
+let decl: Declaration<Void> = alias.asDeclaration()
+```
+
 ### Parametric Metadata
 
 The type parameter `A` is the mechanism for carrying compile-time information alongside your template without that information leaking into the rendered output. Use it to track variable provenance, type annotations, or source locations during template construction, then discard it before rendering.
@@ -347,7 +456,7 @@ let expr: ExprSyntax = Renderer.render(template.map { _ in () })
 
 ### Transforming Templates with map
 
-All three types are functors. `map` transforms every variable payload while preserving the template's structure exactly. This satisfies the functor laws -- identity and composition -- which you can verify in the test suite.
+`Template`, `Statement`, `Declaration`, and all signature types are functors. `map` transforms every variable payload while preserving structure. This satisfies the functor laws -- identity and composition -- which you can verify in the test suite.
 
 ```swift
 let original: Template<String> = .functionCall(
@@ -367,6 +476,18 @@ let enriched: Template<EnrichedInfo> = original.map { string in
 let expr: ExprSyntax = Renderer.render(enriched.map { _ in () })
 ```
 
+The same `map` is available on signature types and `Declaration` itself. The common use case is the extract-then-map pattern: `Extractor` always produces `Declaration<Never>`, and `map` converts it to `Declaration<Void>` (or any other payload) before you attach body statements or call wither methods:
+
+```swift
+let extracted: Declaration<Never> = Extractor.extract(decl)!
+// Never -> Void so we can work with it
+let base: Declaration<Void> = extracted.map { _ in () }
+
+// map is also available per signature type
+let sig: FunctionSignature<Never> = Extractor.extract(funcDecl)
+let withVoid: FunctionSignature<Void> = sig.map { _ in () }
+```
+
 ## API Reference
 
 ### Core Types
@@ -381,6 +502,7 @@ let expr: ExprSyntax = Renderer.render(enriched.map { _ in () })
 | `AttributeSignature` | Common `@...` attributes on declarations, parameters, and closures | (embedded in signatures) |
 | `LiteralValue` | Integer, double, string, bool, nil | (embedded in `Template`) |
 | `Renderer` | Pure rendering functions | -- |
+| `Extractor` | Converts `DeclSyntax` back into the kit's typed model | -- |
 
 ### Template Cases (Expressions)
 
@@ -459,6 +581,27 @@ Renderer.renderStatements(_ statements: [Statement<A>]) -> CodeBlockItemListSynt
 Renderer.render(_ declaration: Declaration<A>) -> DeclSyntax
 ```
 
+### Extractor
+
+```swift
+// Returns the first declaration, or nil for unsupported kinds
+Extractor.extract(_ decl: DeclSyntax) -> Declaration<Never>?
+
+// Returns all declarations (multi-binding variables produce multiple results)
+Extractor.extractAll(_ decl: DeclSyntax) -> [Declaration<Never>]
+
+// Typed overloads for each declaration kind
+Extractor.extract(_ decl: FunctionDeclSyntax)    -> FunctionSignature<Never>
+Extractor.extract(_ decl: InitializerDeclSyntax) -> InitializerSignature<Never>
+Extractor.extract(_ decl: ExtensionDeclSyntax)   -> ExtensionSignature<Never>
+Extractor.extract(_ decl: StructDeclSyntax)      -> StructSignature<Never>
+Extractor.extract(_ decl: EnumDeclSyntax)        -> EnumSignature<Never>
+Extractor.extract(_ decl: TypeAliasDeclSyntax)   -> TypeAliasSignature
+Extractor.extract(_ decl: VariableDeclSyntax)    -> [Declaration<Never>]
+```
+
+Extracted declarations have empty bodies. Use `declaration.map { _ in () }` to convert `Declaration<Never>` to `Declaration<Void>`, then use wither methods to attach bodies and modify the signature.
+
 ### Signature Types
 
 | Type | Key Properties |
@@ -468,7 +611,7 @@ Renderer.render(_ declaration: Declaration<A>) -> DeclSyntax
 | `PropertySignature<A>` | `attributes`, `name`, `type`, `isLet`, `isStatic`, `initializer`, `accessLevel` |
 | `ComputedPropertySignature<A>` | `attributes`, `name`, `type`, `getter`, `setter`, `isStatic`, `accessLevel` |
 | `ClosureSignature<A>` | `attributes`, `parameters`, `returnType`, `body` |
-| `ExtensionSignature<A>` | `typeName`, `conformances`, `whereRequirements`, `members` |
+| `ExtensionSignature<A>` | `accessLevel`, `typeName`, `conformances`, `whereRequirements`, `members` |
 | `StructSignature<A>` | `attributes`, `name`, `genericParameters`, `conformances`, `whereRequirements`, `members`, `accessLevel` |
 | `EnumSignature<A>` | `attributes`, `name`, `genericParameters`, `conformances`, `whereRequirements`, `cases`, `members`, `accessLevel` |
 | `EnumCaseSignature` | `name`, `rawValue`, `associatedTypes` |

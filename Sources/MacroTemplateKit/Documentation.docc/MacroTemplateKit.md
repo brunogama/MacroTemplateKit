@@ -14,6 +14,8 @@ The library provides three core types that mirror Swift's own syntax hierarchy:
 
 All three types are generic over a payload parameter `A` that carries compile-time metadata through the template without affecting rendered output. Use ``Template/map(_:)`` to transform or discard metadata before rendering.
 
+``Extractor`` completes the pipeline in the other direction: it converts `DeclSyntax` nodes back into the kit's typed model so you can inspect, transform with wither methods, and re-render existing declarations without touching SwiftSyntax internals.
+
 ## Topics
 
 ### Essentials
@@ -52,12 +54,15 @@ All three types are generic over a payload parameter `A` that carries compile-ti
 - ``EnumCaseSignature``
 - ``TypeAliasSignature``
 - ``InitializerSignature``
+- ``GenericParameterSignature``
 - ``WhereRequirement``
+- ``AttributeSignature``
 - ``AccessLevel``
 
-### Rendering
+### Rendering and Extraction
 
 - ``Renderer``
+- ``Extractor``
 
 ### Result Builders
 
