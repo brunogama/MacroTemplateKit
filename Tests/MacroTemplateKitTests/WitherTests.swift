@@ -121,6 +121,27 @@ final class WitherTests: XCTestCase {
 
     // MARK: - ExtensionSignature
 
+    func testExtensionSignature_withAccessLevel() {
+        let sig = ExtensionSignature<Void>(typeName: "MyType")
+        let modified = sig.withAccessLevel(.public)
+        XCTAssertEqual(modified.accessLevel, .public)
+        XCTAssertEqual(modified.typeName, "MyType")
+    }
+
+    func testExtensionSignature_withTypeName() {
+        let sig = ExtensionSignature<Void>(
+            accessLevel: .public,
+            typeName: "MyType",
+            conformances: ["Equatable"],
+            members: [.function(FunctionSignature(name: "foo", body: []))]
+        )
+        let modified = sig.withTypeName("OtherType")
+        XCTAssertEqual(modified.typeName, "OtherType")
+        XCTAssertEqual(modified.accessLevel, .public)
+        XCTAssertEqual(modified.conformances, ["Equatable"])
+        XCTAssertEqual(modified.members.count, 1)
+    }
+
     func testExtensionSignature_addingConformance() {
         let sig = ExtensionSignature<Void>(typeName: "MyType")
         let modified = sig.addingConformance("Equatable")

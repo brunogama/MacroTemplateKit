@@ -288,6 +288,21 @@ final class ExtractorTests: XCTestCase {
         XCTAssertEqual(sig.existingType, "() -> Void")
     }
 
+    // MARK: - Stored property with initializer
+
+    func testExtractStoredProperty_withInitializer() {
+        let decl = DeclSyntax("var count: Int = 42")
+        let result = Extractor.extract(decl)
+
+        guard case .property(let sig) = result else {
+            return XCTFail("Expected .property, got \(String(describing: result))")
+        }
+        XCTAssertEqual(sig.name, "count")
+        XCTAssertEqual(sig.type, "Int")
+        XCTAssertFalse(sig.isLet)
+        XCTAssertNil(sig.initializer)
+    }
+
     // MARK: - Multi-binding extraction
 
     func testExtractAll_multiBindingVar() {
@@ -452,6 +467,59 @@ final class ExtractorTests: XCTestCase {
         } else {
             XCTFail("Expected .token(*), got \(args[1])")
         }
+    }
+
+    func testExtractFunction_withRawAttributeArguments() {
+        let decl = DeclSyntax(#"@objc(mySelector:) func bridge() {}"#)
+        let result = Extractor.extract(decl)
+
+        guard case .function(let sig) = result else {
+            return XCTFail("Expected .function")
+        }
+        XCTAssertEqual(sig.attributes.count, 1)
+        XCTAssertEqual(sig.attributes[0].name, "objc")
+
+        guard case .raw(let text) = sig.attributes[0].arguments else {
+            return XCTFail(
+                "Expected .raw arguments, got \(String(describing: sig.attributes[0].arguments))")
+        }
+        XCTAssertTrue(text.contains("mySelector"))
+    }
+
+    // MARK: - Typed variable extraction
+
+    func testExtractVariable_typedOverload() {
+        let decl = DeclSyntax("public var x: Int, y: String")
+            .as(VariableDeclSyntax.self)!
+        let results = Extractor.extract(decl)
+
+        XCTAssertEqual(results.count, 2)
+
+        guard case .property(let first) = results[0] else {
+            return XCTFail("Expected .property")
+        }
+        XCTAssertEqual(first.name, "x")
+        XCTAssertEqual(first.type, "Int")
+        XCTAssertEqual(first.accessLevel, .public)
+
+        guard case .property(let second) = results[1] else {
+            return XCTFail("Expected .property")
+        }
+        XCTAssertEqual(second.name, "y")
+        XCTAssertEqual(second.type, "String")
+    }
+
+    // MARK: - Extension accessLevel extraction
+
+    func testExtractExtension_withAccessLevel() {
+        let decl = DeclSyntax("public extension MyType {}")
+        let result = Extractor.extract(decl)
+
+        guard case .extensionDecl(let sig) = result else {
+            return XCTFail("Expected .extensionDecl")
+        }
+        XCTAssertEqual(sig.accessLevel, .public)
+        XCTAssertEqual(sig.typeName, "MyType")
     }
 
     func testExtractFunction_withAvailableDeprecated() {

@@ -85,6 +85,7 @@ public enum Extractor {
             extractAll(member.decl)
         }
         return ExtensionSignature<Never>(
+            accessLevel: extractAccessLevel(from: decl.modifiers),
             typeName: decl.extendedType.trimmedDescription,
             conformances: extractConformances(from: decl.inheritanceClause),
             whereRequirements: extractWhereRequirements(from: decl.genericWhereClause),
@@ -151,6 +152,10 @@ public enum Extractor {
     ///
     /// Each binding in the `PatternBindingListSyntax` produces its own declaration.
     /// For `var x = 1, y = 2`, this returns two `.property` declarations.
+    public static func extract(_ decl: VariableDeclSyntax) -> [Declaration<Never>] {
+        extractVariableBindings(decl)
+    }
+
     private static func extractVariableBindings(
         _ decl: VariableDeclSyntax
     ) -> [Declaration<Never>] {
@@ -253,6 +258,11 @@ public enum Extractor {
         return .internal
     }
 
+    /// Extracts attributes from an `AttributeListSyntax`.
+    ///
+    /// `.argumentList` and `.availability` argument kinds are modeled explicitly.
+    /// Other argument kinds (e.g. `@objc(selector:)`, `@_specialize(...)`) are
+    /// preserved as `.raw(String)` using the syntax node's `trimmedDescription`.
     private static func extractAttributes(
         from attributeList: AttributeListSyntax
     ) -> [AttributeSignature] {
@@ -283,7 +293,8 @@ public enum Extractor {
                     arguments: .availability(args)
                 )
             default:
-                return AttributeSignature(name: name)
+                let rawText = arguments.trimmedDescription
+                return AttributeSignature(name: name, arguments: .raw(rawText))
             }
         }
     }

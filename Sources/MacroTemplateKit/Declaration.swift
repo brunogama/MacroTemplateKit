@@ -313,17 +313,21 @@ public struct SetterSignature<A>: Sendable where A: Sendable {
 
 /// Extension signature with type name, conformances, where clause, and members.
 public struct ExtensionSignature<A>: Sendable where A: Sendable {
+    /// Access level (public, internal, private, fileprivate).
+    public let accessLevel: AccessLevel
     public let typeName: String
     public let conformances: [String]
     public let whereRequirements: [WhereRequirement]
     public let members: [Declaration<A>]
 
     public init(
+        accessLevel: AccessLevel = .internal,
         typeName: String,
         conformances: [String] = [],
         whereRequirements: [WhereRequirement] = [],
         members: [Declaration<A>] = []
     ) {
+        self.accessLevel = accessLevel
         self.typeName = typeName
         self.conformances = conformances
         self.whereRequirements = whereRequirements
@@ -508,6 +512,7 @@ extension ExtensionSignature {
     public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> ExtensionSignature<B>
     where A: Sendable, B: Sendable {
         ExtensionSignature<B>(
+            accessLevel: accessLevel,
             typeName: typeName,
             conformances: conformances,
             whereRequirements: whereRequirements,

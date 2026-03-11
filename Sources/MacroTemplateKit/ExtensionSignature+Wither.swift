@@ -1,14 +1,21 @@
 extension ExtensionSignature {
+    public func withAccessLevel(_ accessLevel: AccessLevel) -> Self {
+        ExtensionSignature(
+            accessLevel: accessLevel, typeName: typeName, conformances: conformances,
+            whereRequirements: whereRequirements, members: members
+        )
+    }
+
     public func withTypeName(_ typeName: String) -> Self {
         ExtensionSignature(
-            typeName: typeName, conformances: conformances,
+            accessLevel: accessLevel, typeName: typeName, conformances: conformances,
             whereRequirements: whereRequirements, members: members
         )
     }
 
     public func withConformances(_ conformances: [String]) -> Self {
         ExtensionSignature(
-            typeName: typeName, conformances: conformances,
+            accessLevel: accessLevel, typeName: typeName, conformances: conformances,
             whereRequirements: whereRequirements, members: members
         )
     }
@@ -17,14 +24,14 @@ extension ExtensionSignature {
         _ whereRequirements: [WhereRequirement]
     ) -> Self {
         ExtensionSignature(
-            typeName: typeName, conformances: conformances,
+            accessLevel: accessLevel, typeName: typeName, conformances: conformances,
             whereRequirements: whereRequirements, members: members
         )
     }
 
     public func withMembers(_ members: [Declaration<A>]) -> Self {
         ExtensionSignature(
-            typeName: typeName, conformances: conformances,
+            accessLevel: accessLevel, typeName: typeName, conformances: conformances,
             whereRequirements: whereRequirements, members: members
         )
     }
