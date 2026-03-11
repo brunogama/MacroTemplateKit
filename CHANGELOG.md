@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- Address second round of PR #20 review feedback
+- Address PR #20 review feedback
+- Document single-binding limitation, add @available extraction tests
+
 ### Documentation
 
+- Document Extractor API, wither methods, and extract-transform-render pipeline
+- Update changelog [skip ci]
 - Align review tests with macro template kit
 - Add copilot code review instructions
 - Update changelog [skip ci]
@@ -23,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
+- Raw attribute args, extension access level, strict concurrency
+- Extract all variable bindings, add extractAll public API
+- Add Extractor API, wither methods, and convenience combinators
 - Add typed signatures and fluent templates
 
 ### Miscellaneous Tasks
