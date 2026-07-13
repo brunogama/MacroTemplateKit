@@ -43,7 +43,7 @@ success, not a failure.
 | axis | values |
 |---|---|
 | caching | off, on |
-| scenario | cold (fresh `.build` + fresh CAS) · warm-repeat (fresh `.build`, kept CAS — the shared-CI-cache scenario) · incremental (touch 1 of 12 files) · no-op |
+| scenario | cold (all fixture sources invalidated + fresh CAS; dependency artifacts kept, since the measurand is macro/module work, not swift-syntax rebuilds) · warm-repeat (all sources invalidated, kept CAS — the shared-CI-cache scenario) · incremental (touch 1 of 12 files) · no-op |
 
 Each cell records wall-clock, deduped PROBE lines, and plugin process count.
 
