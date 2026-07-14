@@ -321,11 +321,8 @@ extension Renderer {
 
     let parameters = GenericParameterListSyntax(
       genericParameters.enumerated().map { index, parameter in
-        GenericParameterSyntax(
-          specifier: parameter.isParameterPack ? .keyword(.each) : nil,
-          name: .identifier(parameter.name),
-          colon: parameter.constraint != nil ? .colonToken() : nil,
-          inheritedType: parameter.constraint.map { TypeSyntax(stringLiteral: $0) },
+        SwiftSyntaxCompatibility.genericParameter(
+          parameter,
           trailingComma: index < genericParameters.count - 1
             ? .commaToken(trailingTrivia: .space)
             : nil
@@ -353,12 +350,10 @@ extension Renderer {
               rightType: TypeSyntax(stringLiteral: requirement.rightType)
             ))
         case .sameType:
-          renderedRequirement = .sameTypeRequirement(
-            SameTypeRequirementSyntax(
-              leftType: .init(TypeSyntax(stringLiteral: requirement.leftType)),
-              equal: .binaryOperator("=="),
-              rightType: .init(TypeSyntax(stringLiteral: requirement.rightType))
-            ))
+          renderedRequirement = SwiftSyntaxCompatibility.sameTypeRequirement(
+            leftType: TypeSyntax(stringLiteral: requirement.leftType),
+            rightType: TypeSyntax(stringLiteral: requirement.rightType)
+          )
         }
 
         return GenericRequirementSyntax(

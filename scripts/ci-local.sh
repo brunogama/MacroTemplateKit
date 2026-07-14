@@ -27,12 +27,8 @@ echo "==> SwiftLint (strict)"
 swiftlint lint --strict Sources/ Tests/
 
 echo
-echo "==> Build (warnings as errors)"
-swift build -Xswiftc -warnings-as-errors
-
-echo
-echo "==> Test (parallel)"
-swift test --parallel
+echo "==> SwiftSyntax compatibility matrix"
+MTK_MATRIX_MODE=xcode27 bash Scripts/test-swift-syntax-matrix.sh
 
 echo
 echo "==> OK"

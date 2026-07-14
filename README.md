@@ -85,7 +85,7 @@ DeclSyntax  ──►  Extractor.extract  ──►  Declaration<Never>
 ```swift
 dependencies: [
     .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ],
 targets: [
     .macro(
@@ -649,7 +649,7 @@ Each file shows a real macro rewritten to use the template API, which makes them
 ## Requirements
 
 - Swift 5.10+ (Swift 6.x recommended for contributors)
-- SwiftSyntax 510.0 or later (tested up to 700.0)
+- SwiftSyntax 600.0.1 through the 6xx release line
 - macOS 13+ / iOS 16+ / tvOS 16+ / watchOS 9+
 
 ## Installation
@@ -661,7 +661,7 @@ For downstream macro packages, prefer the tagged binary release:
 ```swift
 dependencies: [
     .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
 

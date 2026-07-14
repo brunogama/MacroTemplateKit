@@ -422,7 +422,7 @@ public enum Extractor {
     return clause.parameters.map { param in
       GenericParameterSignature(
         name: param.name.text,
-        isParameterPack: param.specifier?.tokenKind == .keyword(.each),
+        isParameterPack: SwiftSyntaxCompatibility.isParameterPack(param),
         constraint: param.inheritedType?.trimmedDescription
       )
     }

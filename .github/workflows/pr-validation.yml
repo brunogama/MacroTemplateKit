@@ -74,11 +74,45 @@ jobs:
       - name: Build with Strict Warnings
         run: swift build -Xswiftc -warnings-as-errors
 
+  swift-syntax-compatibility:
+    name: SwiftSyntax ${{ matrix.swift-syntax }} (macOS 26 hosted)
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        swift-syntax: ["600.0.1", "603.0.2"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Record hosted toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build and test exact SwiftSyntax version
+        env:
+          MTK_MATRIX_MODE: hosted
+        run: bash Scripts/test-swift-syntax-matrix.sh "${{ matrix.swift-syntax }}"
+
+  swift-syntax-compatibility-required:
+    name: SwiftSyntax Compatibility
+    if: ${{ always() }}
+    needs: swift-syntax-compatibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Require every compatibility entry
+        env:
+          MATRIX_RESULT: ${{ needs.swift-syntax-compatibility.result }}
+        run: test "$MATRIX_RESULT" = "success"
+
   # All tests MUST pass
   test-check:
     name: Tests
     runs-on: macos-14
-    needs: build-check
+    needs: [build-check, swift-syntax-compatibility-required]
 
     steps:
       - name: Checkout

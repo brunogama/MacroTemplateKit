@@ -236,7 +236,7 @@ public struct Renderer {
     _ arguments: [(label: String?, value: Template<A>)]
   ) -> ExprSyntax {
     let genericArgs = typeArguments.map { typeArg in
-      GenericArgumentSyntax(argument: .type(TypeSyntax(stringLiteral: typeArg)))
+      SwiftSyntaxCompatibility.genericArgument(TypeSyntax(stringLiteral: typeArg))
     }
 
     let calledExpr = ExprSyntax(
