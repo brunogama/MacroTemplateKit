@@ -26,7 +26,7 @@ jobs:
         run: |
           swift-format lint --strict --recursive Sources/ Tests/
           if [ $? -ne 0 ]; then
-            echo "::error::Code is not properly formatted. Run 'swift-format format --recursive Sources/ Tests/' locally."
+            echo "::error::Code is not properly formatted. Run 'swift-format format --in-place --recursive Sources/ Tests/' locally."
             exit 1
           fi
 
