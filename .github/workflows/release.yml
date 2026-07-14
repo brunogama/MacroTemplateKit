@@ -31,8 +31,8 @@ jobs:
       - name: Extract Release Notes
         id: release_notes
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
           # Extract changelog section for this version
           awk "/## \[$VERSION\]/{flag=1; next} /## \[/{flag=0} flag" CHANGELOG.md > release_notes.md
@@ -42,11 +42,20 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: MacroTemplateKit ${{ steps.release_notes.outputs.VERSION }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: ${{ contains(github.ref, '-') }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release_notes.outputs.VERSION }}
+        run: |
+          release_arguments=(
+            "$GITHUB_REF_NAME"
+            --repo "$GITHUB_REPOSITORY"
+            --verify-tag
+            --title "MacroTemplateKit $VERSION"
+            --notes-file release_notes.md
+          )
+
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            release_arguments+=(--prerelease)
+          fi
+
+          gh release create "${release_arguments[@]}"
