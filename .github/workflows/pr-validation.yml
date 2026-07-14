@@ -145,7 +145,7 @@ jobs:
 
       - name: Install commitlint
         run: |
-          npm install --save-dev @commitlint/cli @commitlint/config-conventional
+          npm install --no-save --package-lock=false @commitlint/cli @commitlint/config-conventional
 
       - name: Validate PR commits
         run: |
