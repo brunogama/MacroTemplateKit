@@ -9,6 +9,9 @@ concurrency:
   group: pr-${{ github.head_ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # Strict format check - MUST pass
   format-check:
