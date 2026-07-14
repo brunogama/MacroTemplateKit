@@ -3,7 +3,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -12,7 +12,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -21,7 +21,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -30,7 +30,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -39,7 +39,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -50,7 +50,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -59,7 +59,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -68,16 +68,24 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
 
   public func withCanThrow(_ canThrow: Bool) -> Self {
+    guard canThrow else { return withThrowingEffect(.none) }
+
+    let effect = throwingEffect == .none ? ThrowingEffect.throws() : throwingEffect
+    return withThrowingEffect(effect)
+  }
+
+  /// Replaces the throwing contract without collapsing typed throws or `rethrows` to a Boolean.
+  public func withThrowingEffect(_ throwingEffect: ThrowingEffect) -> Self {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -86,7 +94,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -97,7 +105,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }
@@ -106,7 +114,7 @@ extension FunctionSignature {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
-      parameters: parameters, isAsync: isAsync, canThrow: canThrow,
+      parameters: parameters, isAsync: isAsync, throwingEffect: throwingEffect,
       returnType: returnType, whereRequirements: whereRequirements, body: body
     )
   }

@@ -133,6 +133,21 @@ public indirect enum Declaration<A> {
 
 // MARK: - Supporting Types
 
+/// The throwing contract carried by a function declaration.
+///
+/// Modeling the complete effect as one value prevents invalid combinations while preserving
+/// typed throws and `rethrows` across extraction, transformation, and rendering.
+public enum ThrowingEffect: Equatable, Hashable, Sendable {
+  /// The function has no throwing clause.
+  case none
+
+  /// The function uses `throws`, optionally constrained to the source's error type spelling.
+  case `throws`(errorType: String? = nil)
+
+  /// The function uses `rethrows` because its effect depends on a function argument.
+  case `rethrows`
+}
+
 /// Function signature with all declaration components.
 public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Access level (public, internal, private, fileprivate).
@@ -159,8 +174,16 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Whether function is async.
   public let isAsync: Bool
 
-  /// Whether function can throw.
-  public let canThrow: Bool
+  /// The function's complete throwing contract.
+  public let throwingEffect: ThrowingEffect
+
+  /// Whether the signature contains either `throws` or `rethrows`.
+  ///
+  /// This compatibility projection lets Boolean callers inspect throwing behavior without
+  /// discarding the richer contract held by ``throwingEffect``.
+  public var canThrow: Bool {
+    throwingEffect != .none
+  }
 
   /// Return type (nil for Void).
   public let returnType: String?
@@ -185,6 +208,40 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
     whereRequirements: [WhereRequirement] = [],
     body: [Statement<A>] = []
   ) {
+    self.init(
+      accessLevel: accessLevel,
+      attributes: attributes,
+      isStatic: isStatic,
+      isMutating: isMutating,
+      name: name,
+      genericParameters: genericParameters,
+      parameters: parameters,
+      isAsync: isAsync,
+      throwingEffect: canThrow ? .throws() : .none,
+      returnType: returnType,
+      whereRequirements: whereRequirements,
+      body: body
+    )
+  }
+
+  /// Creates a function signature with an explicit throwing contract.
+  ///
+  /// Keeping this initializer separate from the legacy Boolean initializer prevents ordinary
+  /// call sites from becoming ambiguous while allowing lossless typed-throws and `rethrows` models.
+  public init(
+    accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
+    isStatic: Bool = false,
+    isMutating: Bool = false,
+    name: String,
+    genericParameters: [GenericParameterSignature] = [],
+    parameters: [ParameterSignature<A>] = [],
+    isAsync: Bool = false,
+    throwingEffect: ThrowingEffect,
+    returnType: String? = nil,
+    whereRequirements: [WhereRequirement] = [],
+    body: [Statement<A>] = []
+  ) {
     self.accessLevel = accessLevel
     self.attributes = attributes
     self.isStatic = isStatic
@@ -193,7 +250,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
     self.genericParameters = genericParameters
     self.parameters = parameters
     self.isAsync = isAsync
-    self.canThrow = canThrow
+    self.throwingEffect = throwingEffect
     self.returnType = returnType
     self.whereRequirements = whereRequirements
     self.body = body
@@ -521,7 +578,7 @@ extension FunctionSignature {
       genericParameters: genericParameters,
       parameters: parameters.map { $0.map(transform) },
       isAsync: isAsync,
-      canThrow: canThrow,
+      throwingEffect: throwingEffect,
       returnType: returnType,
       whereRequirements: whereRequirements,
       body: body.map { $0.map(transform) }

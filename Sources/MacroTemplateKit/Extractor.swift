@@ -73,7 +73,9 @@ public enum Extractor {
       genericParameters: extractGenericParameters(from: decl.genericParameterClause),
       parameters: extractParameters(from: decl.signature.parameterClause),
       isAsync: decl.signature.effectSpecifiers?.asyncSpecifier != nil,
-      canThrow: decl.signature.effectSpecifiers?.throwsClause != nil,
+      throwingEffect: extractThrowingEffect(
+        from: decl.signature.effectSpecifiers?.throwsClause
+      ),
       returnType: decl.signature.returnClause.map {
         $0.type.trimmedDescription
       },
@@ -289,6 +291,17 @@ public enum Extractor {
       }
     }
     return .internal
+  }
+
+  private static func extractThrowingEffect(
+    from clause: ThrowsClauseSyntax?
+  ) -> ThrowingEffect {
+    guard let clause else { return .none }
+    guard clause.throwsSpecifier.tokenKind != .keyword(.rethrows) else {
+      return .rethrows
+    }
+
+    return .throws(errorType: clause.type?.trimmedDescription)
   }
 
   /// Extracts attributes from an `AttributeListSyntax`.

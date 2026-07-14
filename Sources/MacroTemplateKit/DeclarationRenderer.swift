@@ -56,11 +56,12 @@ extension Renderer {
       parameters: FunctionParameterListSyntax(params)
     )
 
+    let throwsClause = renderThrowsClause(sig.throwingEffect)
     var effectSpecifiers: FunctionEffectSpecifiersSyntax?
-    if sig.isAsync || sig.canThrow {
+    if sig.isAsync || throwsClause != nil {
       effectSpecifiers = FunctionEffectSpecifiersSyntax(
         asyncSpecifier: sig.isAsync ? .keyword(.async) : nil,
-        throwsClause: sig.canThrow ? ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws)) : nil
+        throwsClause: throwsClause
       )
     }
 
@@ -96,6 +97,25 @@ extension Renderer {
       genericWhereClause: renderGenericWhereClause(sig.whereRequirements),
       body: body
     )
+  }
+
+  private static func renderThrowsClause(_ effect: ThrowingEffect) -> ThrowsClauseSyntax? {
+    switch effect {
+    case .none:
+      return nil
+    case .rethrows:
+      return ThrowsClauseSyntax(throwsSpecifier: .keyword(.rethrows))
+    case .throws(let errorType):
+      guard let errorType else {
+        return ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))
+      }
+      return ThrowsClauseSyntax(
+        throwsSpecifier: .keyword(.throws),
+        leftParen: .leftParenToken(),
+        type: TypeSyntax(stringLiteral: errorType),
+        rightParen: .rightParenToken()
+      )
+    }
   }
 
   private static func renderProperty<A: Sendable>(_ sig: PropertySignature<A>) -> VariableDeclSyntax
