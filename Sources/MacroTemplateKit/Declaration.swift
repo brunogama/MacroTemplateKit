@@ -214,8 +214,20 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
   /// The declared Swift type, retained as type syntax rather than executable expression syntax.
   public let type: String
 
+  /// Type specifiers that must precede attributes, such as `borrowing` or `isolated`.
+  ///
+  /// `inout` remains a dedicated semantic flag because it also controls whether a default value
+  /// is valid. Passing `"inout"` here is accepted and normalized into ``isInout``.
+  public let specifiers: [String]
+
   /// Attributes that qualify the parameter type, such as `@escaping`.
   public let attributes: [AttributeSignature]
+
+  /// Type specifiers that follow attributes on toolchains whose syntax distinguishes that order.
+  ///
+  /// Keeping these separate prevents a cross-version extraction from moving a specifier across
+  /// an attribute and changing, or invalidating, the rendered type.
+  public let lateSpecifiers: [String]
 
   /// Whether the declaration transfers the argument with `inout` ownership.
   public let isInout: Bool
@@ -232,7 +244,10 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
   ///   - label: The external call-site label, or `nil` to reuse `name`.
   ///   - name: The local name visible inside the generated implementation.
   ///   - type: The declared Swift parameter type.
+  ///   - specifiers: Type specifiers that appear before attributes. `inout` is normalized into
+  ///     `isInout` so the default-value invariant remains centralized.
   ///   - attributes: Attributes that qualify the parameter type.
+  ///   - lateSpecifiers: Type specifiers that appear after attributes on supporting toolchains.
   ///   - isInout: Whether the declaration uses `inout` ownership.
   ///   - defaultValue: A structural default expression that shares payload transformations.
   ///     The initializer discards this value when `isInout` is `true` so the signature cannot
@@ -241,16 +256,22 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
     label: String? = nil,
     name: String,
     type: String,
+    specifiers: [String] = [],
     attributes: [AttributeSignature] = [],
+    lateSpecifiers: [String] = [],
     isInout: Bool = false,
     defaultValue: Template<A>? = nil
   ) {
+    let normalizedIsInout = isInout || specifiers.contains("inout")
+
     self.label = label
     self.name = name
     self.type = type
+    self.specifiers = specifiers.filter { $0 != "inout" }
     self.attributes = attributes
-    self.isInout = isInout
-    self.defaultValue = isInout ? nil : defaultValue
+    self.lateSpecifiers = lateSpecifiers
+    self.isInout = normalizedIsInout
+    self.defaultValue = normalizedIsInout ? nil : defaultValue
   }
 
   /// Transforms metadata in the default expression while preserving the parameter signature.
@@ -264,7 +285,9 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
       label: label,
       name: name,
       type: type,
+      specifiers: specifiers,
       attributes: attributes,
+      lateSpecifiers: lateSpecifiers,
       isInout: isInout,
       defaultValue: defaultValue?.map(transform)
     )

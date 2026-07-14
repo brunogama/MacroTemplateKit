@@ -402,9 +402,11 @@ extension Renderer {
       let firstName =
         parameter.label.map { TokenSyntax.identifier($0) } ?? .identifier(parameter.name)
       let secondName = parameter.label == nil ? nil : TokenSyntax.identifier(parameter.name)
-      let typePrefix = parameter.attributes.map(renderAttributeSource).joined(separator: " ")
-      let bareType = parameter.isInout ? "inout \(parameter.type)" : parameter.type
-      let typeString = typePrefix.isEmpty ? bareType : "\(typePrefix) \(bareType)"
+      let specifiers = (parameter.isInout ? ["inout"] : []) + parameter.specifiers
+      let attributes = parameter.attributes.map(renderAttributeSource)
+      let typeString =
+        (specifiers + attributes + parameter.lateSpecifiers + [parameter.type])
+        .joined(separator: " ")
 
       return FunctionParameterSyntax(
         firstName: firstName,

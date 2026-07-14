@@ -36,6 +36,35 @@ final class SwiftSyntaxCompatibilityTests: XCTestCase {
     XCTAssertEqual(signature.whereRequirements[0].rightType, "Sendable")
   }
 
+  #if canImport(SwiftSyntax603)
+    func testLateTypeSpecifierRoundTripsAfterAttributes() {
+      let declaration = Declaration<Void>.function(
+        FunctionSignature(
+          name: "perform",
+          parameters: [
+            ParameterSignature(
+              name: "handler",
+              type: "() async -> Void",
+              attributes: [.sendable],
+              lateSpecifiers: ["nonisolated"]
+            )
+          ],
+          body: []
+        )
+      )
+
+      let rendered = Renderer.render(declaration)
+      let source = rendered.formatted().description
+      let extracted = Extractor.extract(rendered)
+
+      XCTAssertTrue(source.contains("handler: @Sendable nonisolated () async -> Void"))
+      guard case .function(let signature) = extracted else {
+        return XCTFail("Expected a function declaration")
+      }
+      XCTAssertEqual(signature.parameters[0].lateSpecifiers, ["nonisolated"])
+    }
+  #endif
+
   private func genericDeclaration() -> Declaration<Void> {
     .function(
       FunctionSignature(

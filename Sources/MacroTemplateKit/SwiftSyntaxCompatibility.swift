@@ -40,6 +40,18 @@ enum SwiftSyntaxCompatibility {
     #endif
   }
 
+  static func lateTypeSpecifiers(_ type: AttributedTypeSyntax) -> [String] {
+    #if canImport(SwiftSyntax603)
+      type.lateSpecifiers.map { typeSpecifierText($0) }
+    #else
+      []
+    #endif
+  }
+
+  static func typeSpecifierText(_ specifier: some SyntaxProtocol) -> String {
+    specifier.tokens(viewMode: .sourceAccurate).map(\.text).joined(separator: " ")
+  }
+
   static func sameTypeRequirement(
     leftType: TypeSyntax,
     rightType: TypeSyntax

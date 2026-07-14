@@ -436,6 +436,51 @@ final class ExtractorTests: XCTestCase {
     )
   }
 
+  func testExtractFunction_preservesTypeSpecifiersAndAttributeArguments() {
+    let original = Declaration<Void>.function(
+      FunctionSignature(
+        name: "register",
+        parameters: [
+          ParameterSignature(
+            name: "handler",
+            type: "() -> Void",
+            specifiers: ["borrowing"],
+            attributes: [.sendable]
+          ),
+          ParameterSignature(
+            name: "callback",
+            type: "(Int32) -> Void",
+            attributes: [
+              AttributeSignature(name: "convention", arguments: .raw("c"))
+            ]
+          ),
+        ],
+        body: []
+      )
+    )
+
+    let rendered = Renderer.render(original)
+    let extracted = Extractor.extract(rendered)
+
+    guard case .function(let signature) = extracted else {
+      return XCTFail("Expected .function")
+    }
+    XCTAssertEqual(signature.parameters[0].specifiers, ["borrowing"])
+    XCTAssertEqual(signature.parameters[0].attributes, [.sendable])
+    XCTAssertEqual(signature.parameters[1].attributes.first?.name, "convention")
+    let reRendered = Renderer.render(Declaration.function(signature)).formatted().description
+    XCTAssertTrue(reRendered.contains("callback: @convention(c) (Int32) -> Void"))
+
+    guard let function = rendered.as(FunctionDeclSyntax.self) else {
+      return XCTFail("Expected FunctionDeclSyntax")
+    }
+    let directParameters = Extractor.extractParameters(
+      from: function.signature.parameterClause
+    )
+    XCTAssertEqual(directParameters[0].specifiers, ["borrowing"])
+    XCTAssertEqual(directParameters[1].attributes, signature.parameters[1].attributes)
+  }
+
   // MARK: - Availability attribute round-trip
 
   func testExtractFunction_withAvailableAttribute() {

@@ -359,7 +359,11 @@ public enum Extractor {
     }
   }
 
-  private static func extractParameters(
+  /// Extracts a parameter clause without requiring callers to rebuild Swift's ordered type model.
+  ///
+  /// This narrower entry point keeps macro adapters thin when they need to attach their own
+  /// structured default expressions while preserving labels, specifiers, attributes, and `inout`.
+  public static func extractParameters(
     from parameterClause: FunctionParameterClauseSyntax
   ) -> [ParameterSignature<Never>] {
     parameterClause.parameters.map { param in
@@ -376,24 +380,34 @@ public enum Extractor {
         name = firstName
       }
 
-      let (bareType, paramAttributes, isInout) = unwrapParameterType(param.type)
+      let typeComponents = unwrapParameterType(param.type)
 
       return ParameterSignature<Never>(
         label: label,
         name: name,
-        type: bareType,
-        attributes: paramAttributes,
-        isInout: isInout,
+        type: typeComponents.type,
+        specifiers: typeComponents.specifiers,
+        attributes: typeComponents.attributes,
+        lateSpecifiers: typeComponents.lateSpecifiers,
+        isInout: typeComponents.isInout,
         defaultValue: nil
       )
     }
   }
 
+  private struct ParameterTypeComponents {
+    let type: String
+    let specifiers: [String]
+    let attributes: [AttributeSignature]
+    let lateSpecifiers: [String]
+    let isInout: Bool
+  }
+
   private static func unwrapParameterType(
     _ typeSyntax: TypeSyntax
-  ) -> (type: String, attributes: [AttributeSignature], isInout: Bool) {
+  ) -> ParameterTypeComponents {
     if let attributed = typeSyntax.as(AttributedTypeSyntax.self) {
-      var attrs: [AttributeSignature] = []
+      var specifiers: [String] = []
       var isInout = false
 
       for specifier in attributed.specifiers {
@@ -401,20 +415,28 @@ public enum Extractor {
           simpleSpec.specifier.tokenKind == .keyword(.inout)
         {
           isInout = true
-        }
-      }
-
-      for attribute in attributed.attributes {
-        if let attr = attribute.as(AttributeSyntax.self) {
-          attrs.append(AttributeSignature(attr.attributeName.trimmedDescription))
+        } else {
+          specifiers.append(SwiftSyntaxCompatibility.typeSpecifierText(specifier))
         }
       }
 
       let bareType = attributed.baseType.trimmedDescription
-      return (bareType, attrs, isInout)
+      return ParameterTypeComponents(
+        type: bareType,
+        specifiers: specifiers,
+        attributes: extractAttributes(from: attributed.attributes),
+        lateSpecifiers: SwiftSyntaxCompatibility.lateTypeSpecifiers(attributed),
+        isInout: isInout
+      )
     }
 
-    return (typeSyntax.trimmedDescription, [], false)
+    return ParameterTypeComponents(
+      type: typeSyntax.trimmedDescription,
+      specifiers: [],
+      attributes: [],
+      lateSpecifiers: [],
+      isInout: false
+    )
   }
 
   private static func extractGenericParameters(

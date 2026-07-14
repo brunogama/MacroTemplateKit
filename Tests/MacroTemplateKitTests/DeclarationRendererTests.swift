@@ -193,11 +193,12 @@ final class DeclarationRendererTests: XCTestCase {
     let parameter = ParameterSignature<Void>(
       name: "value",
       type: "Int",
-      isInout: true,
+      specifiers: ["inout"],
       defaultValue: .literal(.integer(0))
     )
 
     XCTAssertTrue(parameter.isInout)
+    XCTAssertTrue(parameter.specifiers.isEmpty)
     XCTAssertNil(parameter.defaultValue)
 
     let declaration = Declaration<Void>.function(
@@ -211,6 +212,35 @@ final class DeclarationRendererTests: XCTestCase {
     let description = Renderer.render(declaration).formatted().description
     XCTAssertTrue(description.contains("func update(value: inout Int)"))
     XCTAssertFalse(description.contains("inout Int ="))
+  }
+
+  func testRenderFunction_preservesParameterTypeComponentOrder() {
+    let declaration = Declaration<Void>.function(
+      FunctionSignature(
+        name: "register",
+        parameters: [
+          ParameterSignature(
+            name: "handler",
+            type: "() -> Void",
+            specifiers: ["borrowing"],
+            attributes: [.sendable]
+          ),
+          ParameterSignature(
+            name: "callback",
+            type: "(Int32) -> Void",
+            attributes: [
+              AttributeSignature(name: "convention", arguments: .raw("c"))
+            ]
+          ),
+        ],
+        body: []
+      )
+    )
+
+    let description = Renderer.render(declaration).formatted().description
+
+    XCTAssertTrue(description.contains("handler: borrowing @Sendable () -> Void"))
+    XCTAssertTrue(description.contains("callback: @convention(c) (Int32) -> Void"))
   }
 
   func testRenderFunction_withAttributesGenericParametersAndWhereClause() {
