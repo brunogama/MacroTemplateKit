@@ -360,6 +360,12 @@ public struct Renderer {
           name: .keyword(.self)
         )
       )
+    case .implicitMember(let name):
+      return ExprSyntax(
+        MemberAccessExprSyntax(name: .identifier(name))
+      )
+    case .inOut(let expression):
+      return ExprSyntax(InOutExprSyntax(expression: render(expression)))
     default:
       return nil
     }
