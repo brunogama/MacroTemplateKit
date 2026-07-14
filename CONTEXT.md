@@ -17,9 +17,10 @@ The typed AST value describing a statement to generate (assignments, control flo
 The typed AST value describing a whole declaration to generate (properties, functions, structs).
 
 **Render Engine**:
-The `Renderer` family — the forward-only transformation from Template/Statement/Declaration
-values to SwiftSyntax nodes. Does not include extraction.
-_Avoid_: generator, emitter
+`Renderer` — the single forward-only transformation from Template/Statement/Declaration
+values to SwiftSyntax nodes. One concept, whatever files it spans. Does not include
+extraction.
+_Avoid_: generator, emitter, "the renderers" (there is one)
 
 **Extractor**:
 The reverse direction: reads parsed SwiftSyntax declarations into typed signatures. Not part
@@ -27,17 +28,24 @@ of the render engine.
 _Avoid_: parser (that's SwiftParser's job)
 
 **Expansion Pipeline**:
-The full round trip a macro pays per expansion: extract from the input tree, build templates,
-render to SwiftSyntax. The unit the render-engine benchmark measures.
+Everything a macro pays per expansion: extract from the input tree, construct the output,
+emit SwiftSyntax. The unit the generation workload measures — construction technique varies
+by pipeline; only the MacroTemplateKit variant builds templates.
 _Avoid_: round trip (collides with the description-reparse anti-pattern), render engine (that's the forward half only)
 
 ## Benchmarking
 
 **AST Generator Pipeline**:
-One switchable construction strategy in the benchmark harness (structural initializers,
+One switchable construction strategy in the generation workload (structural initializers,
 MacroTemplateKit templates, string-interpolation parse, description-reparse). All variants
 must produce token-identical output for the same fixture.
 _Avoid_: backend, mode
+
+**Tree Edit Pipeline**:
+One switchable edit strategy in the edit workload (targeted structural edit, rewriter).
+Same token-identical-output rule as AST generator pipelines. Distinct from generation:
+an edit changes an existing tree rather than producing new syntax.
+_Avoid_: conflating with AST generator pipeline
 
 **Fixture**:
 A generated, realistic annotated struct (parameterized by stored-property count) parsed once
