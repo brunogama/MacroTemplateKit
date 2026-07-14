@@ -521,7 +521,13 @@ extension Renderer {
     /// that happens to look like `\##n`) only costs an unnecessary merger
     /// pass, never a skipped one — false positives are acceptable, false
     /// negatives are not.
-    private static func mightNeedSegmentMerge(_ buffer: String) -> Bool {
+    // Internal rather than private: `Renderer.renderParsed(_: Statement<A>)`
+    // (`StatementRenderer.swift`) reuses this same scan rather than
+    // duplicating it, since a `Statement` buffer embeds `Template` source
+    // text via `SourceEmitter.emit(_: Template<A>, into:)` and is therefore
+    // just as susceptible to the escaped-newline segment-splitting quirk
+    // documented on `StringSegmentMerger` below.
+    static func mightNeedSegmentMerge(_ buffer: String) -> Bool {
         var previousWasBackslash = false
         for scalar in buffer.unicodeScalars {
             if previousWasBackslash {

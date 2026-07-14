@@ -326,3 +326,24 @@ extension Renderer {
     return CodeBlockItemSyntax(item: .expr(ExprSyntax(assignExpr)))
   }
 }
+
+extension Renderer {
+  /// Renders a statement via the source-emit-then-parse pipeline (see
+  /// `Renderer.renderParsed(_: Template<A>)` in `Renderer.swift` for the same
+  /// technique one level down, at expression granularity).
+  ///
+  /// Internal migration entry point: `SourceEmitter` writes Swift source
+  /// text for the statement (embedding `Template` source text for every
+  /// nested expression) into a buffer, which is then parsed once into a
+  /// `CodeBlockItemSyntax` node. `CodeBlockItemSyntax` has a
+  /// string-interpolation initializer in swift-syntax 603.0.2, so no
+  /// `CodeBlockItemListSyntax(...).first!` fallback is needed here.
+  static func renderParsed<A: Sendable>(_ statement: Statement<A>) -> CodeBlockItemSyntax {
+    var buffer = ""
+    SourceEmitter.emit(statement, into: &buffer)
+    let item = CodeBlockItemSyntax("\(raw: buffer)")
+    assert(!item.hasError, "SourceEmitter produced unparsable statement: \(buffer)")
+    guard mightNeedSegmentMerge(buffer) else { return item }
+    return StringSegmentMerger().visit(item)
+  }
+}

@@ -260,6 +260,32 @@ final class TemplateCorpusParityTests: XCTestCase {
     }
 }
 
+final class StatementCorpusParityTests: XCTestCase {
+    func testAllStatementCasesParity() {
+        for statement in ParityCorpus.statements {
+            assertTokenParity(Renderer.render(statement), Renderer.renderParsed(statement))
+        }
+    }
+
+    /// Regression test for the segment-merge reuse decision in
+    /// `Renderer.renderParsed(_: Statement<A>)`: a `Statement` buffer embeds
+    /// `Template` source text (here, a string literal with consecutive
+    /// escaped newlines) via `SourceEmitter.emit(_: Template<A>, into:)`, so
+    /// it is just as susceptible as a bare `Template` buffer to
+    /// `StringSegmentMerger`'s target lexer quirk. Confirms the shared
+    /// `mightNeedSegmentMerge`/`StringSegmentMerger` path (promoted to
+    /// internal in `Renderer.swift` for this reuse) actually engages at
+    /// statement granularity, not just expression granularity.
+    func testLetBindingWithMultilineStringInitializerParity() {
+        let statement: Statement<Void> = .letBinding(
+            name: "message",
+            type: nil,
+            initializer: .literal(.string("line1\nline2\nline3\nline4\nline5"))
+        )
+        assertTokenParity(Renderer.render(statement), Renderer.renderParsed(statement))
+    }
+}
+
 final class TemplateEmitterParityTests: XCTestCase {
     func testLiteralAndVariableParity() {
         let cases: [Template<Void>] = [
