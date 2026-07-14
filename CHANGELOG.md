@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- Normalize defaults away from `inout` parameters so rendered declarations remain valid Swift.
 - Address second round of PR #20 review feedback
 - Address PR #20 review feedback
 - Document single-binding limitation, add @available extraction tests
