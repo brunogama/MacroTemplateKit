@@ -12,7 +12,7 @@ Add MacroTemplateKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7"),
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
@@ -68,6 +68,32 @@ This produces:
 public func greet(name: String) -> String {
     return "Hello, " + name
 }
+```
+
+## Render an Initializer with a Structural Default
+
+Model parameter defaults with ``Template`` so they participate in the same
+payload transformation as the initializer body:
+
+```swift
+let initializer = Declaration<Void>.initDecl(
+  InitializerSignature(
+    accessLevel: .public,
+    parameters: [
+      ParameterSignature(
+        name: "client",
+        type: "any HTTPClient",
+        defaultValue: .functionCall(function: "NetworkClient", arguments: [])
+      )
+    ],
+    body: [
+      .assignmentStatement(
+        lhs: .propertyAccess(base: .variable("self", payload: ()), property: "client"),
+        rhs: .variable("client", payload: ())
+      )
+    ]
+  )
+)
 ```
 
 ## Use Fluent Expressions
