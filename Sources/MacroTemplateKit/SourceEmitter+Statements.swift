@@ -141,7 +141,15 @@ extension SourceEmitter {
     /// source (or the legacy structural renderer, once formatted) would
     /// produce, and Swift's newline-terminated-statement grammar parses it
     /// exactly like any other statement separator.
-    private static func emitStatements<A: Sendable>(
+    ///
+    /// Internal rather than private: `SourceEmitter+Declarations.swift`
+    /// (Task 5) reuses this exact per-statement/newline emission for
+    /// function bodies, initializer bodies, and computed-property
+    /// accessor bodies — those are all just `[Statement<A>]` values embedded
+    /// inside a `Declaration`, the same shape as the then/else/loop bodies
+    /// emitted here, so duplicating this loop there would just be a second
+    /// copy of the same lexical-boundary logic.
+    static func emitStatements<A: Sendable>(
         _ statements: [Statement<A>],
         into buffer: inout String
     ) {

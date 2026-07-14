@@ -230,6 +230,45 @@ enum ParityCorpus {
     .typeAlias(
       TypeAliasSignature(name: "StringMap", existingType: "[String: String]")
     ),
+
+    // MARK: Attributes (declaration-level attribute, plus a parameter-level
+    // attribute exercised through FunctionSignature.parameters) — easy to
+    // miss since every case above uses the empty-attributes default.
+    .function(
+      FunctionSignature(
+        attributes: [.mainActor],
+        isStatic: true,
+        name: "run",
+        parameters: [
+          ParameterSignature(label: "with", name: "handler", type: "() -> Void", attributes: [.escaping])
+        ],
+        isAsync: true,
+        canThrow: true,
+        body: [.expression(.functionCall(function: "handler", arguments: []))]
+      )
+    ),
+
+    // MARK: Generic constraints (SignatureSupport.swift's
+    // GenericParameterSignature/WhereRequirement) — a generic parameter with
+    // a constraint, a parameter pack with no constraint, and a `where`
+    // clause exercising both `WhereRequirement.Relation` cases.
+    .structDecl(
+      StructSignature(
+        name: "Box",
+        genericParameters: [
+          GenericParameterSignature(name: "Element", constraint: "Equatable"),
+          GenericParameterSignature(name: "Wrapped", isParameterPack: true),
+        ],
+        conformances: ["Equatable"],
+        whereRequirements: [
+          .conformance("Element", "Hashable"),
+          .sameType("Wrapped", "Element"),
+        ],
+        members: [
+          .property(PropertySignature(name: "value", type: "Element", isLet: true))
+        ]
+      )
+    ),
   ]
 }
 
@@ -256,6 +295,14 @@ final class TemplateCorpusParityTests: XCTestCase {
     func testAllTemplateCasesParity() {
         for template in ParityCorpus.templates {
             assertTokenParity(Renderer.render(template), Renderer.renderParsed(template))
+        }
+    }
+}
+
+final class DeclarationCorpusParityTests: XCTestCase {
+    func testAllDeclarationCasesParity() {
+        for declaration in ParityCorpus.declarations {
+            assertTokenParity(Renderer.render(declaration), Renderer.renderParsed(declaration))
         }
     }
 }

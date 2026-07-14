@@ -426,3 +426,25 @@ extension Renderer {
         }
     }
 }
+
+extension Renderer {
+    /// Renders a declaration via the source-emit-then-parse pipeline (see
+    /// `Renderer.renderParsed(_: Template<A>)` in `Renderer.swift` and
+    /// `Renderer.renderParsed(_: Statement<A>)` in `StatementRenderer.swift`
+    /// for the same technique one and two levels down, at expression and
+    /// statement granularity).
+    ///
+    /// Internal migration entry point: `SourceEmitter` writes Swift source
+    /// text for the declaration (embedding `Template`/`Statement` source
+    /// text for every nested expression/statement body via
+    /// `SourceEmitter+Declarations.swift`) into a buffer, which is then
+    /// parsed once into a `DeclSyntax` node.
+    static func renderParsed<A: Sendable>(_ declaration: Declaration<A>) -> DeclSyntax {
+        var buffer = ""
+        SourceEmitter.emit(declaration, into: &buffer)
+        let decl: DeclSyntax = "\(raw: buffer)"
+        assert(!decl.hasError, "SourceEmitter produced unparsable declaration: \(buffer)")
+        guard mightNeedSegmentMerge(buffer) else { return decl }
+        return StringSegmentMerger().visit(decl)
+    }
+}
