@@ -28,6 +28,7 @@ if title.contains("WIP") || title.contains("[WIP]") {
 
 let editedFiles = danger.git.modifiedFiles + danger.git.createdFiles
 let swiftFiles = editedFiles.filter { $0.hasSuffix(".swift") }
+let productionSwiftFiles = swiftFiles.filter { $0.hasPrefix("Sources/") }
 
 // Check for SwiftLint disable/enable tags - STRICTLY FORBIDDEN
 for file in swiftFiles {
@@ -50,7 +51,7 @@ for file in swiftFiles {
 }
 
 // Check for force unwrapping in production code
-for file in swiftFiles where !file.contains("Tests/") {
+for file in productionSwiftFiles {
     let content = danger.utils.readFile(file)
 
     // Simple heuristic: check for ! that's likely force unwrap
@@ -70,7 +71,7 @@ for file in swiftFiles where !file.contains("Tests/") {
 }
 
 // Check for fatalError in production code
-for file in swiftFiles where !file.contains("Tests/") {
+for file in productionSwiftFiles {
     let content = danger.utils.readFile(file)
 
     if content.contains("fatalError(") {

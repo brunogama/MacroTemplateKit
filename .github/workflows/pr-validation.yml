@@ -24,8 +24,7 @@ jobs:
 
       - name: Check Formatting
         run: |
-          swift-format lint --strict --recursive Sources/ Tests/
-          if [ $? -ne 0 ]; then
+          if ! swift-format lint --strict --recursive Sources/ Tests/; then
             echo "::error::Code is not properly formatted. Run 'swift-format format --in-place --recursive Sources/ Tests/' locally."
             exit 1
           fi
@@ -53,8 +52,7 @@ jobs:
 
       - name: Run SwiftLint Strict
         run: |
-          swiftlint lint --strict --reporter github-actions-logging Sources/ Tests/
-          if [ $? -ne 0 ]; then
+          if ! swiftlint lint --strict --reporter github-actions-logging Sources/ Tests/; then
             echo "::error::SwiftLint violations found. All issues must be fixed."
             exit 1
           fi
@@ -148,6 +146,7 @@ jobs:
 
       - name: Validate PR commits
         run: |
+          set -euo pipefail
           base="${{ github.event.pull_request.base.sha }}"
           head="${{ github.event.pull_request.head.sha }}"
           echo "Validating first-parent commits from $base to $head"
@@ -194,7 +193,7 @@ jobs:
         run: |
           danger_js_path="$(npm prefix --global)/bin/danger"
           test -x "$danger_js_path"
-          danger-swift ci --danger-js-path "$danger_js_path" --fail-on-errors
+          danger-swift ci --danger-js-path "$danger_js_path" --failOnErrors
 
   # Final gate - all checks must pass
   pr-ready:
