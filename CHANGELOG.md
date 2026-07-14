@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- Preserve parameter type-specifier order and argument-bearing attributes across extraction and
+  rendering on SwiftSyntax 600 and 603.
 - Normalize defaults away from `inout` parameters so rendered declarations remain valid Swift.
 - Address second round of PR #20 review feedback
 - Address PR #20 review feedback
@@ -38,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
+- Preserve ordinary throws, typed throws, and rethrows through the function declaration model.
+- Expose parameter-clause extraction so macro adapters can attach structured defaults without
+  duplicating Swift's parameter grammar.
 - Add contextual member expressions for code such as `.get` and `.shared`.
 - Add invocation-side inout expressions for code such as `&request`.
 - Raw attribute args, extension access level, strict concurrency
