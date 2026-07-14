@@ -956,4 +956,16 @@ final class NewCasesRendererTests: XCTestCase {
     }
     XCTAssertEqual(initPayload, 10, "Initializer payload should be transformed")
   }
+
+  func testRenderImplicitMember() {
+    let template: Template<Void> = .implicitMember("get")
+
+    XCTAssertEqual(Renderer.render(template).description, ".get")
+  }
+
+  func testRenderInOutExpression() {
+    let template: Template<Void> = .inOut(.variable("request", payload: ()))
+
+    XCTAssertEqual(Renderer.render(template).description, "&request")
+  }
 }

@@ -9,6 +9,9 @@ concurrency:
   group: pr-${{ github.head_ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # Strict format check - MUST pass
   format-check:
@@ -24,9 +27,8 @@ jobs:
 
       - name: Check Formatting
         run: |
-          swift-format lint --strict --recursive Sources/ Tests/
-          if [ $? -ne 0 ]; then
-            echo "::error::Code is not properly formatted. Run 'swift-format format --recursive Sources/ Tests/' locally."
+          if ! swift-format lint --strict --recursive Sources/ Tests/; then
+            echo "::error::Code is not properly formatted. Run 'swift-format format --in-place --recursive Sources/ Tests/' locally."
             exit 1
           fi
 
@@ -53,8 +55,7 @@ jobs:
 
       - name: Run SwiftLint Strict
         run: |
-          swiftlint lint --strict --reporter github-actions-logging Sources/ Tests/
-          if [ $? -ne 0 ]; then
+          if ! swiftlint lint --strict --reporter github-actions-logging Sources/ Tests/; then
             echo "::error::SwiftLint violations found. All issues must be fixed."
             exit 1
           fi
@@ -74,11 +75,45 @@ jobs:
       - name: Build with Strict Warnings
         run: swift build -Xswiftc -warnings-as-errors
 
+  swift-syntax-compatibility:
+    name: SwiftSyntax ${{ matrix.swift-syntax }} (macOS 26 hosted)
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        swift-syntax: ["600.0.1", "603.0.2"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Record hosted toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build and test exact SwiftSyntax version
+        env:
+          MTK_MATRIX_MODE: hosted
+        run: bash Scripts/test-swift-syntax-matrix.sh "${{ matrix.swift-syntax }}"
+
+  swift-syntax-compatibility-required:
+    name: SwiftSyntax Compatibility
+    if: ${{ always() }}
+    needs: swift-syntax-compatibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Require every compatibility entry
+        env:
+          MATRIX_RESULT: ${{ needs.swift-syntax-compatibility.result }}
+        run: test "$MATRIX_RESULT" = "success"
+
   # All tests MUST pass
   test-check:
     name: Tests
     runs-on: macos-14
-    needs: build-check
+    needs: [build-check, swift-syntax-compatibility-required]
 
     steps:
       - name: Checkout
@@ -104,18 +139,23 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24.18.0'
 
       - name: Install commitlint
         run: |
-          npm install --save-dev @commitlint/cli @commitlint/config-conventional
+          npm install --no-save --package-lock=false @commitlint/cli @commitlint/config-conventional
 
       - name: Validate PR commits
         run: |
-          echo "Validating commits from ${{ github.event.pull_request.base.sha }} to ${{ github.event.pull_request.head.sha }}"
-          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          echo "Validating first-parent commits from $base to $head"
+          git rev-list --first-parent --reverse "$base..$head" | while read -r commit; do
+            git show --quiet --format=%B "$commit" | npx commitlint --verbose
+          done
 
   # Danger validation
   danger-check:
@@ -137,13 +177,26 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.2.app
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.18.0'
+
       - name: Install Danger
-        run: brew install danger/tap/danger-swift
+        run: |
+          brew tap danger/tap
+          brew trust --formula danger/tap/danger-swift
+          brew trust --formula danger/tap/danger-js
+          brew install danger/tap/danger-swift
+          npm install --global danger@13.0.10
 
       - name: Run Danger
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: danger-swift ci --fail-on-errors
+        run: |
+          danger_js_path="$(npm prefix --global)/bin/danger"
+          test -x "$danger_js_path"
+          danger-swift ci --danger-js-path "$danger_js_path" --failOnErrors
 
   # Final gate - all checks must pass
   pr-ready:

@@ -14,8 +14,8 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
 
@@ -132,6 +132,32 @@ let function: Declaration<Void> = .function(FunctionSignature(
 ))
 
 let decl: DeclSyntax = Renderer.render(function)
+```
+
+### Building an Initializer with a Structural Default
+
+Parameter defaults are expression templates, so their references carry the same
+payload as the surrounding declaration:
+
+```swift
+let initializer = Declaration<Void>.initDecl(
+  InitializerSignature(
+    accessLevel: .public,
+    parameters: [
+      ParameterSignature(
+        name: "client",
+        type: "any HTTPClient",
+        defaultValue: .functionCall(function: "NetworkClient", arguments: [])
+      )
+    ],
+    body: [
+      .assignmentStatement(
+        lhs: .propertyAccess(base: .variable("self", payload: ()), property: "client"),
+        rhs: .variable("client", payload: ())
+      )
+    ]
+  )
+)
 ```
 
 ## Generics, Parameter Packs, and Attributes

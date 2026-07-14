@@ -484,4 +484,20 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(sig.name, "Test")
     XCTAssertEqual(sig.cases.count, 1)
   }
+
+  func testFunctorIdentityLaw_implicitMember() {
+    let template: Template<Int> = .implicitMember("shared")
+    XCTAssertEqual(template.map { $0 }, template)
+  }
+
+  func testFunctorCompositionLaw_inOut() {
+    let template: Template<Int> = .inOut(.variable("request", payload: 2))
+    let increment: (Int) -> Int = { $0 + 1 }
+    let stringify: (Int) -> String = String.init
+
+    XCTAssertEqual(
+      template.map(increment).map(stringify),
+      template.map { stringify(increment($0)) }
+    )
+  }
 }

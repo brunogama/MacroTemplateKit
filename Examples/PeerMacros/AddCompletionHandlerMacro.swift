@@ -118,7 +118,9 @@ private struct ParameterCallInfo {
     let argName: String
 }
 
-private func buildOriginalParameters(from funcDecl: FunctionDeclSyntax) -> [ParameterSignature] {
+private func buildOriginalParameters(
+    from funcDecl: FunctionDeclSyntax
+) -> [ParameterSignature<Void>] {
     funcDecl.signature.parameterClause.parameters.map { param in
         let labelText = param.firstName.text
         // secondName is present only when the caller wrote `label name: Type`.
@@ -154,7 +156,9 @@ private func extractReturnTypeName(from funcDecl: FunctionDeclSyntax) -> String 
     return typeText.isEmpty ? "Void" : typeText
 }
 
-private func buildCompletionHandlerParameter(returnTypeName: String) -> ParameterSignature {
+private func buildCompletionHandlerParameter(
+    returnTypeName: String
+) -> ParameterSignature<Void> {
     let handlerType = returnTypeName == "Void"
         ? "() -> Void"
         : "(\(returnTypeName)) -> Void"

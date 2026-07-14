@@ -84,8 +84,8 @@ DeclSyntax  ──►  Extractor.extract  ──►  Declaration<Never>
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ],
 targets: [
     .macro(
@@ -141,6 +141,32 @@ let decl: DeclSyntax = Renderer.render(
     ))
 )
 ```
+
+**Generate an initializer with a structural default:**
+
+```swift
+let initializer = Declaration<Void>.initDecl(
+  InitializerSignature(
+    accessLevel: .public,
+    parameters: [
+      ParameterSignature(
+        name: "client",
+        type: "any HTTPClient",
+        defaultValue: .functionCall(function: "NetworkClient", arguments: [])
+      )
+    ],
+    body: [
+      .assignmentStatement(
+        lhs: .propertyAccess(base: .variable("self", payload: ()), property: "client"),
+        rhs: .variable("client", payload: ())
+      )
+    ]
+  )
+)
+```
+
+The default expression and initializer body share the declaration's payload, so
+mapping the declaration transforms every reference as one structural unit.
 
 For most macros, `Template<Void>`, `Statement<Void>`, and `Declaration<Void>` are the default path. Use a non-`Void` payload only when you want to carry compile-time metadata through template construction.
 
@@ -649,7 +675,7 @@ Each file shows a real macro rewritten to use the template API, which makes them
 ## Requirements
 
 - Swift 5.10+ (Swift 6.x recommended for contributors)
-- SwiftSyntax 510.0 or later (tested up to 700.0)
+- SwiftSyntax 600.0.1 through the 6xx release line
 - macOS 13+ / iOS 16+ / tvOS 16+ / watchOS 9+
 
 ## Installation
@@ -660,8 +686,8 @@ For downstream macro packages, prefer the tagged binary release:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
 
@@ -690,7 +716,7 @@ binary release.
 
 **File > Add Package Dependencies**, enter `https://github.com/brunogama/MacroTemplateKit.git`, then:
 
-- select version `0.0.6` or later to consume the binary release
+- select version `0.0.7` or later to consume the binary release
 - use a branch or local checkout only when developing MacroTemplateKit itself
 
 ## Contributing

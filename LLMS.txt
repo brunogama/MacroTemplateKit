@@ -16,7 +16,7 @@ MacroTemplateKit provides a parametric algebraic data type (ADT) that separates 
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7")
 ]
 ```
 
@@ -31,7 +31,7 @@ dependencies: [
 ## Signature Types
 
 - `FunctionSignature<A>` — Components of a function declaration.
-- `ParameterSignature` — A single function parameter (external label, internal name, type).
+- `ParameterSignature<A>` — A function parameter whose structural default expression carries the declaration payload.
 - `PropertySignature<A>` — Stored property components.
 - `ComputedPropertySignature<A>` — Computed property with get/set accessors.
 - `SetterSignature<A>` — Property setter definition.
