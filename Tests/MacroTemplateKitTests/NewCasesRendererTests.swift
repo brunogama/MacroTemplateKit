@@ -304,8 +304,15 @@ final class NewCasesRendererTests: XCTestCase {
     )
     let result = Renderer.render(template)
 
+    // The parse-backed renderer yields an unfolded `SequenceExprSyntax` for
+    // `=` until `SwiftOperators.OperatorTable.foldAll` folds it into
+    // `InfixOperatorExprSyntax` (a fold this renderer deliberately doesn't
+    // perform, since only token content — not tree shape — is guaranteed);
+    // the legacy structural renderer builds `InfixOperatorExprSyntax`
+    // directly. Both are token-equivalent.
     XCTAssertTrue(
-      result.is(InfixOperatorExprSyntax.self), "Should render as InfixOperatorExprSyntax")
+      result.is(InfixOperatorExprSyntax.self) || result.is(SequenceExprSyntax.self),
+      "Should render as InfixOperatorExprSyntax or (pre-fold) SequenceExprSyntax")
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("self"), "Should contain lhs base")
     XCTAssertTrue(description.contains("name"), "Should contain property and rhs")

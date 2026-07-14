@@ -16,9 +16,21 @@ extension Renderer {
     /// - Handles functions, properties, computed properties, extensions, and structs
     /// - Recursively renders statement bodies and nested declarations
     ///
+    /// Implemented via the source-emit-then-parse pipeline (`renderParsed(_:)`
+    /// below). The per-node structural implementation this superseded is
+    /// retained as `legacyRender(_:)` for token-parity testing.
+    ///
     /// - Parameter declaration: Declaration to render
     /// - Returns: SwiftSyntax declaration node
     public static func render<A: Sendable>(_ declaration: Declaration<A>) -> DeclSyntax {
+        renderParsed(declaration)
+    }
+
+    /// Legacy per-node structural implementation that `render(_: Declaration<A>)`
+    /// used before the source-emit-then-parse pipeline replaced it, retained
+    /// side-by-side for token-parity testing. Not reachable from the public
+    /// API; scheduled for removal once the parity suite is retired.
+    static func legacyRender<A: Sendable>(_ declaration: Declaration<A>) -> DeclSyntax {
         switch declaration {
         case .function(let sig):
             return DeclSyntax(renderFunction(sig))
@@ -74,7 +86,7 @@ extension Renderer {
             returnClause: returnClause
         )
 
-        let body = CodeBlockSyntax(statements: renderStatements(sig.body))
+        let body = CodeBlockSyntax(statements: legacyRenderStatements(sig.body))
 
         var modifierList: [DeclModifierSyntax] = []
         if let keyword = sig.accessLevel.keyword {
@@ -111,7 +123,7 @@ extension Renderer {
 
         let pattern = IdentifierPatternSyntax(identifier: .identifier(sig.name))
         let typeAnnotation = sig.type.map { TypeAnnotationSyntax(type: TypeSyntax(stringLiteral: $0)) }
-        let initializer = sig.initializer.map { InitializerClauseSyntax(value: render($0)) }
+        let initializer = sig.initializer.map { InitializerClauseSyntax(value: legacyRender($0)) }
 
         let binding = PatternBindingSyntax(
             pattern: PatternSyntax(pattern),
@@ -139,7 +151,7 @@ extension Renderer {
         }
         let modifiers = DeclModifierListSyntax(modifierList)
 
-        let getterBody = CodeBlockSyntax(statements: renderStatements(sig.getter))
+        let getterBody = CodeBlockSyntax(statements: legacyRenderStatements(sig.getter))
         let getter = AccessorDeclSyntax(
             accessorSpecifier: .keyword(.get),
             body: getterBody
@@ -147,7 +159,7 @@ extension Renderer {
 
         var accessors: AccessorDeclListSyntax
         if let setterSig = sig.setter {
-            let setterBody = CodeBlockSyntax(statements: renderStatements(setterSig.body))
+            let setterBody = CodeBlockSyntax(statements: legacyRenderStatements(setterSig.body))
             let setter = AccessorDeclSyntax(
                 accessorSpecifier: .keyword(.set),
                 parameters: AccessorParametersSyntax(
@@ -192,7 +204,7 @@ extension Renderer {
     ) -> ExtensionDeclSyntax {
         let members = MemberBlockItemListSyntax(
             sig.members.map { member in
-                MemberBlockItemSyntax(decl: render(member))
+                MemberBlockItemSyntax(decl: legacyRender(member))
             }
         )
 
@@ -208,7 +220,7 @@ extension Renderer {
     private static func renderStruct<A: Sendable>(_ sig: StructSignature<A>) -> StructDeclSyntax {
         let members = MemberBlockItemListSyntax(
             sig.members.map { member in
-                MemberBlockItemSyntax(decl: render(member))
+                MemberBlockItemSyntax(decl: legacyRender(member))
             }
         )
 
@@ -230,7 +242,7 @@ extension Renderer {
 
         members.append(
             contentsOf: sig.members.map { member in
-                MemberBlockItemSyntax(decl: render(member))
+                MemberBlockItemSyntax(decl: legacyRender(member))
             }
         )
 
@@ -299,7 +311,7 @@ extension Renderer {
             }
         )
 
-        let body = CodeBlockSyntax(statements: renderStatements(sig.body))
+        let body = CodeBlockSyntax(statements: legacyRenderStatements(sig.body))
 
         return InitializerDeclSyntax(
             attributes: renderAttributes(sig.attributes),
@@ -434,11 +446,14 @@ extension Renderer {
     /// for the same technique one and two levels down, at expression and
     /// statement granularity).
     ///
-    /// Internal migration entry point: `SourceEmitter` writes Swift source
-    /// text for the declaration (embedding `Template`/`Statement` source
-    /// text for every nested expression/statement body via
-    /// `SourceEmitter+Declarations.swift`) into a buffer, which is then
-    /// parsed once into a `DeclSyntax` node.
+    /// `SourceEmitter` writes Swift source text for the declaration
+    /// (embedding `Template`/`Statement` source text for every nested
+    /// expression/statement body via `SourceEmitter+Declarations.swift`)
+    /// into a buffer, which is then parsed once into a `DeclSyntax` node.
+    /// This is the implementation behind the public
+    /// `render(_: Declaration<A>)` entry point above; it remains a separate
+    /// internal name so the token-parity suite can call it directly
+    /// alongside `legacyRender(_:)`.
     static func renderParsed<A: Sendable>(_ declaration: Declaration<A>) -> DeclSyntax {
         var buffer = ""
         SourceEmitter.emit(declaration, into: &buffer)

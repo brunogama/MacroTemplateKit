@@ -294,7 +294,7 @@ final class ParityHarnessTests: XCTestCase {
 final class TemplateCorpusParityTests: XCTestCase {
     func testAllTemplateCasesParity() {
         for template in ParityCorpus.templates {
-            assertTokenParity(Renderer.render(template), Renderer.renderParsed(template))
+            assertTokenParity(Renderer.legacyRender(template), Renderer.render(template))
         }
     }
 }
@@ -302,7 +302,7 @@ final class TemplateCorpusParityTests: XCTestCase {
 final class DeclarationCorpusParityTests: XCTestCase {
     func testAllDeclarationCasesParity() {
         for declaration in ParityCorpus.declarations {
-            assertTokenParity(Renderer.render(declaration), Renderer.renderParsed(declaration))
+            assertTokenParity(Renderer.legacyRender(declaration), Renderer.render(declaration))
         }
     }
 }
@@ -310,7 +310,7 @@ final class DeclarationCorpusParityTests: XCTestCase {
 final class StatementCorpusParityTests: XCTestCase {
     func testAllStatementCasesParity() {
         for statement in ParityCorpus.statements {
-            assertTokenParity(Renderer.render(statement), Renderer.renderParsed(statement))
+            assertTokenParity(Renderer.legacyRender(statement), Renderer.render(statement))
         }
     }
 
@@ -329,7 +329,7 @@ final class StatementCorpusParityTests: XCTestCase {
             type: nil,
             initializer: .literal(.string("line1\nline2\nline3\nline4\nline5"))
         )
-        assertTokenParity(Renderer.render(statement), Renderer.renderParsed(statement))
+        assertTokenParity(Renderer.legacyRender(statement), Renderer.render(statement))
     }
 }
 
@@ -342,7 +342,7 @@ final class TemplateEmitterParityTests: XCTestCase {
             .variable("newValue"),
         ]
         for template in cases {
-            assertTokenParity(Renderer.render(template), Renderer.renderParsed(template))
+            assertTokenParity(Renderer.legacyRender(template), Renderer.render(template))
         }
     }
 
@@ -352,7 +352,7 @@ final class TemplateEmitterParityTests: XCTestCase {
     /// segment the structural renderer produces.
     func testStringSegmentMergerHandlesManyConsecutiveEscapedNewlines() {
         let template: Template<Void> = .literal(.string("line1\nline2\nline3\nline4\nline5"))
-        assertTokenParity(Renderer.render(template), Renderer.renderParsed(template))
+        assertTokenParity(Renderer.legacyRender(template), Renderer.render(template))
     }
 
     /// Regression test for `StringSegmentMerger`: an escaped newline sitting
@@ -361,7 +361,7 @@ final class TemplateEmitterParityTests: XCTestCase {
     /// cleanly rather than leaving a stray empty segment behind.
     func testStringSegmentMergerHandlesTrailingEscapedNewline() {
         let template: Template<Void> = .literal(.string("trailing\n"))
-        assertTokenParity(Renderer.render(template), Renderer.renderParsed(template))
+        assertTokenParity(Renderer.legacyRender(template), Renderer.render(template))
     }
 
     /// Regression test for `StringSegmentMerger`: plain string segments on

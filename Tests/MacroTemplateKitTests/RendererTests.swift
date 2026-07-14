@@ -111,7 +111,15 @@ final class RendererTests: XCTestCase {
     )
     let result = Renderer.render(template)
 
-    XCTAssertTrue(result.is(TernaryExprSyntax.self), "Should render as TernaryExprSyntax")
+    // The parse-backed renderer yields a `SequenceExprSyntax` for `?:` until
+    // `SwiftOperators.OperatorTable.foldAll` folds it into `TernaryExprSyntax`
+    // (a fold this renderer deliberately doesn't perform, since only token
+    // content — not tree shape — is guaranteed); the legacy structural
+    // renderer builds `TernaryExprSyntax` directly. Both are token-equivalent.
+    XCTAssertTrue(
+      result.is(TernaryExprSyntax.self) || result.is(SequenceExprSyntax.self),
+      "Should render as TernaryExprSyntax or (pre-fold) SequenceExprSyntax"
+    )
     XCTAssertTrue(result.description.contains("true"), "Should contain condition")
     XCTAssertTrue(result.description.contains("1"), "Should contain then branch")
     XCTAssertTrue(result.description.contains("0"), "Should contain else branch")
@@ -172,9 +180,12 @@ final class RendererTests: XCTestCase {
     )
     let result = Renderer.render(template)
 
+    // See `testRenderConditional`'s comment: the parse-backed renderer
+    // yields an unfolded `SequenceExprSyntax` here rather than
+    // `InfixOperatorExprSyntax`; both carry the same tokens.
     XCTAssertTrue(
-      result.is(InfixOperatorExprSyntax.self),
-      "Should render as InfixOperatorExprSyntax"
+      result.is(InfixOperatorExprSyntax.self) || result.is(SequenceExprSyntax.self),
+      "Should render as InfixOperatorExprSyntax or (pre-fold) SequenceExprSyntax"
     )
     XCTAssertTrue(result.description.contains("1"), "Should contain left operand")
     XCTAssertTrue(result.description.contains("+"), "Should contain operator")
@@ -189,9 +200,11 @@ final class RendererTests: XCTestCase {
     )
     let result = Renderer.render(template)
 
+    // See `testRenderConditional`'s comment on `SequenceExprSyntax` vs
+    // `InfixOperatorExprSyntax` — both are token-equivalent here.
     XCTAssertTrue(
-      result.is(InfixOperatorExprSyntax.self),
-      "Should render as InfixOperatorExprSyntax"
+      result.is(InfixOperatorExprSyntax.self) || result.is(SequenceExprSyntax.self),
+      "Should render as InfixOperatorExprSyntax or (pre-fold) SequenceExprSyntax"
     )
     XCTAssertTrue(result.description.contains("x"), "Should contain left variable")
     XCTAssertTrue(result.description.contains(">="), "Should contain comparison operator")
@@ -295,10 +308,12 @@ final class RendererTests: XCTestCase {
     )
     let result = Renderer.render(template)
 
-    // Renders only the initializer expression (a + b)
+    // Renders only the initializer expression (a + b). See
+    // `testRenderConditional`'s comment on `SequenceExprSyntax` vs
+    // `InfixOperatorExprSyntax` — both are token-equivalent here.
     XCTAssertTrue(
-      result.is(InfixOperatorExprSyntax.self),
-      "Should render initializer as InfixOperatorExprSyntax"
+      result.is(InfixOperatorExprSyntax.self) || result.is(SequenceExprSyntax.self),
+      "Should render initializer as InfixOperatorExprSyntax or (pre-fold) SequenceExprSyntax"
     )
     XCTAssertTrue(result.description.contains("a"), "Should contain variable a")
     XCTAssertTrue(result.description.contains("+"), "Should contain operator")
@@ -356,7 +371,12 @@ final class RendererTests: XCTestCase {
     )
     let result = Renderer.render(template)
 
-    XCTAssertTrue(result.is(TernaryExprSyntax.self), "Should render as TernaryExprSyntax")
+    // See `testRenderConditional`'s comment on `SequenceExprSyntax` vs
+    // `TernaryExprSyntax` — both are token-equivalent here.
+    XCTAssertTrue(
+      result.is(TernaryExprSyntax.self) || result.is(SequenceExprSyntax.self),
+      "Should render as TernaryExprSyntax or (pre-fold) SequenceExprSyntax"
+    )
     XCTAssertTrue(result.description.contains("x"), "Should contain variable x")
     XCTAssertTrue(result.description.contains(">"), "Should contain comparison operator")
     XCTAssertTrue(result.description.contains("*"), "Should contain multiplication operator")

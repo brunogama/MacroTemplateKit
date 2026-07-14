@@ -186,18 +186,28 @@ final class TemplateBuilderTests: XCTestCase {
       }
       .tryAwait()
 
+    // Whitespace here reflects the parse-backed renderer's token trivia
+    // (real Swift source text, which requires a space after keywords like
+    // `try`/`await` and idiomatically spaces `:`/`,` in argument lists);
+    // the legacy structural renderer happened to omit that trivia, but the
+    // underlying token stream — `try`, `await`, `client`, `.`, `api`, ... —
+    // is unaffected. Trivia is allowed to differ per this plan's design;
+    // only token content is guaranteed.
     XCTAssertEqual(
       Renderer.render(template).trimmedDescription,
-      "tryawaitclient.api.fetch(id:userId,cache:true)"
+      "try await client.api.fetch(id: userId, cache: true)"
     )
   }
 
   func testEffectAndUnwrapInstanceFluency() {
+    // See `testMethod_builderAndChaining`'s comment on trivia vs token
+    // content: the parse-backed renderer's real-source-text trivia inserts
+    // the space `try`/`await` require after the keyword.
     XCTAssertEqual(
-      Renderer.render(Template<Void>.variable("work").trying()).trimmedDescription, "trywork")
+      Renderer.render(Template<Void>.variable("work").trying()).trimmedDescription, "try work")
     XCTAssertEqual(
       Renderer.render(Template<Void>.variable("task").awaiting()).trimmedDescription,
-      "awaittask"
+      "await task"
     )
     XCTAssertEqual(
       Renderer.render(Template<Void>.variable("value").unwrapped()).trimmedDescription,

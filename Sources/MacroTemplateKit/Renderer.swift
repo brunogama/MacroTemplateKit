@@ -22,9 +22,23 @@ public struct Renderer {
     /// - Translates each Template case to corresponding SwiftSyntax node
     /// - Preserves expression structure and semantics
     ///
+    /// Implemented via the source-emit-then-parse pipeline (`renderParsed(_:)`
+    /// below): `SourceEmitter` writes Swift source text for `template` into a
+    /// buffer, which is parsed once into the returned `ExprSyntax` node. The
+    /// per-node structural implementation this superseded is retained as
+    /// `legacyRender(_:)` for token-parity testing.
+    ///
     /// - Parameter template: Template to render
     /// - Returns: SwiftSyntax expression node
     public static func render<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
+        renderParsed(template)
+    }
+
+    /// Legacy per-node structural implementation that `render(_: Template<A>)`
+    /// used before the source-emit-then-parse pipeline replaced it, retained
+    /// side-by-side for token-parity testing. Not reachable from the public
+    /// API; scheduled for removal once the parity suite is retired.
+    static func legacyRender<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
         renderLiterals(template) ?? renderVariables(template) ?? renderControlFlow(template)
             ?? renderOperations(template) ?? renderEffects(template) ?? renderDeclarations(template)
             ?? renderCollections(template) ?? renderExtensions(template)
@@ -97,9 +111,9 @@ public struct Renderer {
     ) -> ExprSyntax {
         ExprSyntax(
             TernaryExprSyntax(
-                condition: render(condition),
-                thenExpression: render(thenBranch),
-                elseExpression: render(elseBranch)
+                condition: legacyRender(condition),
+                thenExpression: legacyRender(thenBranch),
+                elseExpression: legacyRender(elseBranch)
             )
         )
     }
@@ -113,7 +127,7 @@ public struct Renderer {
         ExprSyntax(
             FunctionCallExprSyntax(
                 calledExpression: MemberAccessExprSyntax(
-                    base: render(collection),
+                    base: legacyRender(collection),
                     name: .identifier("forEach")
                 ),
                 leftParen: .leftParenToken(),
@@ -128,7 +142,7 @@ public struct Renderer {
                                 )
                             ),
                             statements: CodeBlockItemListSyntax {
-                                CodeBlockItemSyntax(item: .expr(render(body)))
+                                CodeBlockItemSyntax(item: .expr(legacyRender(body)))
                             }
                         )
                     )
@@ -179,7 +193,7 @@ public struct Renderer {
         ExprSyntax(
             FunctionCallExprSyntax(
                 calledExpression: MemberAccessExprSyntax(
-                    base: render(base),
+                    base: legacyRender(base),
                     name: .identifier(method)
                 ),
                 leftParen: .leftParenToken(),
@@ -196,9 +210,9 @@ public struct Renderer {
     ) -> ExprSyntax {
         ExprSyntax(
             InfixOperatorExprSyntax(
-                leftOperand: render(left),
+                leftOperand: legacyRender(left),
                 operator: BinaryOperatorExprSyntax(operator: .binaryOperator(op)),
-                rightOperand: render(right)
+                rightOperand: legacyRender(right)
             )
         )
     }
@@ -209,7 +223,7 @@ public struct Renderer {
     ) -> ExprSyntax {
         ExprSyntax(
             MemberAccessExprSyntax(
-                base: render(base),
+                base: legacyRender(base),
                 name: .identifier(property)
             )
         )
@@ -220,9 +234,9 @@ public struct Renderer {
     private static func renderEffects<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
         switch template {
         case .tryExpression(let inner):
-            return ExprSyntax(TryExprSyntax(expression: render(inner)))
+            return ExprSyntax(TryExprSyntax(expression: legacyRender(inner)))
         case .awaitExpression(let inner):
-            return ExprSyntax(AwaitExprSyntax(expression: render(inner)))
+            return ExprSyntax(AwaitExprSyntax(expression: legacyRender(inner)))
         default:
             return nil
         }
@@ -268,7 +282,7 @@ public struct Renderer {
             return LabeledExprSyntax(
                 label: argument.label.map { .identifier($0) },
                 colon: argument.label != nil ? .colonToken() : nil,
-                expression: render(argument.value),
+                expression: legacyRender(argument.value),
                 trailingComma: isLast ? nil : .commaToken()
             )
         }
@@ -280,7 +294,7 @@ public struct Renderer {
     private static func renderDeclarations<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
         guard case .variableDeclaration(_, _, let initializer) = template else { return nil }
         // Limitation: Only render initializer expression (full variable declaration requires statement context)
-        return render(initializer)
+        return legacyRender(initializer)
     }
 
     // MARK: - Collections Rendering
@@ -294,7 +308,7 @@ public struct Renderer {
                     elements: ArrayElementListSyntax {
                         for (index, element) in elements.enumerated() {
                             ArrayElementSyntax(
-                                expression: render(element),
+                                expression: legacyRender(element),
                                 trailingComma: index < elements.count - 1 ? .commaToken() : nil
                             )
                         }
@@ -322,8 +336,8 @@ public struct Renderer {
         let elements = DictionaryElementListSyntax(
             entries.enumerated().map { index, entry -> DictionaryElementSyntax in
                 DictionaryElementSyntax(
-                    key: render(entry.key),
-                    value: render(entry.value),
+                    key: legacyRender(entry.key),
+                    value: legacyRender(entry.value),
                     trailingComma: index < entries.count - 1 ? .commaToken() : nil
                 )
             }
@@ -340,7 +354,7 @@ public struct Renderer {
         case .subscriptCall(let base, let arguments):
             return Renderer.renderSubscriptCall(base, arguments)
         case .forceUnwrap(let expr):
-            return ExprSyntax(ForceUnwrapExprSyntax(expression: render(expr)))
+            return ExprSyntax(ForceUnwrapExprSyntax(expression: legacyRender(expr)))
         case .stringInterpolation(let segments):
             return renderStringInterpolation(segments)
         case .closure(let sig):
@@ -348,9 +362,9 @@ public struct Renderer {
         case .assignment(let lhs, let rhs):
             return ExprSyntax(
                 InfixOperatorExprSyntax(
-                    leftOperand: render(lhs),
+                    leftOperand: legacyRender(lhs),
                     operator: AssignmentExprSyntax(),
-                    rightOperand: render(rhs)
+                    rightOperand: legacyRender(rhs)
                 )
             )
         case .selfAccess(let typeName):
@@ -371,9 +385,9 @@ public struct Renderer {
     ) -> ExprSyntax {
         ExprSyntax(
             SubscriptCallExprSyntax(
-                calledExpression: render(base),
+                calledExpression: legacyRender(base),
                 arguments: LabeledExprListSyntax([
-                    LabeledExprSyntax(expression: render(index))
+                    LabeledExprSyntax(expression: legacyRender(index))
                 ])
             )
         )
@@ -389,7 +403,7 @@ public struct Renderer {
             case .expression(let expr):
                 return .expressionSegment(
                     ExpressionSegmentSyntax(
-                        expressions: LabeledExprListSyntax([LabeledExprSyntax(expression: render(expr))])
+                        expressions: LabeledExprListSyntax([LabeledExprSyntax(expression: legacyRender(expr))])
                     )
                 )
             }
@@ -414,7 +428,7 @@ public struct Renderer {
         return ExprSyntax(
             ClosureExprSyntax(
                 signature: closureSignature,
-                statements: renderStatements(sig.body)
+                statements: legacyRenderStatements(sig.body)
             )
         )
     }
@@ -456,7 +470,7 @@ extension Renderer {
                 elements: LabeledExprListSyntax(
                     elements.enumerated().map { index, element in
                         LabeledExprSyntax(
-                            expression: render(element),
+                            expression: legacyRender(element),
                             trailingComma: index < elements.count - 1 ? .commaToken() : nil
                         )
                     }
@@ -475,7 +489,7 @@ extension Renderer {
                 return LabeledExprSyntax(
                     label: argument.label.map { .identifier($0) },
                     colon: argument.label != nil ? .colonToken(trailingTrivia: .space) : nil,
-                    expression: render(argument.value),
+                    expression: legacyRender(argument.value),
                     trailingComma: isLast ? nil : .commaToken(trailingTrivia: .space)
                 )
             }
@@ -483,7 +497,7 @@ extension Renderer {
 
         return ExprSyntax(
             SubscriptCallExprSyntax(
-                calledExpression: render(base),
+                calledExpression: legacyRender(base),
                 arguments: renderedArguments
             )
         )
@@ -494,10 +508,11 @@ extension Renderer {
 extension Renderer {
     /// Renders a template via the source-emit-then-parse pipeline.
     ///
-    /// Internal migration entry point: `SourceEmitter` writes Swift source text
-    /// into a buffer, which is then parsed once into an `ExprSyntax` node. This
-    /// is being validated for token parity against the structural `render(_:)`
-    /// pipeline before it replaces the public entry point.
+    /// `SourceEmitter` writes Swift source text into a buffer, which is then
+    /// parsed once into an `ExprSyntax` node. This is the implementation
+    /// behind the public `render(_: Template<A>)` entry point above; it
+    /// remains a separate internal name so the token-parity suite can call it
+    /// directly alongside `legacyRender(_:)`.
     static func renderParsed<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
         var buffer = ""
         SourceEmitter.emit(template, into: &buffer)
