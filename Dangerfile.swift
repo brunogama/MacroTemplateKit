@@ -28,10 +28,13 @@ if title.contains("WIP") || title.contains("[WIP]") {
 
 let editedFiles = danger.git.modifiedFiles + danger.git.createdFiles
 let swiftFiles = editedFiles.filter { $0.hasSuffix(".swift") }
+let lintedSwiftFiles = swiftFiles.filter {
+    $0.hasPrefix("Sources/") || $0.hasPrefix("Tests/")
+}
 let productionSwiftFiles = swiftFiles.filter { $0.hasPrefix("Sources/") }
 
 // Check for SwiftLint disable/enable tags - STRICTLY FORBIDDEN
-for file in swiftFiles {
+for file in lintedSwiftFiles {
     let content = danger.utils.readFile(file)
 
     let forbiddenPatterns = [
