@@ -8,6 +8,9 @@ let allPipelines: [ASTGeneratorPipeline] = [
     MTKPipeline(),
     InterpolationPipeline(),
     ReparsePipeline(),
+    ParseBackedMTKPipeline(),
+    InternedStructuralPipeline(),
+    MemoizedMTKPipeline(),
 ]
 
 let allEditPipelines: [TreeEditPipeline] = [

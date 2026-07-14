@@ -19,7 +19,7 @@ struct StructuralPipeline: ASTGeneratorPipeline {
     }
 
     // get { _storage["name", default: <default>] as! <Type> }
-    private static func getter(for property: StoredProperty) -> AccessorDeclSyntax {
+    static func getter(for property: StoredProperty) -> AccessorDeclSyntax {
         let subscriptWithDefault = SubscriptCallExprSyntax(
             calledExpression: ExprSyntax(
                 DeclReferenceExprSyntax(baseName: .identifier("_storage"))
@@ -52,7 +52,7 @@ struct StructuralPipeline: ASTGeneratorPipeline {
     }
 
     // set { _storage["name"] = newValue }
-    private static func setter(for property: StoredProperty) -> AccessorDeclSyntax {
+    static func setter(for property: StoredProperty) -> AccessorDeclSyntax {
         let storageSubscript = SubscriptCallExprSyntax(
             calledExpression: ExprSyntax(
                 DeclReferenceExprSyntax(baseName: .identifier("_storage"))
