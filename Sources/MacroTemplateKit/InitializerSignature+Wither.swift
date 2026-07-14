@@ -33,7 +33,7 @@ extension InitializerSignature {
     )
   }
 
-  public func withParameters(_ parameters: [ParameterSignature]) -> Self {
+  public func withParameters(_ parameters: [ParameterSignature<A>]) -> Self {
     InitializerSignature(
       accessLevel: accessLevel, attributes: attributes, isFailable: isFailable,
       genericParameters: genericParameters, parameters: parameters,
@@ -67,7 +67,7 @@ extension InitializerSignature {
     )
   }
 
-  public func addingParameter(_ parameter: ParameterSignature) -> Self {
+  public func addingParameter(_ parameter: ParameterSignature<A>) -> Self {
     withParameters(parameters + [parameter])
   }
 

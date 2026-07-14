@@ -395,28 +395,25 @@ extension Renderer {
 
   // MARK: - Parameter Helpers
 
-  private static func renderParameterList(
-    _ parameters: [ParameterSignature]
+  private static func renderParameterList<A: Sendable>(
+    _ parameters: [ParameterSignature<A>]
   ) -> [FunctionParameterSyntax] {
-    parameters.enumerated().map { index, param -> FunctionParameterSyntax in
-      let firstName = param.label.map { TokenSyntax.identifier($0) } ?? .identifier(param.name)
-      let secondName = param.label != nil ? TokenSyntax.identifier(param.name) : nil
-      let typePrefix = param.attributes.map(renderAttributeSource).joined(separator: " ")
-      let bareType = param.isInout ? "inout \(param.type)" : param.type
+    parameters.enumerated().map { index, parameter in
+      let firstName =
+        parameter.label.map { TokenSyntax.identifier($0) } ?? .identifier(parameter.name)
+      let secondName = parameter.label == nil ? nil : TokenSyntax.identifier(parameter.name)
+      let typePrefix = parameter.attributes.map(renderAttributeSource).joined(separator: " ")
+      let bareType = parameter.isInout ? "inout \(parameter.type)" : parameter.type
       let typeString = typePrefix.isEmpty ? bareType : "\(typePrefix) \(bareType)"
-
-      let defaultExpr: InitializerClauseSyntax? = param.defaultValue.map { value in
-        InitializerClauseSyntax(value: ExprSyntax(stringLiteral: value))
-      }
-
-      let isLast = index == parameters.count - 1
 
       return FunctionParameterSyntax(
         firstName: firstName,
         secondName: secondName,
         type: TypeSyntax(stringLiteral: typeString),
-        defaultValue: defaultExpr,
-        trailingComma: isLast ? nil : .commaToken()
+        defaultValue: parameter.defaultValue.map {
+          InitializerClauseSyntax(value: Renderer.render($0))
+        },
+        trailingComma: index == parameters.count - 1 ? nil : .commaToken()
       )
     }
   }

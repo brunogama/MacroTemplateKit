@@ -957,4 +957,51 @@ final class DeclarationRendererTests: XCTestCase {
       "Should contain generic where clause"
     )
   }
+
+  func testRenderInitializerWithStructuredDefaultExpression() {
+    let declaration = Declaration<Void>.initDecl(
+      InitializerSignature(
+        accessLevel: .public,
+        parameters: [
+          ParameterSignature(
+            name: "client",
+            type: "any HTTPClient",
+            defaultValue: .functionCall(function: "NetworkClient", arguments: [])
+          )
+        ],
+        body: []
+      )
+    )
+
+    XCTAssertTrue(
+      Renderer.render(declaration).formatted().description.contains(
+        "public init(client: any HTTPClient = NetworkClient())"
+      )
+    )
+  }
+
+  func testParameterDefaultsParticipateInDeclarationMap() {
+    let declaration = Declaration<Int>.function(
+      FunctionSignature(
+        name: "load",
+        parameters: [
+          ParameterSignature(
+            name: "value",
+            type: "Int",
+            defaultValue: .variable("defaultValue", payload: 4)
+          )
+        ]
+      )
+    )
+
+    let mapped = declaration.map(String.init)
+
+    guard case .function(let signature) = mapped,
+      case .variable(_, let payload)? = signature.parameters.first?.defaultValue
+    else {
+      return XCTFail("Expected a mapped structured default")
+    }
+
+    XCTAssertEqual(payload, "4")
+  }
 }

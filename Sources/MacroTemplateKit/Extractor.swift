@@ -13,6 +13,10 @@ import SwiftSyntax
 ///   computed-property accessor bodies. No executable code or initializer expressions are
 ///   preserved in the extracted model. Use `.map` to swap `Never` for your payload type
 ///   and attach body statements or initializers after extraction.
+/// - **Parameter defaults**: Default expressions are intentionally omitted because extraction
+///   models declaration signatures, not executable expressions. `Declaration<Never>` cannot
+///   manufacture metadata for reference-bearing defaults; callers that support a bounded default
+///   grammar should parse those expressions structurally before attaching a concrete payload.
 /// - **Untyped computed properties**: Computed properties without explicit type annotations
 ///   (e.g. `var x { 1 }`) are skipped because `ComputedPropertySignature` requires a type.
 /// - **`open` access level**: `AccessLevel` does not model `open`. Declarations marked
@@ -357,7 +361,7 @@ public enum Extractor {
 
   private static func extractParameters(
     from parameterClause: FunctionParameterClauseSyntax
-  ) -> [ParameterSignature] {
+  ) -> [ParameterSignature<Never>] {
     parameterClause.parameters.map { param in
       let firstName = param.firstName.text
       let secondName = param.secondName?.text
@@ -374,15 +378,13 @@ public enum Extractor {
 
       let (bareType, paramAttributes, isInout) = unwrapParameterType(param.type)
 
-      let defaultValue = param.defaultValue?.value.trimmedDescription
-
-      return ParameterSignature(
+      return ParameterSignature<Never>(
         label: label,
         name: name,
         type: bareType,
         attributes: paramAttributes,
         isInout: isInout,
-        defaultValue: defaultValue
+        defaultValue: nil
       )
     }
   }

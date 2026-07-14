@@ -153,8 +153,8 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Generic parameter clause (e.g. `<T, each Element>`).
   public let genericParameters: [GenericParameterSignature]
 
-  /// Parameter list with labels, names, and types.
-  public let parameters: [ParameterSignature]
+  /// Parameter list whose defaults participate in the declaration's payload transformations.
+  public let parameters: [ParameterSignature<A>]
 
   /// Whether function is async.
   public let isAsync: Bool
@@ -178,7 +178,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
     isMutating: Bool = false,
     name: String,
     genericParameters: [GenericParameterSignature] = [],
-    parameters: [ParameterSignature] = [],
+    parameters: [ParameterSignature<A>] = [],
     isAsync: Bool = false,
     canThrow: Bool = false,
     returnType: String? = nil,
@@ -200,33 +200,45 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   }
 }
 
-/// Parameter signature for function parameters.
-public struct ParameterSignature: Equatable, Hashable, Sendable {
-  /// External label (nil for no label, "_" for explicit no label).
+/// A function parameter whose default expression shares the declaration's metadata payload.
+///
+/// Keeping defaults inside `Template` ensures declaration transformations cannot lose or
+/// bypass expression structure.
+public struct ParameterSignature<A>: Sendable where A: Sendable {
+  /// The external label, kept separate from the local name so rendering preserves call syntax.
   public let label: String?
 
-  /// Internal parameter name.
+  /// The local name used by the generated implementation.
   public let name: String
 
-  /// Parameter type.
+  /// The declared Swift type, retained as type syntax rather than executable expression syntax.
   public let type: String
 
-  /// Parameter attributes that prefix the type (e.g. `@escaping`).
+  /// Attributes that qualify the parameter type, such as `@escaping`.
   public let attributes: [AttributeSignature]
 
-  /// Whether parameter is inout.
+  /// Whether the declaration transfers the argument with `inout` ownership.
   public let isInout: Bool
 
-  /// Default value expression as raw string (e.g., ".shared", "nil", "42").
-  public let defaultValue: String?
+  /// The structural default expression, carrying the same metadata payload as the declaration.
+  public let defaultValue: Template<A>?
 
+  /// Creates a parameter signature whose optional default remains part of the template algebra.
+  ///
+  /// - Parameters:
+  ///   - label: The external call-site label, or `nil` to reuse `name`.
+  ///   - name: The local name visible inside the generated implementation.
+  ///   - type: The declared Swift parameter type.
+  ///   - attributes: Attributes that qualify the parameter type.
+  ///   - isInout: Whether the declaration uses `inout` ownership.
+  ///   - defaultValue: A structural default expression that shares payload transformations.
   public init(
     label: String? = nil,
     name: String,
     type: String,
     attributes: [AttributeSignature] = [],
     isInout: Bool = false,
-    defaultValue: String? = nil
+    defaultValue: Template<A>? = nil
   ) {
     self.label = label
     self.name = name
@@ -235,7 +247,28 @@ public struct ParameterSignature: Equatable, Hashable, Sendable {
     self.isInout = isInout
     self.defaultValue = defaultValue
   }
+
+  /// Transforms metadata in the default expression while preserving the parameter signature.
+  ///
+  /// This keeps parameter defaults in the same functor transformation as declaration bodies.
+  ///
+  /// - Parameter transform: Function applied to each payload in the default expression.
+  /// - Returns: A parameter with identical signature structure and transformed default metadata.
+  public func map<B>(_ transform: (A) -> B) -> ParameterSignature<B> where B: Sendable {
+    ParameterSignature<B>(
+      label: label,
+      name: name,
+      type: type,
+      attributes: attributes,
+      isInout: isInout,
+      defaultValue: defaultValue?.map(transform)
+    )
+  }
 }
+
+extension ParameterSignature: Equatable where A: Equatable {}
+
+extension ParameterSignature: Hashable where A: Hashable {}
 
 /// Property signature for stored properties.
 public struct PropertySignature<A>: Sendable where A: Sendable {
@@ -379,8 +412,8 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
   /// Generic parameter clause (e.g. `<T, each Element>`).
   public let genericParameters: [GenericParameterSignature]
 
-  /// Parameter list with labels, names, types, and default values.
-  public let parameters: [ParameterSignature]
+  /// Parameter list whose defaults participate in the declaration's payload transformations.
+  public let parameters: [ParameterSignature<A>]
 
   /// Whether initializer can throw.
   public let canThrow: Bool
@@ -396,7 +429,7 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
     attributes: [AttributeSignature] = [],
     isFailable: Bool = false,
     genericParameters: [GenericParameterSignature] = [],
-    parameters: [ParameterSignature] = [],
+    parameters: [ParameterSignature<A>] = [],
     canThrow: Bool = false,
     whereRequirements: [WhereRequirement] = [],
     body: [Statement<A>] = []
@@ -458,7 +491,7 @@ extension FunctionSignature {
       isMutating: isMutating,
       name: name,
       genericParameters: genericParameters,
-      parameters: parameters,
+      parameters: parameters.map { $0.map(transform) },
       isAsync: isAsync,
       canThrow: canThrow,
       returnType: returnType,
@@ -544,7 +577,7 @@ extension InitializerSignature {
       attributes: attributes,
       isFailable: isFailable,
       genericParameters: genericParameters,
-      parameters: parameters,
+      parameters: parameters.map { $0.map(transform) },
       canThrow: canThrow,
       whereRequirements: whereRequirements,
       body: body.map { $0.map(transform) }

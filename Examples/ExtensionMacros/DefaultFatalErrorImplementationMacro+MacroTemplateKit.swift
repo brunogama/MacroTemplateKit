@@ -192,14 +192,14 @@ public enum DefaultFatalErrorImplementationMacro: ExtensionMacro {
     return .function(signature)
   }
 
-  /// Converts SwiftSyntax `FunctionParameterListSyntax` to `[ParameterSignature]`.
+  /// Converts SwiftSyntax parameter syntax to signature-only `ParameterSignature<Never>` values.
   ///
   /// In SwiftSyntax, an unlabelled parameter (`_ name: Type`) has
   /// `firstName.tokenKind == .keyword(.wildcard)`.  A label-and-name pair (`label name: Type`)
   /// has `firstName` as the external label and `secondName` as the internal name.
   private static func extractParameters(
     from functionDecl: FunctionDeclSyntax
-  ) -> [ParameterSignature] {
+  ) -> [ParameterSignature<Never>] {
     functionDecl.signature.parameterClause.parameters.map { param in
       let externalLabel: String?
       switch param.firstName.tokenKind {
@@ -210,7 +210,7 @@ public enum DefaultFatalErrorImplementationMacro: ExtensionMacro {
         externalLabel = param.firstName.text
       }
       let internalName = (param.secondName ?? param.firstName).text
-      return ParameterSignature(
+      return ParameterSignature<Never>(
         label: externalLabel,
         name: internalName,
         type: param.type.trimmedDescription,

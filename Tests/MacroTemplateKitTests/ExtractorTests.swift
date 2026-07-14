@@ -618,4 +618,28 @@ final class ExtractorTests: XCTestCase {
     }
     XCTAssertTrue(sig.isStatic)
   }
+
+  func testFunctionExtractionDropsExecutableParameterDefaults() {
+    let declaration = Declaration<Void>.function(
+      FunctionSignature(
+        name: "load",
+        parameters: [
+          ParameterSignature(
+            name: "policy",
+            type: "Policy",
+            defaultValue: .implicitMember("standard")
+          )
+        ],
+        body: []
+      )
+    )
+
+    let extracted = Extractor.extract(Renderer.render(declaration))
+
+    guard case .function(let signature) = extracted else {
+      return XCTFail("Expected a function declaration")
+    }
+
+    XCTAssertNil(signature.parameters.first?.defaultValue)
+  }
 }

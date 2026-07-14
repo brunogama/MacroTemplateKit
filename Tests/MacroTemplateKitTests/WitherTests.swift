@@ -43,7 +43,7 @@ final class WitherTests: XCTestCase {
   func testFunctionSignature_addingParameter() {
     let sig = FunctionSignature<Void>(name: "test")
     let modified = sig.addingParameter(
-      ParameterSignature(label: nil, name: "x", type: "Int")
+      ParameterSignature<Void>(label: nil, name: "x", type: "Int")
     )
     XCTAssertEqual(modified.parameters.count, 1)
     XCTAssertEqual(modified.parameters[0].name, "x")
@@ -53,8 +53,8 @@ final class WitherTests: XCTestCase {
     let sig = FunctionSignature<Void>(
       name: "test",
       parameters: [
-        ParameterSignature(label: nil, name: "a", type: "Int"),
-        ParameterSignature(label: nil, name: "b", type: "Int"),
+        ParameterSignature<Void>(label: nil, name: "a", type: "Int"),
+        ParameterSignature<Void>(label: nil, name: "b", type: "Int"),
       ]
     )
     let modified = sig.removingParameter(named: "a")
@@ -80,7 +80,7 @@ final class WitherTests: XCTestCase {
   func testInitializerSignature_addingParameter() {
     let sig = InitializerSignature<Void>()
     let modified = sig.addingParameter(
-      ParameterSignature(label: nil, name: "value", type: "String")
+      ParameterSignature<Void>(label: nil, name: "value", type: "String")
     )
     XCTAssertEqual(modified.parameters.count, 1)
   }

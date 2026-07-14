@@ -134,7 +134,7 @@ public struct AddAsyncMacro: PeerMacro {
 private struct AsyncSignatureDescription {
     let accessLevel: AccessLevel
     let name: String
-    let parameters: [ParameterSignature]
+    let parameters: [ParameterSignature<Void>]
     let canThrow: Bool
     let returnType: String?
 }
@@ -142,7 +142,7 @@ private struct AsyncSignatureDescription {
 private func buildAsyncSignature(
     name: String,
     accessLevel: AccessLevel,
-    parameters: [ParameterSignature],
+    parameters: [ParameterSignature<Void>],
     handlerShape: CompletionHandlerShape
 ) -> AsyncSignatureDescription {
     switch handlerShape {
@@ -350,7 +350,7 @@ private func resolveHandlerShape(from handlerType: FunctionTypeSyntax) -> Comple
     return .resultType(successType: successType.description.trimmingCharacters(in: .whitespaces))
 }
 
-private func dropLastParameter(from funcDecl: FunctionDeclSyntax) -> [ParameterSignature] {
+private func dropLastParameter(from funcDecl: FunctionDeclSyntax) -> [ParameterSignature<Void>] {
     let params = funcDecl.signature.parameterClause.parameters
     guard params.count > 1 else {
         return []
@@ -372,7 +372,7 @@ private func dropLastParameter(from funcDecl: FunctionDeclSyntax) -> [ParameterS
 }
 
 private func buildCallArguments(
-    from parameters: [ParameterSignature]
+    from parameters: [ParameterSignature<Void>]
 ) -> [(label: String?, argName: String)] {
     parameters.map { param in
         (label: param.label, argName: param.name)

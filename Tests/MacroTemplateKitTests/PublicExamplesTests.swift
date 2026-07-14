@@ -141,6 +141,37 @@ final class PublicExamplesTests: XCTestCase {
     )
   }
 
+  func testStructuredParameterDefaultsRenderExpectedCode() {
+    let declaration: DeclSyntax = Renderer.render(
+      Declaration<Void>.initDecl(
+        InitializerSignature(
+          parameters: [
+            ParameterSignature<Void>(
+              name: "client",
+              type: "any HTTPClient",
+              defaultValue: .functionCall(function: "NetworkClient", arguments: [])
+            ),
+            ParameterSignature<Void>(
+              name: "policy",
+              type: "Policy",
+              defaultValue: .implicitMember("standard")
+            ),
+          ],
+          body: []
+        )
+      )
+    )
+
+    XCTAssertTrue(
+      normalized(declaration.formatted().description)
+        .contains(
+          normalized(
+            "init(client: any HTTPClient = NetworkClient(), policy: Policy = .standard)"
+          )
+        )
+    )
+  }
+
   func testExamplesStyleDeclarationRendersExpectedCode() {
     let declaration: DeclSyntax = Renderer.render(
       Declaration<Void>.function(

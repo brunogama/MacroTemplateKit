@@ -55,7 +55,7 @@ extension FunctionSignature {
     )
   }
 
-  public func withParameters(_ parameters: [ParameterSignature]) -> Self {
+  public func withParameters(_ parameters: [ParameterSignature<A>]) -> Self {
     FunctionSignature(
       accessLevel: accessLevel, attributes: attributes, isStatic: isStatic,
       isMutating: isMutating, name: name, genericParameters: genericParameters,
@@ -111,7 +111,7 @@ extension FunctionSignature {
     )
   }
 
-  public func addingParameter(_ parameter: ParameterSignature) -> Self {
+  public func addingParameter(_ parameter: ParameterSignature<A>) -> Self {
     withParameters(parameters + [parameter])
   }
 
