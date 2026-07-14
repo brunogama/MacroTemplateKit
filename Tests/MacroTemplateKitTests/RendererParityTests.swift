@@ -231,3 +231,17 @@ final class ParityHarnessTests: XCTestCase {
     }
   }
 }
+
+final class TemplateEmitterParityTests: XCTestCase {
+    func testLiteralAndVariableParity() {
+        let cases: [Template<Void>] = [
+            .literal(.integer(42)), .literal(.double(1.5)),
+            .literal(.string("he said \"hi\"\nline2")),
+            .literal(.boolean(true)), .literal(.nil),
+            .variable("newValue"),
+        ]
+        for template in cases {
+            assertTokenParity(Renderer.render(template), Renderer.renderParsed(template))
+        }
+    }
+}

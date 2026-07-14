@@ -490,3 +490,54 @@ extension Renderer {
     }
 
 }
+
+extension Renderer {
+    /// Renders a template via the source-emit-then-parse pipeline.
+    ///
+    /// Internal migration entry point: `SourceEmitter` writes Swift source text
+    /// into a buffer, which is then parsed once into an `ExprSyntax` node. This
+    /// is being validated for token parity against the structural `render(_:)`
+    /// pipeline before it replaces the public entry point.
+    static func renderParsed<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
+        var buffer = ""
+        SourceEmitter.emit(template, into: &buffer)
+        let expr: ExprSyntax = "\(raw: buffer)"
+        assert(!expr.hasError, "SourceEmitter produced unparsable source: \(buffer)")
+        return StringSegmentMerger().visit(expr)
+    }
+}
+
+/// Compensates for a SwiftParser lexer behavior that `StringLiteralExprSyntax`'s
+/// `content:` convenience initializer does not replicate: re-lexing a string
+/// literal whose content contains an escaped `\n` or `\r` always splits the
+/// literal into multiple `stringSegment` tokens at each escape (SwiftParser's
+/// `Cursor.lexInStringLiteral`, unconditionally — not just for multiline string
+/// literals), whereas `StringLiteralExprSyntax(content:)` always builds a single
+/// segment token for the whole content. Left uncorrected, parsing
+/// `SourceEmitter`'s buffer would produce more tokens than the structural
+/// renderer for any string containing a newline or carriage return, breaking
+/// token parity for a purely lexical reason with no semantic difference. This
+/// rewriter merges consecutive plain `.stringSegment` elements back into one
+/// (leaving `.expressionSegment` interpolation segments untouched), restoring
+/// parity with the structural renderer's convention.
+private final class StringSegmentMerger: SyntaxRewriter {
+    override func visit(_ node: StringLiteralExprSyntax) -> ExprSyntax {
+        let rewritten = super.visit(node)
+        guard let literal = rewritten.as(StringLiteralExprSyntax.self) else { return rewritten }
+
+        var merged: [StringLiteralSegmentListSyntax.Element] = []
+        for segment in literal.segments {
+            if case .stringSegment(let current) = segment,
+                let lastIndex = merged.indices.last,
+                case .stringSegment(let previous) = merged[lastIndex]
+            {
+                merged[lastIndex] = .stringSegment(
+                    previous.with(\.content, .stringSegment(previous.content.text + current.content.text))
+                )
+            } else {
+                merged.append(segment)
+            }
+        }
+        return ExprSyntax(literal.with(\.segments, StringLiteralSegmentListSyntax(merged)))
+    }
+}
