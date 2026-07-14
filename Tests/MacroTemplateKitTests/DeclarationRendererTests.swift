@@ -189,6 +189,30 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("inout Int"), "Should contain inout modifier on parameters")
   }
 
+  func testRenderFunction_inoutParameterNormalizesDefaultValue() {
+    let parameter = ParameterSignature<Void>(
+      name: "value",
+      type: "Int",
+      isInout: true,
+      defaultValue: .literal(.integer(0))
+    )
+
+    XCTAssertTrue(parameter.isInout)
+    XCTAssertNil(parameter.defaultValue)
+
+    let declaration = Declaration<Void>.function(
+      FunctionSignature(
+        name: "update",
+        parameters: [parameter],
+        body: []
+      )
+    )
+
+    let description = Renderer.render(declaration).formatted().description
+    XCTAssertTrue(description.contains("func update(value: inout Int)"))
+    XCTAssertFalse(description.contains("inout Int ="))
+  }
+
   func testRenderFunction_withAttributesGenericParametersAndWhereClause() {
     let function = Declaration<Void>.function(
       FunctionSignature(

@@ -221,6 +221,9 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
   public let isInout: Bool
 
   /// The structural default expression, carrying the same metadata payload as the declaration.
+  ///
+  /// This is always `nil` when `isInout` is `true` because Swift does not permit default
+  /// values on `inout` parameters.
   public let defaultValue: Template<A>?
 
   /// Creates a parameter signature whose optional default remains part of the template algebra.
@@ -232,6 +235,8 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
   ///   - attributes: Attributes that qualify the parameter type.
   ///   - isInout: Whether the declaration uses `inout` ownership.
   ///   - defaultValue: A structural default expression that shares payload transformations.
+  ///     The initializer discards this value when `isInout` is `true` so the signature cannot
+  ///     represent syntax that Swift rejects.
   public init(
     label: String? = nil,
     name: String,
@@ -245,7 +250,7 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
     self.type = type
     self.attributes = attributes
     self.isInout = isInout
-    self.defaultValue = defaultValue
+    self.defaultValue = isInout ? nil : defaultValue
   }
 
   /// Transforms metadata in the default expression while preserving the parameter signature.
