@@ -25,10 +25,11 @@ enum SourceEmitter {
         case .boolean(let bool): buffer.append(bool ? "true" : "false")
         case .nil: buffer.append("nil")
         case .string(let string):
-            let pounds = String(repeating: "#", count: rawStringPoundCount(for: string))
+            let poundCount = rawStringPoundCount(for: string)
+            let pounds = String(repeating: "#", count: poundCount)
             buffer.append(pounds)
             buffer.append("\"")
-            buffer.append(escapeStringLiteral(string))
+            buffer.append(escapeStringLiteral(string, poundCount: poundCount))
             buffer.append("\"")
             buffer.append(pounds)
         }
@@ -46,8 +47,13 @@ enum SourceEmitter {
     /// (prefixed by the same number of `#`s as the delimiter, per Swift's raw
     /// string escape syntax `\#n`). `emit(_:into:)` wraps this content with
     /// the matching opening/closing pound delimiters.
-    static func escapeStringLiteral(_ raw: String) -> String {
-        let delimiter = String(repeating: "#", count: rawStringPoundCount(for: raw))
+    ///
+    /// - Parameter poundCount: The raw-string pound count already computed
+    ///   for `raw` by the caller (via `rawStringPoundCount(for:)`), threaded
+    ///   through rather than recomputed here so `raw` is scanned only once
+    ///   per literal.
+    static func escapeStringLiteral(_ raw: String, poundCount: Int) -> String {
+        let delimiter = String(repeating: "#", count: poundCount)
         var out = ""
         out.reserveCapacity(raw.count)
         for scalar in raw.unicodeScalars {

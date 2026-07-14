@@ -503,7 +503,34 @@ extension Renderer {
         SourceEmitter.emit(template, into: &buffer)
         let expr: ExprSyntax = "\(raw: buffer)"
         assert(!expr.hasError, "SourceEmitter produced unparsable source: \(buffer)")
+        guard mightNeedSegmentMerge(buffer) else { return expr }
         return StringSegmentMerger().visit(expr)
+    }
+
+    /// Reports whether `buffer` could contain a Swift string-literal escape
+    /// that forces SwiftParser to split a string literal into multiple
+    /// `stringSegment` tokens (see `StringSegmentMerger`'s doc comment for
+    /// why only escaped `\n`/`\r` trigger this). Used to skip the merger's
+    /// full-tree `SyntaxRewriter` walk on the overwhelmingly common case
+    /// where it would be a guaranteed no-op.
+    ///
+    /// Scans for a `\` followed by zero or more `#` and then `n` or `r` —
+    /// exactly the escape spelling `escapeStringLiteral` emits for `\n`/`\r`,
+    /// for any raw-string pound count. Deliberately conservative: a rare
+    /// coincidental match (e.g. literal, non-escape text inside a raw string
+    /// that happens to look like `\##n`) only costs an unnecessary merger
+    /// pass, never a skipped one — false positives are acceptable, false
+    /// negatives are not.
+    private static func mightNeedSegmentMerge(_ buffer: String) -> Bool {
+        var previousWasBackslash = false
+        for scalar in buffer.unicodeScalars {
+            if previousWasBackslash {
+                if scalar == "#" { continue }
+                if scalar == "n" || scalar == "r" { return true }
+            }
+            previousWasBackslash = (scalar == "\\")
+        }
+        return false
     }
 }
 
@@ -520,7 +547,12 @@ extension Renderer {
 /// rewriter merges consecutive plain `.stringSegment` elements back into one
 /// (leaving `.expressionSegment` interpolation segments untouched), restoring
 /// parity with the structural renderer's convention.
-private final class StringSegmentMerger: SyntaxRewriter {
+///
+/// Internal rather than private so `TemplateEmitterParityTests` can exercise
+/// it directly for interpolation-adjacent segment boundaries: `SourceEmitter`
+/// does not emit `Template.stringInterpolation` yet (pending Task 3), so
+/// `Renderer.renderParsed(_:)` cannot be used to reach that case today.
+final class StringSegmentMerger: SyntaxRewriter {
     override func visit(_ node: StringLiteralExprSyntax) -> ExprSyntax {
         let rewritten = super.visit(node)
         guard let literal = rewritten.as(StringLiteralExprSyntax.self) else { return rewritten }
