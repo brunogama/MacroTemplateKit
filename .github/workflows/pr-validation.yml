@@ -175,17 +175,26 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.2.app
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Install Danger
         run: |
           brew tap danger/tap
           brew trust --formula danger/tap/danger-swift
           brew trust --formula danger/tap/danger-js
           brew install danger/tap/danger-swift
+          npm install --global danger@13.0.10
 
       - name: Run Danger
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: danger-swift ci --fail-on-errors
+        run: |
+          danger_js_path="$(npm prefix --global)/bin/danger"
+          test -x "$danger_js_path"
+          danger-swift ci --danger-js-path "$danger_js_path" --fail-on-errors
 
   # Final gate - all checks must pass
   pr-ready:
