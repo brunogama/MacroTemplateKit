@@ -9,12 +9,239 @@ enum SourceEmitter {
         switch template {
         case .literal(let value):
             emit(value, into: &buffer)
+
         case .variable(let name, _):
             buffer.append(name)
-        default:
-            // Temporary during migration: Task 3 fills in every case and
-            // deletes this default so the switch is compiler-exhaustive.
-            fatalError("SourceEmitter: unhandled template case \(template)")
+
+        case .conditional(let condition, let thenBranch, let elseBranch):
+            // Legacy builds TernaryExprSyntax: condition ? thenBranch : elseBranch
+            emit(condition, into: &buffer)
+            buffer.append(" ? ")
+            emit(thenBranch, into: &buffer)
+            buffer.append(" : ")
+            emit(elseBranch, into: &buffer)
+
+        case .loop(let variable, let collection, let body):
+            // Legacy builds FunctionCallExprSyntax(calledExpression: ...forEach,
+            // leftParen/rightParen: ...) with the closure as a parenthesized
+            // *call argument*, not Swift's sugared trailing-closure syntax —
+            // so the parens around the closure are real tokens here.
+            emit(collection, into: &buffer)
+            buffer.append(".forEach({ ")
+            buffer.append(variable)
+            buffer.append(" in ")
+            emit(body, into: &buffer)
+            buffer.append(" })")
+
+        case .functionCall(let function, let arguments):
+            buffer.append(function)
+            buffer.append("(")
+            emitArguments(arguments, into: &buffer)
+            buffer.append(")")
+
+        case .methodCall(let base, let method, let arguments):
+            emit(base, into: &buffer)
+            buffer.append(".")
+            buffer.append(method)
+            buffer.append("(")
+            emitArguments(arguments, into: &buffer)
+            buffer.append(")")
+
+        case .binaryOperation(let left, let op, let right):
+            // No parens inserted here: precedence-sensitive nesting is the
+            // corpus's responsibility (per case-mapping reference), matching
+            // the legacy InfixOperatorExprSyntax construction exactly.
+            emit(left, into: &buffer)
+            buffer.append(" ")
+            buffer.append(op)
+            buffer.append(" ")
+            emit(right, into: &buffer)
+
+        case .propertyAccess(let base, let property):
+            emit(base, into: &buffer)
+            buffer.append(".")
+            buffer.append(property)
+
+        case .variableDeclaration(_, _, let initializer):
+            // Legacy limitation (Renderer.renderDeclarations): only the
+            // initializer expression is rendered; name/type produce no
+            // tokens because full declarations require statement context.
+            // Replicated verbatim for parity, not "fixed".
+            emit(initializer, into: &buffer)
+
+        case .tryExpression(let inner):
+            buffer.append("try ")
+            emit(inner, into: &buffer)
+
+        case .awaitExpression(let inner):
+            buffer.append("await ")
+            emit(inner, into: &buffer)
+
+        case .genericCall(let function, let typeArguments, let arguments):
+            buffer.append(function)
+            buffer.append("<")
+            buffer.append(typeArguments.joined(separator: ", "))
+            buffer.append(">(")
+            emitArguments(arguments, into: &buffer)
+            buffer.append(")")
+
+        case .arrayLiteral(let elements):
+            buffer.append("[")
+            for (index, element) in elements.enumerated() {
+                emit(element, into: &buffer)
+                if index != elements.count - 1 { buffer.append(", ") }
+            }
+            buffer.append("]")
+
+        case .tupleLiteral(let elements):
+            buffer.append("(")
+            for (index, element) in elements.enumerated() {
+                emit(element, into: &buffer)
+                if index != elements.count - 1 { buffer.append(", ") }
+            }
+            buffer.append(")")
+
+        case .dictionaryLiteral(let entries):
+            if entries.isEmpty {
+                // Matches Renderer's DictionaryExprSyntax(content: .colon(...))
+                // colon-only empty form, not `[: ]` or `[ : ]`.
+                buffer.append("[:]")
+            } else {
+                buffer.append("[")
+                for (index, entry) in entries.enumerated() {
+                    emit(entry.key, into: &buffer)
+                    buffer.append(": ")
+                    emit(entry.value, into: &buffer)
+                    if index != entries.count - 1 { buffer.append(", ") }
+                }
+                buffer.append("]")
+            }
+
+        case .subscriptAccess(let base, let index):
+            emit(base, into: &buffer)
+            buffer.append("[")
+            emit(index, into: &buffer)
+            buffer.append("]")
+
+        case .subscriptCall(let base, let arguments):
+            emit(base, into: &buffer)
+            buffer.append("[")
+            emitArguments(arguments, into: &buffer)
+            buffer.append("]")
+
+        case .forceUnwrap(let inner):
+            emit(inner, into: &buffer)
+            buffer.append("!")
+
+        case .stringInterpolation(let segments):
+            buffer.append("\"")
+            for segment in segments {
+                switch segment {
+                case .text(let s):
+                    // Legacy emits `.text` verbatim (no escaping pass via
+                    // `escapeStringLiteral`) — replicate exactly, do not
+                    // route through the string-literal escaper.
+                    buffer.append(s)
+                case .expression(let expr):
+                    buffer.append("\\(")
+                    emit(expr, into: &buffer)
+                    buffer.append(")")
+                }
+            }
+            buffer.append("\"")
+
+        case .closure(let sig):
+            // Bridges to the legacy structural Statement renderer —
+            // SourceEmitter's own Statement-level emission doesn't exist
+            // until Task 4. This mirrors the benchmark spike's established
+            // pattern of serializing already-built syntax via
+            // `trimmedDescription` when accepting extracted/structural
+            // input (see Benchmarks/.../SpikePipelines.swift,
+            // ParseBackedMTKPipeline). It stays token-identical because it
+            // re-serializes and re-parses the exact same structural tree
+            // the legacy renderer builds for `sig.body` — no semantic
+            // difference, only construction mechanism differs for this one
+            // nested piece. Intentional, not a shortcut.
+            let hasSignature = !sig.attributes.isEmpty || !sig.parameters.isEmpty || sig.returnType != nil
+            buffer.append("{ ")
+            if hasSignature {
+                emitClosureSignature(sig, into: &buffer)
+                buffer.append(" in ")
+            }
+            // `.formatted()` before `.trimmedDescription`: the structural
+            // nodes `renderStatements` builds via convenience initializers
+            // don't always carry the internal trivia needed to keep
+            // adjacent tokens lexically separate once re-embedded as raw
+            // text (e.g. a bare `return x` can come out as the two tokens
+            // "return"/"x" with no separating trivia, which would re-lex as
+            // the single identifier "returnx" after this text is spliced
+            // into the buffer and reparsed). `.formatted()` normalizes
+            // inter-token trivia first so the re-parse can't merge tokens.
+            buffer.append(Renderer.renderStatements(sig.body).formatted().trimmedDescription)
+            buffer.append(" }")
+
+        case .assignment(let lhs, let rhs):
+            emit(lhs, into: &buffer)
+            buffer.append(" = ")
+            emit(rhs, into: &buffer)
+
+        case .selfAccess(let typeName):
+            buffer.append(typeName)
+            buffer.append(".self")
+        }
+    }
+
+    /// Shared `(label: value, ...)` text-emission for `.functionCall`,
+    /// `.methodCall`, `.genericCall`, and `.subscriptCall` — all four mirror
+    /// `Renderer.renderLabeledExprList`'s token shape: `label:` only when
+    /// `argument.label != nil`, comma-separated, no trailing comma.
+    private static func emitArguments<A: Sendable>(
+        _ arguments: [(label: String?, value: Template<A>)],
+        into buffer: inout String
+    ) {
+        for (index, argument) in arguments.enumerated() {
+            if let label = argument.label {
+                buffer.append(label)
+                buffer.append(": ")
+            }
+            emit(argument.value, into: &buffer)
+            if index != arguments.count - 1 { buffer.append(", ") }
+        }
+    }
+
+    /// Text-emission counterpart to `Renderer.buildClosureSignature`: emits
+    /// `(attrs) (p1: T1, p2: T2) -> ReturnType`. Callers append `" in "`
+    /// after this to complete the signature.
+    private static func emitClosureSignature<A: Sendable>(
+        _ sig: ClosureSignature<A>,
+        into buffer: inout String
+    ) {
+        if !sig.attributes.isEmpty {
+            // Reuses `Renderer.renderAttributeSource`, which already
+            // produces the exact `@Name(args)` text an attribute lowers to
+            // — no need to duplicate its argument-source formatting here.
+            buffer.append(sig.attributes.map(Renderer.renderAttributeSource).joined(separator: " "))
+            buffer.append(" ")
+        }
+        buffer.append("(")
+        for (index, param) in sig.parameters.enumerated() {
+            buffer.append(param.name)
+            if let type = param.type {
+                // No colon token here: legacy's
+                // `ClosureParameterSyntax(firstName:type:...)` convenience
+                // init (see `buildClosureSignature` in Renderer.swift)
+                // doesn't thread a colon token between name and type,
+                // unlike e.g. `renderLabeledExprList`'s labeled arguments.
+                // Replicated verbatim for token parity, not "fixed".
+                buffer.append(" ")
+                buffer.append(type)
+            }
+            if index != sig.parameters.count - 1 { buffer.append(", ") }
+        }
+        buffer.append(")")
+        if let returnType = sig.returnType {
+            buffer.append(" -> ")
+            buffer.append(returnType)
         }
     }
 

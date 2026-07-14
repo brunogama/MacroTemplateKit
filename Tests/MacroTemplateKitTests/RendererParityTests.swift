@@ -87,6 +87,12 @@ enum ParityCorpus {
 
     // MARK: String Interpolation
     .stringInterpolation([.text("prefix_"), .expression(.variable("name")), .text("_suffix")]),
+    // Mixes interpolation with a `.text` segment containing an escaped
+    // `\n`, to confirm `mightNeedSegmentMerge`'s spelling-based scan (not
+    // location-based) still correctly triggers `StringSegmentMerger` when
+    // the escape sequence originates from raw interpolation text rather
+    // than from `LiteralValue.string` escaping.
+    .stringInterpolation([.text("line1\\nline2_"), .expression(.variable("name")), .text("_line3\\nline4")]),
 
     // MARK: Closure
     .closure(params: [], returnType: nil, body: [.expression(.functionCall(function: "doWork", arguments: []))]),
@@ -97,6 +103,20 @@ enum ParityCorpus {
 
     // MARK: Self Access
     .selfAccess("MyType"),
+
+    // MARK: Nested combinations (precedence-sensitive cases)
+    // .binaryOperation nested inside .conditional's condition.
+    .conditional(
+      condition: .binaryOperation(left: .variable("a"), operator: "<", right: .variable("b")),
+      thenBranch: .literal(.integer(1)),
+      elseBranch: .literal(.integer(2))
+    ),
+    // .methodCall whose base is another .methodCall.
+    .methodCall(
+      base: .methodCall(base: .variable("date"), method: "addingTimeInterval", arguments: [(label: nil, value: .literal(.double(1.0)))]),
+      method: "timeIntervalSince",
+      arguments: [(label: nil, value: .variable("start"))]
+    ),
   ]
 
   // Cover EVERY Statement case (14 total).
@@ -232,6 +252,14 @@ final class ParityHarnessTests: XCTestCase {
   }
 }
 
+final class TemplateCorpusParityTests: XCTestCase {
+    func testAllTemplateCasesParity() {
+        for template in ParityCorpus.templates {
+            assertTokenParity(Renderer.render(template), Renderer.renderParsed(template))
+        }
+    }
+}
+
 final class TemplateEmitterParityTests: XCTestCase {
     func testLiteralAndVariableParity() {
         let cases: [Template<Void>] = [
@@ -267,9 +295,12 @@ final class TemplateEmitterParityTests: XCTestCase {
     /// either side of a real `\(...)` interpolation must merge independently
     /// without touching the `.expressionSegment` between them.
     ///
-    /// `SourceEmitter` does not emit `Template.stringInterpolation` yet
-    /// (pending Task 3), so this exercises `StringSegmentMerger` directly
-    /// against hand-parsed source rather than going through
+    /// Exercises `StringSegmentMerger` directly against hand-parsed source
+    /// (rather than through `Renderer.renderParsed(_:)`) to pin down the
+    /// exact segment-count/content assertions at the merge boundary — a
+    /// level of detail `assertTokenParity`'s token-stream comparison
+    /// deliberately doesn't surface. `TemplateCorpusParityTests` separately
+    /// covers `Template.stringInterpolation` end-to-end via
     /// `Renderer.renderParsed(_:)`.
     func testStringSegmentMergerHandlesInterpolationAdjacentSegments() {
         // Raw string literal so `\n` and `\(x)` below are literal source
