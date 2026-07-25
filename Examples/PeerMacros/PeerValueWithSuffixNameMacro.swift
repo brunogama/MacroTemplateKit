@@ -62,7 +62,7 @@ public enum PeerValueWithSuffixNameMacro: PeerMacro {
             )
         )
 
-        return [Renderer.render(peerProperty)]
+        return [try Renderer.render(peerProperty)]
     }
 }
 
@@ -108,7 +108,7 @@ public enum PeerValueWithCustomSuffixMacro: PeerMacro {
             )
         )
 
-        return [Renderer.render(peerProperty)]
+        return [try Renderer.render(peerProperty)]
     }
 }
 

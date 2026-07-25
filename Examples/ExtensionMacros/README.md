@@ -143,7 +143,7 @@ let signature = ExtensionSignature<Never>(
     conformances: ["Equatable"],
     members: []
 )
-return [Renderer.renderExtensionDecl(signature)]
+return [try Renderer.renderExtensionDecl(signature)]
 ```
 
 ### Conditional conformance with where clause

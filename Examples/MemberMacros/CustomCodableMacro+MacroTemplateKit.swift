@@ -159,8 +159,10 @@ public enum CustomCodableMacroMTK: MemberMacro {
   private static func buildCaseDecl(for codingKeyCase: CodingKeyCase) -> DeclSyntax {
     let nameToken = TokenSyntax.identifier(codingKeyCase.propertyName)
 
-    let rawValue: EnumCaseElementSyntax.RawValue? = codingKeyCase.customKey.map { key in
-      EnumCaseElementSyntax.RawValue(
+    // `EnumCaseElementSyntax.RawValue` was a nested type in an older
+    // swift-syntax; the raw value is now a plain `InitializerClauseSyntax?`.
+    let rawValue: InitializerClauseSyntax? = codingKeyCase.customKey.map { key in
+      InitializerClauseSyntax(
         value: ExprSyntax(StringLiteralExprSyntax(content: key))
       )
     }

@@ -25,6 +25,33 @@ extension Renderer {
         try renderParsed(declaration)
     }
 
+    /// Renders an extension signature to a concrete `ExtensionDeclSyntax`.
+    ///
+    /// `ExtensionMacro.expansion(...)` is required to return
+    /// `[ExtensionDeclSyntax]`, not `[DeclSyntax]`. Without this entry point
+    /// every extension macro has to downcast the general `render(_:)` result
+    /// and force-unwrap it — pushing an unwrap that can only fail on a bug in
+    /// this library into the author's macro, which is precisely the trade
+    /// `RenderError` exists to avoid.
+    ///
+    /// - Throws: `RenderError` if the emitted source does not parse, or parses
+    ///   as something other than an extension.
+    public static func renderExtensionDecl<A: Sendable>(
+        _ signature: ExtensionSignature<A>
+    ) throws -> ExtensionDeclSyntax {
+        let declaration = try render(Declaration.extensionDecl(signature))
+        guard let extensionDecl = declaration.as(ExtensionDeclSyntax.self) else {
+            throw RenderError(
+                kind: .declaration,
+                source: declaration.description,
+                diagnostics: [
+                    "expected an extension declaration, parsed as \(declaration.kind)"
+                ]
+            )
+        }
+        return extensionDecl
+    }
+
 
     // MARK: - Private Declaration Helpers
 

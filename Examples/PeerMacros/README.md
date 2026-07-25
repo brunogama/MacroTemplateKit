@@ -150,7 +150,7 @@ let peerProperty = Declaration<Void>.computedProperty(
         .returnStatement(.literal(1))
     ])
 )
-return [Renderer.render(peerProperty)]
+return [try Renderer.render(peerProperty)]
 
 // Complex case — composable, each piece is a named value:
 let resumeReturning: Template<Void> = .methodCall(
@@ -169,7 +169,7 @@ let continuationCall: Template<Void> = .tryAwait(
 
 - Type-checked: the compiler validates the structure, not string concatenation
 - Composable: sub-expressions are named `let` bindings, reusable and inspectable
-- Testable: `Renderer.render(subExpr)` can be called on any intermediate value
+- Testable: `try Renderer.render(subExpr)` can be called on any intermediate value
 - No raw: prefix needed to inject computed values into string literal positions
 - Access levels, async/throws, and return types are typed enum/Bool values,
   not embedded keyword strings

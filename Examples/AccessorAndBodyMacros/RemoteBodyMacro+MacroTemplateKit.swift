@@ -107,7 +107,7 @@ public struct RemoteBodyMacro: BodyMacro {
       parameterNames: parameterNames
     )
 
-    return Array(Renderer.renderStatements(bodyStatements))
+    return Array(try Renderer.renderStatements(bodyStatements))
   }
 
   // MARK: - Private Helpers
@@ -115,8 +115,11 @@ public struct RemoteBodyMacro: BodyMacro {
   private static func extractParameterNames(
     from funcDecl: FunctionDeclSyntax
   ) -> [String] {
-    funcDecl.signature.parameterClause.parameters.compactMap { param in
-      param.parameterName?.text
+    funcDecl.signature.parameterClause.parameters.map { param in
+      // The internal name is `secondName` when a parameter has both an
+      // external label and an internal one (`_ value: Int`), otherwise
+      // `firstName` is the internal name.
+      (param.secondName ?? param.firstName).text
     }
   }
 

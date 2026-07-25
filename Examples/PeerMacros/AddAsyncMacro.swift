@@ -124,7 +124,7 @@ public struct AddAsyncMacro: PeerMacro {
             )
         )
 
-        return [Renderer.render(peerFunction)]
+        return [try Renderer.render(peerFunction)]
     }
 }
 

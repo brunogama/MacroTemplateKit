@@ -52,8 +52,8 @@ public enum NewTypeMacroMTK: MemberMacro {
 
     return [
       buildTypeAlias(rawTypeName: rawTypeName, accessLevel: accessLevel),
-      buildRawValueProperty(accessLevel: accessLevel),
-      buildInitializer(accessLevel: accessLevel),
+      try buildRawValueProperty(accessLevel: accessLevel),
+      try buildInitializer(accessLevel: accessLevel),
     ]
   }
 
@@ -145,7 +145,7 @@ public enum NewTypeMacroMTK: MemberMacro {
   ///     isLet: false,
   ///     initializer: nil
   ///   ))
-  private static func buildRawValueProperty(accessLevel: AccessLevel) -> DeclSyntax {
+  private static func buildRawValueProperty(accessLevel: AccessLevel) throws -> DeclSyntax {
     let propertyDeclaration = Declaration<Void>.property(
       PropertySignature(
         accessLevel: accessLevel,
@@ -155,7 +155,7 @@ public enum NewTypeMacroMTK: MemberMacro {
         initializer: nil
       )
     )
-    return Renderer.render(propertyDeclaration)
+    return try Renderer.render(propertyDeclaration)
   }
 
   /// Builds `init(_ rawValue: RawValue) { self.rawValue = rawValue }` using
@@ -172,7 +172,7 @@ public enum NewTypeMacroMTK: MemberMacro {
   ///     parameters: [ParameterSignature(label: "_", name: "rawValue", type: "RawValue")],
   ///     body: [.assignmentStatement(lhs: selfRawValue, rhs: rawValueRef)]
   ///   ))
-  private static func buildInitializer(accessLevel: AccessLevel) -> DeclSyntax {
+  private static func buildInitializer(accessLevel: AccessLevel) throws -> DeclSyntax {
     // `self.rawValue = rawValue`
     let selfRawValue = Template<Void>.propertyAccess(
       base: .variable("self"),
@@ -197,7 +197,7 @@ public enum NewTypeMacroMTK: MemberMacro {
       body: [assignBody]
     )
 
-    return Renderer.render(Declaration<Void>.initDecl(initSignature))
+    return try Renderer.render(Declaration<Void>.initDecl(initSignature))
   }
 }
 

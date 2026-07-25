@@ -68,7 +68,9 @@ public enum HashableExtensionMacro: ExtensionMacro {
     // Order matters: Hashable must appear before Equatable so the compiler
     // sees the stronger conformance first.
     let conformanceNames = ["Hashable", "Equatable"]
-    return conformanceNames.map { makeConformanceExtension(typeName: typeName, conformance: $0) }
+    return try conformanceNames.map {
+      try makeConformanceExtension(typeName: typeName, conformance: $0)
+    }
   }
 
   // MARK: - Private Helpers
@@ -82,13 +84,13 @@ public enum HashableExtensionMacro: ExtensionMacro {
   private static func makeConformanceExtension(
     typeName: String,
     conformance: String
-  ) -> ExtensionDeclSyntax {
+  ) throws -> ExtensionDeclSyntax {
     let signature = ExtensionSignature<Never>(
       typeName: typeName,
       conformances: [conformance],
       whereRequirements: [],
       members: []
     )
-    return Renderer.renderExtensionDecl(signature)
+    return try Renderer.renderExtensionDecl(signature)
   }
 }

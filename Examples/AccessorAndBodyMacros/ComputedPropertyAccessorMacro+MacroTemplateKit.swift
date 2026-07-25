@@ -90,7 +90,7 @@ public struct ClampedAccessorMacro: AccessorMacro {
   ) throws -> [AccessorDeclSyntax] {
     let propertyName = try extractPropertyName(from: declaration)
     let clampBounds = try extractClampBounds(from: node)
-    return buildAccessorDeclarations(
+    return try buildAccessorDeclarations(
       propertyName: propertyName,
       minimumBound: clampBounds.minimum,
       maximumBound: clampBounds.maximum
@@ -141,7 +141,7 @@ public struct ClampedAccessorMacro: AccessorMacro {
     propertyName: String,
     minimumBound: String,
     maximumBound: String
-  ) -> [AccessorDeclSyntax] {
+  ) throws -> [AccessorDeclSyntax] {
     let backingName = "_\(propertyName)"
     let backingVariable: Template<Void> = .variable(backingName)
     let newValue: Template<Void> = .variable("newValue")
@@ -179,11 +179,11 @@ public struct ClampedAccessorMacro: AccessorMacro {
 
     let getter = AccessorDeclSyntax(
       accessorSpecifier: .keyword(.get),
-      body: CodeBlockSyntax(statements: Renderer.renderStatements(getterStatements))
+      body: CodeBlockSyntax(statements: try Renderer.renderStatements(getterStatements))
     )
     let setter = AccessorDeclSyntax(
       accessorSpecifier: .keyword(.set),
-      body: CodeBlockSyntax(statements: Renderer.renderStatements(setterStatements))
+      body: CodeBlockSyntax(statements: try Renderer.renderStatements(setterStatements))
     )
 
     return [getter, setter]
@@ -221,7 +221,7 @@ public enum ComputedPropertyFromDeclarationExample {
     typeName: String,
     minimumBound: String,
     maximumBound: String
-  ) -> DeclSyntax {
+  ) throws -> DeclSyntax {
     let backingVariable: Template<Void> = .variable(backingName)
     let newValue: Template<Void> = .variable("newValue")
     let minimumValue: Template<Void> = .variable(minimumBound)
@@ -267,6 +267,6 @@ public enum ComputedPropertyFromDeclarationExample {
       )
     )
 
-    return Renderer.render(computedProperty)
+    return try Renderer.render(computedProperty)
   }
 }

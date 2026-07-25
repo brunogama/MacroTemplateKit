@@ -114,7 +114,7 @@ public enum SendableExtensionMacro: ExtensionMacro {
       members: []
     )
 
-    return [Renderer.renderExtensionDecl(signature)]
+    return [try Renderer.renderExtensionDecl(signature)]
   }
 
   // MARK: - Private Helpers

@@ -577,7 +577,7 @@ try Renderer.render(_ template: Template<A>) -> ExprSyntax
 try Renderer.render(_ statement: Statement<A>) -> CodeBlockItemSyntax
 
 // Multiple statements (for function bodies)
-Renderer.renderStatements(_ statements: [Statement<A>]) -> CodeBlockItemListSyntax
+Renderer.renderStatements(_ statements: [Statement<A>]) throws -> CodeBlockItemListSyntax
 
 // Declaration
 try Renderer.render(_ declaration: Declaration<A>) -> DeclSyntax

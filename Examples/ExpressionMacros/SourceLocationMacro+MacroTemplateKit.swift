@@ -59,7 +59,7 @@ public struct NativeFileIDMacro: ExpressionMacro {
     // re-render it through MacroTemplateKit to keep the output path consistent.
     let fileDescription = location.file.description
     let template: Template<Void> = .literal(.string(fileDescription))
-    return Renderer.render(template)
+    return try Renderer.render(template)
   }
 }
 
@@ -92,7 +92,7 @@ public struct NativeFilePathMacro: ExpressionMacro {
 
     let fileDescription = location.file.description
     let template: Template<Void> = .literal(.string(fileDescription))
-    return Renderer.render(template)
+    return try Renderer.render(template)
   }
 }
 
@@ -126,7 +126,7 @@ public struct NativeLineMacro: ExpressionMacro {
     // through Renderer.render consistently with the rest of the macro.
     let lineDescription = location.line.description
     let template: Template<Void> = .variable(lineDescription)
-    return Renderer.render(template)
+    return try Renderer.render(template)
   }
 }
 
@@ -157,6 +157,6 @@ public struct NativeColumnMacro: ExpressionMacro {
 
     let columnDescription = location.column.description
     let template: Template<Void> = .variable(columnDescription)
-    return Renderer.render(template)
+    return try Renderer.render(template)
   }
 }

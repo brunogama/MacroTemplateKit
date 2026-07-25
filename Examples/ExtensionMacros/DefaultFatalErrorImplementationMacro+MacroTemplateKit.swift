@@ -109,10 +109,8 @@ public enum DefaultFatalErrorImplementationMacro: ExtensionMacro {
     in context: some MacroExpansionContext
   ) throws -> [ExtensionDeclSyntax] {
     guard let protocolDecl = declaration.as(ProtocolDeclSyntax.self) else {
-      throw SimpleDiagnosticMessage(
-        message: "Macro `defaultFatalErrorImplementation` can only be applied to a protocol",
-        diagnosticID: messageID,
-        severity: .error
+      throw MacroExpansionErrorMessage(
+        "Macro `defaultFatalErrorImplementation` can only be applied to a protocol"
       )
     }
 
@@ -129,7 +127,7 @@ public enum DefaultFatalErrorImplementationMacro: ExtensionMacro {
       members: methodDeclarations
     )
 
-    return [Renderer.renderExtensionDecl(extensionSignature)]
+    return [try Renderer.renderExtensionDecl(extensionSignature)]
   }
 
   // MARK: - Private Helpers
@@ -203,7 +201,7 @@ public enum DefaultFatalErrorImplementationMacro: ExtensionMacro {
     functionDecl.signature.parameterClause.parameters.map { param in
       let externalLabel: String?
       switch param.firstName.tokenKind {
-      case .keyword(.wildcard):
+      case .wildcard:
         // Explicit `_` means no external label.
         externalLabel = "_"
       default:

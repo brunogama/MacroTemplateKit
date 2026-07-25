@@ -87,7 +87,7 @@ public struct AddBlockerMacro: ExpressionMacro {
     // in a variable template and render it, preserving the operator substitution.
     let outputTemplate: Template<Void> = .variable(firstExpression.description)
 
-    return Renderer.render(outputTemplate)
+    return try Renderer.render(outputTemplate)
   }
 }
 

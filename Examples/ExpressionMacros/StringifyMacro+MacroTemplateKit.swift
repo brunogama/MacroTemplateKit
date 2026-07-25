@@ -73,6 +73,6 @@ public enum StringifyMacro: ExpressionMacro {
       ]
     )
 
-    return Renderer.render(tupleTemplate)
+    return try Renderer.render(tupleTemplate)
   }
 }
