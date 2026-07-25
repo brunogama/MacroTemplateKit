@@ -36,7 +36,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
 Install the same tooling used in CI (SwiftLint, swift-format, Danger):
 
 ```bash
-./scripts/bootstrap.sh
+./Scripts/bootstrap.sh
 ```
 
 ### Building
@@ -58,7 +58,7 @@ swift test
 To avoid CI ping-pong, run the same checks CI runs for PRs:
 
 ```bash
-./scripts/ci-local.sh
+./Scripts/ci-local.sh
 ```
 
 If you prefer running commands individually:

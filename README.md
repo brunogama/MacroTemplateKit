@@ -738,8 +738,8 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 To match CI locally (format, lint, build, test):
 
 ```bash
-./scripts/bootstrap.sh
-./scripts/ci-local.sh
+./Scripts/bootstrap.sh
+./Scripts/ci-local.sh
 ```
 
 ## Changelog

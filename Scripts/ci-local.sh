@@ -27,8 +27,12 @@ echo "==> SwiftLint (strict)"
 swiftlint lint --strict Sources/ Tests/
 
 echo
+echo "==> Manifest parity"
+"$(dirname "$0")/check-manifests.sh"
+
+echo
 echo "==> Build (warnings as errors)"
-swift build -Xswiftc -warnings-as-errors
+"$(dirname "$0")/build.sh"
 
 echo
 echo "==> Test (parallel)"
