@@ -4,7 +4,7 @@
 /// real group: it stands for anything that binds tighter than every operator
 /// (literals, identifiers, calls, subscripts, member access) and therefore
 /// never needs parentheses.
-enum Precedence: Int, Comparable, Sendable {
+public enum Precedence: Int, Comparable, Sendable {
   case assignment = 1
   case ternary = 2
   case logicalDisjunction = 3
@@ -18,12 +18,12 @@ enum Precedence: Int, Comparable, Sendable {
   case bitwiseShift = 11
   case atomic = 100
 
-  static func < (lhs: Precedence, rhs: Precedence) -> Bool {
+  public static func < (lhs: Precedence, rhs: Precedence) -> Bool {
     lhs.rawValue < rhs.rawValue
   }
 
   /// How operators of this group nest without parentheses.
-  var associativity: Associativity {
+  public var associativity: Associativity {
     switch self {
     case .assignment, .ternary, .nilCoalescing: .right
     case .comparison, .rangeFormation, .casting: .none
@@ -32,7 +32,7 @@ enum Precedence: Int, Comparable, Sendable {
   }
 }
 
-enum Associativity: Sendable {
+public enum Associativity: Sendable {
   case left
   case right
   /// Non-associative: `a < b < c` is not valid Swift, so equal-precedence
@@ -46,7 +46,7 @@ enum Associativity: Sendable {
 /// invents — return `nil`. Callers treat that as "parenthesize defensively":
 /// redundant parentheses are noise, but a missing one silently changes what the
 /// generated code means, so the failure is biased toward the harmless side.
-func precedenceGroup(forOperator op: String) -> Precedence? {
+public func precedenceGroup(forOperator op: String) -> Precedence? {
   switch op {
   case "<<", ">>", "&<<", "&>>":
     .bitwiseShift
@@ -80,7 +80,7 @@ extension Template {
   var precedence: Precedence {
     switch self {
     case .binaryOperation(_, let op, _):
-      precedenceGroup(forOperator: op) ?? .assignment
+      op.effectivePrecedence
     case .cast:
       .casting
     case .conditional:
@@ -112,4 +112,42 @@ extension Template {
     case left
     case right
   }
+}
+
+/// An infix operator together with how tightly it binds.
+///
+/// Modelled as a type rather than a bare `String` so a macro emitting a custom
+/// operator can state its precedence. Without that, the renderer has to assume
+/// the loosest binding and parenthesise every nesting defensively — safe, but
+/// permanent noise for anyone generating code around an operator DSL.
+///
+/// String literals keep working: `"+"` resolves through the standard-library
+/// table, and an unknown operator falls back to defensive parenthesisation.
+public struct Operator: Sendable, Hashable, ExpressibleByStringLiteral {
+  /// The operator text, emitted verbatim.
+  public let text: String
+
+  /// How tightly it binds. `nil` means unknown, which the renderer treats as
+  /// loosest so nesting is always parenthesised.
+  public let precedence: Precedence?
+
+  /// Looks the operator up in the standard-library precedence table.
+  public init(_ text: String) {
+    self.text = text
+    self.precedence = precedenceGroup(forOperator: text)
+  }
+
+  /// Declares a custom operator's precedence explicitly.
+  public init(_ text: String, precedence: Precedence) {
+    self.text = text
+    self.precedence = precedence
+  }
+
+  public init(stringLiteral value: String) {
+    self.init(value)
+  }
+
+  /// The precedence to render at: unknown operators bind loosest, so their
+  /// operands are always parenthesised rather than silently regrouped.
+  var effectivePrecedence: Precedence { precedence ?? .assignment }
 }

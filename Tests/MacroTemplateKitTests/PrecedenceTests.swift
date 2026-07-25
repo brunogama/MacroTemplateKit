@@ -166,6 +166,32 @@ final class PrecedenceTests: XCTestCase {
 
   // MARK: - Unknown operators
 
+  func testCustomOperatorWithDeclaredPrecedenceIsNotOverParenthesized() throws {
+    // Declaring the precedence lets the renderer treat `|>` like any other
+    // operator instead of assuming the worst.
+    let pipe = Operator("|>", precedence: .multiplication)
+    try assertBothPaths(
+      .binaryOperation(
+        left: .binaryOperation(left: v("a"), operator: pipe, right: v("b")),
+        operator: pipe,
+        right: v("c")
+      ),
+      equals: "a |> b |> c"
+    )
+  }
+
+  func testDeclaredPrecedenceStillParenthesizesLooserChildren() throws {
+    let pipe = Operator("|>", precedence: .multiplication)
+    try assertBothPaths(
+      .binaryOperation(
+        left: .binaryOperation(left: v("a"), operator: "+", right: v("b")),
+        operator: pipe,
+        right: v("c")
+      ),
+      equals: "(a + b) |> c"
+    )
+  }
+
   func testCustomOperatorIsParenthesizedDefensively() throws {
     // An operator the table doesn't know could have any precedence, so the
     // renderer biases toward redundant parens rather than a silent meaning

@@ -51,10 +51,10 @@ enum SourceEmitter {
             buffer.append(")")
 
         case .binaryOperation(let left, let op, let right):
-            let parent = precedenceGroup(forOperator: op) ?? .assignment
+            let parent = op.effectivePrecedence
             emit(left, parenthesizedInside: parent, on: .left, into: &buffer)
             buffer.append(" ")
-            buffer.append(op)
+            buffer.append(op.text)
             buffer.append(" ")
             emit(right, parenthesizedInside: parent, on: .right, into: &buffer)
 

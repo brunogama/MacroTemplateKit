@@ -163,7 +163,7 @@ public indirect enum Template<A> {
   /// SwiftSyntax equivalent: `InfixOperatorExprSyntax` with `BinaryOperatorExprSyntax`
   case binaryOperation(
     left: Template<A>,
-    `operator`: String,
+    `operator`: Operator,
     right: Template<A>
   )
 

@@ -536,6 +536,35 @@ structurally-assembled invalid trees."
 
 ### Task 7: Delete the legacy structural path
 
+> **Revised after Tasks 1-6 shipped.** The direction still holds — once the
+> parse-backed path is the only one, the legacy renderer is dead weight and the
+> parity harness has nothing to compare against, so parity tests become *golden*
+> token-stream tests. Four things changed underneath this task:
+>
+> 1. **Any goldens captured before now are stale.** Corpus output has changed
+>    three times since this plan was written: precedence parenthesisation
+>    (`(a + b) * c`), the bare `set { }` form, and backtick escaping of reserved
+>    keywords. Regenerate from current `main`, and eyeball the diff rather than
+>    pasting it — goldens freeze whatever they are given, including bugs.
+> 2. **`Renderer.render` now throws.** The generator snippet and the golden test
+>    both need `try`. See ADR 0001.
+> 3. **`Renderer.renderLeaf` is *not* part of the legacy path** and must survive.
+>    It builds `.variable` and simple literals structurally to skip a parse
+>    arena per call. It is separate code from `legacyRender`; do not delete it
+>    while "removing structural construction".
+> 4. **Three test files depend on `legacyRender`, not one.** The plan names
+>    `RendererParityTests` only; `CastRendererTests` and `PrecedenceTests` also
+>    cross-check the two paths and need converting to golden form in the same
+>    change.
+>
+> Also note what is lost, since the plan does not say it: golden tests pin
+> output against *itself*, not against an independent implementation. The
+> two-path cross-check is the only thing that has been catching emitter
+> mistakes, and deleting it trades a real oracle for a snapshot. Worth doing
+> anyway — maintaining two renderers costs more — but go in knowing the safety
+> net gets thinner, not thicker.
+
+
 **Files:**
 - Modify: `Sources/MacroTemplateKit/Renderer.swift`, `StatementRenderer.swift`, `DeclarationRenderer.swift`, `Renderer+AttributeRendering.swift`
 - Test: `Tests/MacroTemplateKitTests/RendererParityTests.swift`

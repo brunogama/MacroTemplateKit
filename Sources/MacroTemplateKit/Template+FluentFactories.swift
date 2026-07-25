@@ -92,9 +92,13 @@ extension Template {
   // MARK: - Binary Operations
 
   /// Creates a binary operation template.
+  ///
+  /// The operator accepts a string literal for the standard operators; pass an
+  /// `Operator` with an explicit precedence for a custom one, or its operands
+  /// will be parenthesised defensively at every nesting.
   public static func operation(
     _ left: Template<A>,
-    _ op: String,
+    _ op: Operator,
     _ right: Template<A>
   ) -> Template<A> {
     .binaryOperation(left: left, operator: op, right: right)

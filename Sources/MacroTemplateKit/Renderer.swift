@@ -251,14 +251,14 @@ public struct Renderer {
 
     private static func renderBinaryOperation<A: Sendable>(
         _ left: Template<A>,
-        _ op: String,
+        _ op: Operator,
         _ right: Template<A>
     ) -> ExprSyntax {
-        let parent = precedenceGroup(forOperator: op) ?? .assignment
+        let parent = op.effectivePrecedence
         return ExprSyntax(
             InfixOperatorExprSyntax(
                 leftOperand: legacyRender(left, parenthesizedInside: parent, on: .left),
-                operator: BinaryOperatorExprSyntax(operator: .binaryOperator(op)),
+                operator: BinaryOperatorExprSyntax(operator: .binaryOperator(op.text)),
                 rightOperand: legacyRender(right, parenthesizedInside: parent, on: .right)
             )
         )
