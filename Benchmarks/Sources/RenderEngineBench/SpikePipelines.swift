@@ -47,11 +47,17 @@ struct ParseBackedMTKPipeline: ASTGeneratorPipeline {
 
 /// Structural per-node construction, but every expansion-invariant node is
 /// built once and reused: leaf tokens, the `_storage`/`newValue` references,
-/// and the entire storage member. Models a Renderer that interns its fixed
-/// vocabulary instead of rebuilding it per node.
+/// and the entire storage member.
+///
+/// Originally written as a candidate *implementation* strategy for the
+/// renderer and rejected for being under the adoption bar. That was the wrong
+/// question to stop at: the same margin that made it a poor thing to build
+/// makes it the right thing to be measured against. A competent macro author
+/// hoists loop invariants, so this — not `structural` — is the honest
+/// hand-rolled baseline. It beats `structural` by 15–18% on min.
 struct InternedStructuralPipeline: ASTGeneratorPipeline {
-    static let name = "mtk-micro"
-    static let summary = "Spike B: structural construction with interned invariant nodes"
+    static let name = "structural-interned"
+    static let summary = "Hand-rolled SwiftSyntax with invariant nodes hoisted out of the loop"
 
     private enum Interned {
         static let storageMember = DeclSyntax(storageVariableDecl())

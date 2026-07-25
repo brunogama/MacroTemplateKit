@@ -64,6 +64,14 @@ workload** (DictionaryStorage-style expansion — all output is new syntax) and 
 workload** (one small change to an existing, arbitrarily large tree). Techniques rank
 differently on each, so results from one workload must not be quoted for the other.
 
+**Hoisted Baseline**:
+A hand-rolled benchmark baseline that builds expansion-invariant nodes once instead of once
+per generated item. The unhoisted version is not a fair adversary: hoisting alone made the
+case-factory baseline 1.60x faster and erased most of the library's published advantage on
+that workload (ADR 0004). A baseline is not finished until someone has tried to make it
+faster.
+_Avoid_: "the baseline" without saying which
+
 **Output Lifetime**:
 What happens to a rendered tree once the expansion that produced it ends. **Retained** holds
 every output alive at once — the model `measureLoop` uses, and the only one that makes

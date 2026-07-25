@@ -16,6 +16,7 @@ let allPipelines: [ASTGeneratorPipeline] = [
 
 let allCaseFactoryPipelines: [CaseFactoryPipeline] = [
     StructuralCaseFactoryPipeline(),
+    InternedStructuralCaseFactoryPipeline(),
     MTKCaseFactoryPipeline(),
 ]
 
@@ -283,3 +284,5 @@ if options.workloads.contains("accumulate") {
 }
 
 print("iterations=\(options.iterations) warmup=\(options.warmup) swift-syntax=\(swiftSyntaxVersion) (sink=\(sink))")
+
+if options.workloads.contains("trivia") { triviaAudit() }
