@@ -8,14 +8,14 @@ final class PublicExamplesTests: XCTestCase {
     string.filter { !$0.isWhitespace && !$0.isNewline }
   }
 
-  func testVoidVariableConvenienceMatchesExplicitPayload() {
+  func testVoidVariableConvenienceMatchesExplicitPayload() throws {
     let template = Template<Void>.variable("name")
     guard case .variable("name", _) = template else {
       return XCTFail("Expected variable convenience to create a variable template")
     }
   }
 
-  func testVoidPropertyConvenienceMatchesExplicitPayload() {
+  func testVoidPropertyConvenienceMatchesExplicitPayload() throws {
     let template = Template<Void>.property("count", on: "storage")
     guard case .propertyAccess(let base, "count") = template,
       case .variable("storage", _) = base
@@ -24,8 +24,8 @@ final class PublicExamplesTests: XCTestCase {
     }
   }
 
-  func testReadmeExpressionExampleRendersExpectedCode() {
-    let expression: ExprSyntax = Renderer.render(
+  func testReadmeExpressionExampleRendersExpectedCode() throws {
+    let expression: ExprSyntax = try Renderer.render(
       Template<Void>.variable("api")
         .method("fetch") {
           TemplateArgument<Void>.unlabeled(.variable("request"))
@@ -36,8 +36,8 @@ final class PublicExamplesTests: XCTestCase {
     XCTAssertEqual(normalized(expression.description), normalized("try await api.fetch(request)"))
   }
 
-  func testDoccStatementExampleRendersExpectedCode() {
-    let statement: CodeBlockItemSyntax = Renderer.render(
+  func testDoccStatementExampleRendersExpectedCode() throws {
+    let statement: CodeBlockItemSyntax = try Renderer.render(
       Statement<Void>.letBinding(
         name: "result",
         type: nil,
@@ -51,8 +51,8 @@ final class PublicExamplesTests: XCTestCase {
     XCTAssertEqual(normalized(statement.description), normalized("let result = api.fetch(request)"))
   }
 
-  func testReadmeGenericDeclarationExampleRendersExpectedCode() {
-    let declaration: DeclSyntax = Renderer.render(
+  func testReadmeGenericDeclarationExampleRendersExpectedCode() throws {
+    let declaration: DeclSyntax = try Renderer.render(
       Declaration<Void>.function(
         FunctionSignature(
           accessLevel: .public,
@@ -91,8 +91,8 @@ final class PublicExamplesTests: XCTestCase {
     )
   }
 
-  func testDoccClosureAttributeExampleRendersExpectedCode() {
-    let expression: ExprSyntax = Renderer.render(
+  func testDoccClosureAttributeExampleRendersExpectedCode() throws {
+    let expression: ExprSyntax = try Renderer.render(
       Template<Void>.closure(
         attributes: [.sendable],
         params: [(name: "value", type: "Int")],
@@ -118,8 +118,8 @@ final class PublicExamplesTests: XCTestCase {
     XCTAssertTrue(rendered.contains(normalized("handle(value)")))
   }
 
-  func testExamplesEscapingParameterExampleRendersExpectedCode() {
-    let declaration: DeclSyntax = Renderer.render(
+  func testExamplesEscapingParameterExampleRendersExpectedCode() throws {
+    let declaration: DeclSyntax = try Renderer.render(
       Declaration<Void>.function(
         FunctionSignature(
           name: "install",
@@ -141,8 +141,8 @@ final class PublicExamplesTests: XCTestCase {
     )
   }
 
-  func testExamplesStyleDeclarationRendersExpectedCode() {
-    let declaration: DeclSyntax = Renderer.render(
+  func testExamplesStyleDeclarationRendersExpectedCode() throws {
+    let declaration: DeclSyntax = try Renderer.render(
       Declaration<Void>.function(
         FunctionSignature(
           accessLevel: .public,

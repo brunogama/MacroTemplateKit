@@ -30,7 +30,7 @@ struct MTKPipeline: ASTGeneratorPipeline {
 
     // var _storage: [String: Any] = [:]
     private static func storageMember() -> DeclSyntax {
-        Renderer.render(
+        try! Renderer.render(
             Declaration<Void>.property(
                 PropertySignature(
                     name: "_storage",
@@ -80,7 +80,7 @@ struct MTKPipeline: ASTGeneratorPipeline {
             )
         )
 
-        let rendered = Renderer.render(declaration)
+        let rendered = try! Renderer.render(declaration)
         guard
             let variable = rendered.as(VariableDeclSyntax.self),
             let accessorBlock = variable.bindings.first?.accessorBlock,

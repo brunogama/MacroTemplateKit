@@ -30,8 +30,8 @@ public struct Renderer {
     ///
     /// - Parameter template: Template to render
     /// - Returns: SwiftSyntax expression node
-    public static func render<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
-        renderParsed(template)
+    public static func render<A: Sendable>(_ template: Template<A>) throws -> ExprSyntax {
+        try renderParsed(template)
     }
 
     /// Legacy per-node structural implementation that `render(_: Template<A>)`
@@ -584,7 +584,7 @@ extension Renderer {
     /// behind the public `render(_: Template<A>)` entry point above; it
     /// remains a separate internal name so the token-parity suite can call it
     /// directly alongside `legacyRender(_:)`.
-    static func renderParsed<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
+    static func renderParsed<A: Sendable>(_ template: Template<A>) throws -> ExprSyntax {
         // Leaves bypass the parser entirely. A parse allocates a
         // `RawSyntaxArena` that the returned node keeps alive, so the renderer's
         // cost is driven by how many times it is called, not by how much output
@@ -596,7 +596,9 @@ extension Renderer {
         var buffer = ""
         SourceEmitter.emit(template, into: &buffer)
         let expr: ExprSyntax = "\(raw: buffer)"
-        assert(!expr.hasError, "SourceEmitter produced unparsable source: \(buffer)")
+        guard !expr.hasError else {
+            throw RenderError.make(kind: .expression, source: buffer, node: expr)
+        }
         guard mightNeedSegmentMerge(buffer) else { return expr }
         return StringSegmentMerger().visit(expr)
     }

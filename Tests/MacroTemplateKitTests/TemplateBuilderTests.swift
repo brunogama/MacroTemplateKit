@@ -5,14 +5,14 @@ final class TemplateBuilderTests: XCTestCase {
 
   // MARK: - Result Builder Tests
 
-  func testBuildBlock_singleExpression() {
+  func testBuildBlock_singleExpression() throws {
     @TemplateBuilder<Int> var template: Template<Int> {
       Template.literal(42)
     }
     XCTAssertEqual(template, .literal(.integer(42)))
   }
 
-  func testBuildBlock_multipleExpressions() {
+  func testBuildBlock_multipleExpressions() throws {
     @TemplateBuilder<Int> var template: Template<Int> {
       Template.literal(1)
       Template.literal(2)
@@ -27,7 +27,7 @@ final class TemplateBuilderTests: XCTestCase {
       ]))
   }
 
-  func testBuildOptional_present() {
+  func testBuildOptional_present() throws {
     let condition = true
     @TemplateBuilder<Int> var template: Template<Int> {
       if condition {
@@ -38,7 +38,7 @@ final class TemplateBuilderTests: XCTestCase {
     XCTAssertNotEqual(template, .literal(.nil))
   }
 
-  func testBuildOptional_absent() {
+  func testBuildOptional_absent() throws {
     let condition = false
     @TemplateBuilder<Int> var template: Template<Int> {
       if condition {
@@ -48,7 +48,7 @@ final class TemplateBuilderTests: XCTestCase {
     XCTAssertEqual(template, .literal(.nil))
   }
 
-  func testBuildEither_first() {
+  func testBuildEither_first() throws {
     let useFirst = true
     @TemplateBuilder<Int> var template: Template<Int> {
       if useFirst {
@@ -60,7 +60,7 @@ final class TemplateBuilderTests: XCTestCase {
     XCTAssertEqual(template, .literal(.string("first")))
   }
 
-  func testBuildEither_second() {
+  func testBuildEither_second() throws {
     let useFirst = false
     @TemplateBuilder<Int> var template: Template<Int> {
       if useFirst {
@@ -74,22 +74,22 @@ final class TemplateBuilderTests: XCTestCase {
 
   // MARK: - Fluent Factory Tests
 
-  func testLiteral_integer() {
+  func testLiteral_integer() throws {
     let template: Template<Int> = .literal(42)
     XCTAssertEqual(template, .literal(.integer(42)))
   }
 
-  func testLiteral_string() {
+  func testLiteral_string() throws {
     let template: Template<Int> = .literal("hello")
     XCTAssertEqual(template, .literal(.string("hello")))
   }
 
-  func testLiteral_boolean() {
+  func testLiteral_boolean() throws {
     XCTAssertEqual(Template<Int>.literal(true), .literal(.boolean(true)))
     XCTAssertEqual(Template<Int>.literal(false), .literal(.boolean(false)))
   }
 
-  func testProperty_onTemplate() {
+  func testProperty_onTemplate() throws {
     let template: Template<Int> = .property("name", on: .variable("user", payload: 1))
     XCTAssertEqual(
       template,
@@ -99,14 +99,14 @@ final class TemplateBuilderTests: XCTestCase {
       ))
   }
 
-  func testVoidVariableConvenience() {
+  func testVoidVariableConvenience() throws {
     let template: Template<Void> = .variable("user")
     guard case .variable("user", _) = template else {
       return XCTFail("Expected variable convenience to create a variable template")
     }
   }
 
-  func testVoidPropertyOnNameConvenience() {
+  func testVoidPropertyOnNameConvenience() throws {
     let template: Template<Void> = .property("name", on: "user")
     guard case .propertyAccess(let base, "name") = template,
       case .variable("user", _) = base
@@ -115,7 +115,7 @@ final class TemplateBuilderTests: XCTestCase {
     }
   }
 
-  func testFunction_varargs() {
+  func testFunction_varargs() throws {
     let template: Template<Int> = .function("print", .literal("hello"))
     XCTAssertEqual(
       template,
@@ -125,7 +125,7 @@ final class TemplateBuilderTests: XCTestCase {
       ))
   }
 
-  func testFunction_withBuilder() {
+  func testFunction_withBuilder() throws {
     let template: Template<Int> = .function("method") {
       Template.literal(1)
       Template.literal(2)
@@ -141,7 +141,7 @@ final class TemplateBuilderTests: XCTestCase {
       ))
   }
 
-  func testTemplateArgumentBuilder_mixedLabeledAndUnlabeled() {
+  func testTemplateArgumentBuilder_mixedLabeledAndUnlabeled() throws {
     @TemplateArgumentBuilder<Int> func buildArguments() -> [TemplateArgument<Int>] {
       TemplateArgument<Int>.labeled("id", .variable("userId", payload: 1))
       Template<Int>.literal(true)
@@ -158,7 +158,7 @@ final class TemplateBuilderTests: XCTestCase {
     )
   }
 
-  func testCall_typedArguments() {
+  func testCall_typedArguments() throws {
     let template: Template<Int> = .call(
       "User",
       arguments: [
@@ -177,7 +177,7 @@ final class TemplateBuilderTests: XCTestCase {
     )
   }
 
-  func testMethod_builderAndChaining() {
+  func testMethod_builderAndChaining() throws {
     let template = Template<Void>.variable("client")
       .property("api")
       .method("fetch") {
@@ -194,28 +194,28 @@ final class TemplateBuilderTests: XCTestCase {
     // is unaffected. Trivia is allowed to differ per this plan's design;
     // only token content is guaranteed.
     XCTAssertEqual(
-      Renderer.render(template).trimmedDescription,
+      try Renderer.render(template).trimmedDescription,
       "try await client.api.fetch(id: userId, cache: true)"
     )
   }
 
-  func testEffectAndUnwrapInstanceFluency() {
+  func testEffectAndUnwrapInstanceFluency() throws {
     // See `testMethod_builderAndChaining`'s comment on trivia vs token
     // content: the parse-backed renderer's real-source-text trivia inserts
     // the space `try`/`await` require after the keyword.
     XCTAssertEqual(
-      Renderer.render(Template<Void>.variable("work").trying()).trimmedDescription, "try work")
+      try Renderer.render(Template<Void>.variable("work").trying()).trimmedDescription, "try work")
     XCTAssertEqual(
-      Renderer.render(Template<Void>.variable("task").awaiting()).trimmedDescription,
+      try Renderer.render(Template<Void>.variable("task").awaiting()).trimmedDescription,
       "await task"
     )
     XCTAssertEqual(
-      Renderer.render(Template<Void>.variable("value").unwrapped()).trimmedDescription,
+      try Renderer.render(Template<Void>.variable("value").unwrapped()).trimmedDescription,
       "value!"
     )
   }
 
-  func testOperation() {
+  func testOperation() throws {
     let template: Template<Int> = .operation(.literal(1), "+", .literal(2))
     XCTAssertEqual(
       template,
@@ -226,7 +226,7 @@ final class TemplateBuilderTests: XCTestCase {
       ))
   }
 
-  func testTernary() {
+  func testTernary() throws {
     let template: Template<Int> = .ternary(
       if: .literal(true),
       then: .literal(1),
@@ -241,7 +241,7 @@ final class TemplateBuilderTests: XCTestCase {
       ))
   }
 
-  func testArray_varargs() {
+  func testArray_varargs() throws {
     let template: Template<Int> = .array(.literal(1), .literal(2), .literal(3))
     XCTAssertEqual(
       template,
@@ -254,7 +254,7 @@ final class TemplateBuilderTests: XCTestCase {
 
   // MARK: - Integration Tests
 
-  func testComplexTemplate_httpRequest() {
+  func testComplexTemplate_httpRequest() throws {
     // Simulates building: URLRequest(url: baseURL.appendingPathComponent(path))
     let template: Template<Int> = .function(
       "URLRequest",

@@ -16,14 +16,14 @@ final class CastRendererTests: XCTestCase {
 
   // MARK: - Emitted source
 
-  func testForcedCast_emitsAsBang() {
+  func testForcedCast_emitsAsBang() throws {
     var buffer = ""
     SourceEmitter.emit(Template<Void>.cast(expr("value"), type: "String", kind: .forced), into: &buffer)
 
     XCTAssertEqual(buffer, "value as! String")
   }
 
-  func testConditionalCast_emitsAsQuestion() {
+  func testConditionalCast_emitsAsQuestion() throws {
     var buffer = ""
     SourceEmitter.emit(
       Template<Void>.cast(expr("value"), type: "String", kind: .conditional), into: &buffer)
@@ -31,14 +31,14 @@ final class CastRendererTests: XCTestCase {
     XCTAssertEqual(buffer, "value as? String")
   }
 
-  func testCoercion_emitsPlainAs() {
+  func testCoercion_emitsPlainAs() throws {
     var buffer = ""
     SourceEmitter.emit(Template<Void>.cast(expr("value"), type: "Any", kind: .coerce), into: &buffer)
 
     XCTAssertEqual(buffer, "value as Any")
   }
 
-  func testGenericTypeIsEmittedVerbatim() {
+  func testGenericTypeIsEmittedVerbatim() throws {
     var buffer = ""
     SourceEmitter.emit(
       Template<Void>.cast(expr("box"), type: "[String: Int]", kind: .forced), into: &buffer)
@@ -48,11 +48,11 @@ final class CastRendererTests: XCTestCase {
 
   // MARK: - Parity with the legacy structural renderer
 
-  func testAllKinds_matchLegacyTokens() {
+  func testAllKinds_matchLegacyTokens() throws {
     for kind in [CastKind.coerce, .conditional, .forced] {
       let template = Template<Void>.cast(expr("value"), type: "String", kind: kind)
 
-      let parsed = Renderer.render(template)
+      let parsed = try Renderer.render(template)
       let legacy = Renderer.legacyRender(template)
 
       XCTAssertFalse(parsed.hasError, "\(kind) should parse cleanly")
@@ -65,7 +65,7 @@ final class CastRendererTests: XCTestCase {
 
   // MARK: - Composition
 
-  func testCastComposesWithSubscriptCall_theDictionaryStorageGetterShape() {
+  func testCastComposesWithSubscriptCall_theDictionaryStorageGetterShape() throws {
     // The exact expression MacroTemplateKit could not express before:
     //   _storage["name", default: 0] as! Int
     let template = Template<Void>.cast(
@@ -84,12 +84,12 @@ final class CastRendererTests: XCTestCase {
     SourceEmitter.emit(template, into: &buffer)
 
     XCTAssertEqual(buffer, "_storage[\"name\", default: 0] as! Int")
-    XCTAssertFalse(Renderer.render(template).hasError)
+    XCTAssertFalse(try Renderer.render(template).hasError)
   }
 
   // MARK: - Functor law
 
-  func testMapPreservesCastStructure() {
+  func testMapPreservesCastStructure() throws {
     let template = Template<Int>.cast(.variable("v", payload: 1), type: "String", kind: .conditional)
 
     let mapped: Template<String> = template.map { String($0) }

@@ -11,9 +11,9 @@ final class RendererTests: XCTestCase {
 
   // MARK: - Literal Rendering
 
-  func testRenderLiteral_integer() {
+  func testRenderLiteral_integer() throws {
     let template: Template<Void> = .literal(.integer(42))
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
       result.is(IntegerLiteralExprSyntax.self),
@@ -22,17 +22,17 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("42"), "Should contain integer value 42")
   }
 
-  func testRenderLiteral_double() {
+  func testRenderLiteral_double() throws {
     let template: Template<Void> = .literal(.double(3.14))
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(FloatLiteralExprSyntax.self), "Should render as FloatLiteralExprSyntax")
     XCTAssertTrue(result.description.contains("3.14"), "Should contain double value 3.14")
   }
 
-  func testRenderLiteral_string() {
+  func testRenderLiteral_string() throws {
     let template: Template<Void> = .literal(.string("hello"))
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
       result.is(StringLiteralExprSyntax.self),
@@ -41,9 +41,9 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("hello"), "Should contain string value hello")
   }
 
-  func testRenderLiteral_booleanTrue() {
+  func testRenderLiteral_booleanTrue() throws {
     let template: Template<Void> = .literal(.boolean(true))
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
       result.is(BooleanLiteralExprSyntax.self),
@@ -52,9 +52,9 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("true"), "Should contain boolean value true")
   }
 
-  func testRenderLiteral_booleanFalse() {
+  func testRenderLiteral_booleanFalse() throws {
     let template: Template<Void> = .literal(.boolean(false))
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
       result.is(BooleanLiteralExprSyntax.self),
@@ -63,9 +63,9 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("false"), "Should contain boolean value false")
   }
 
-  func testRenderLiteral_nil() {
+  func testRenderLiteral_nil() throws {
     let template: Template<Void> = .literal(.nil)
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(NilLiteralExprSyntax.self), "Should render as NilLiteralExprSyntax")
     XCTAssertTrue(result.description.contains("nil"), "Should contain nil keyword")
@@ -73,9 +73,9 @@ final class RendererTests: XCTestCase {
 
   // MARK: - Variable Rendering
 
-  func testRenderVariable() {
+  func testRenderVariable() throws {
     let template: Template<String> = .variable("myVariable", payload: "metadata")
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
       result.is(DeclReferenceExprSyntax.self),
@@ -87,9 +87,9 @@ final class RendererTests: XCTestCase {
     )
   }
 
-  func testRenderVariable_complexName() {
+  func testRenderVariable_complexName() throws {
     let template: Template<Int> = .variable("_privateVariable123", payload: 42)
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
       result.is(DeclReferenceExprSyntax.self),
@@ -103,13 +103,13 @@ final class RendererTests: XCTestCase {
 
   // MARK: - Control Flow Rendering
 
-  func testRenderConditional() {
+  func testRenderConditional() throws {
     let template: Template<Void> = .conditional(
       condition: .literal(.boolean(true)),
       thenBranch: .literal(.integer(1)),
       elseBranch: .literal(.integer(0))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     // The parse-backed renderer yields a `SequenceExprSyntax` for `?:` until
     // `SwiftOperators.OperatorTable.foldAll` folds it into `TernaryExprSyntax`
@@ -125,13 +125,13 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("0"), "Should contain else branch")
   }
 
-  func testRenderLoop() {
+  func testRenderLoop() throws {
     let template: Template<Int> = .loop(
       variable: "item",
       collection: .variable("items", payload: 1),
       body: .variable("item", payload: 2)
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     // Loop rendered as .forEach closure pattern (expressions can't represent for-in statements)
     XCTAssertTrue(
@@ -144,19 +144,19 @@ final class RendererTests: XCTestCase {
 
   // MARK: - Operations Rendering
 
-  func testRenderFunctionCall_noLabel() {
+  func testRenderFunctionCall_noLabel() throws {
     let template: Template<Void> = .functionCall(
       function: "print",
       arguments: [(label: nil, value: .literal(.string("hello")))]
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(FunctionCallExprSyntax.self), "Should render as FunctionCallExprSyntax")
     XCTAssertTrue(result.description.contains("print"), "Should contain function name print")
     XCTAssertTrue(result.description.contains("hello"), "Should contain argument value")
   }
 
-  func testRenderFunctionCall_withLabel() {
+  func testRenderFunctionCall_withLabel() throws {
     let template: Template<String> = .functionCall(
       function: "greet",
       arguments: [
@@ -164,7 +164,7 @@ final class RendererTests: XCTestCase {
         (label: "times", value: .literal(.integer(3))),
       ]
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(FunctionCallExprSyntax.self), "Should render as FunctionCallExprSyntax")
     XCTAssertTrue(result.description.contains("greet"), "Should contain function name")
@@ -172,13 +172,13 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("times"), "Should contain argument label times")
   }
 
-  func testRenderBinaryOperation_addition() {
+  func testRenderBinaryOperation_addition() throws {
     let template: Template<Void> = .binaryOperation(
       left: .literal(.integer(1)),
       operator: "+",
       right: .literal(.integer(2))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     // See `testRenderConditional`'s comment: the parse-backed renderer
     // yields an unfolded `SequenceExprSyntax` here rather than
@@ -192,13 +192,13 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("2"), "Should contain right operand")
   }
 
-  func testRenderBinaryOperation_comparison() {
+  func testRenderBinaryOperation_comparison() throws {
     let template: Template<String> = .binaryOperation(
       left: .variable("x", payload: "meta"),
       operator: ">=",
       right: .literal(.integer(0))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     // See `testRenderConditional`'s comment on `SequenceExprSyntax` vs
     // `InfixOperatorExprSyntax` — both are token-equivalent here.
@@ -210,12 +210,12 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains(">="), "Should contain comparison operator")
   }
 
-  func testRenderPropertyAccess() {
+  func testRenderPropertyAccess() throws {
     let template: Template<Void> = .propertyAccess(
       base: .variable("object", payload: ()),
       property: "property"
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(MemberAccessExprSyntax.self), "Should render as MemberAccessExprSyntax")
     XCTAssertTrue(result.description.contains("object"), "Should contain base object name")
@@ -223,7 +223,7 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("."), "Should contain member access dot")
   }
 
-  func testRenderPropertyAccess_chained() {
+  func testRenderPropertyAccess_chained() throws {
     let template: Template<Int> = .propertyAccess(
       base: .propertyAccess(
         base: .variable("root", payload: 1),
@@ -231,7 +231,7 @@ final class RendererTests: XCTestCase {
       ),
       property: "leaf"
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(MemberAccessExprSyntax.self), "Should render as MemberAccessExprSyntax")
     XCTAssertTrue(result.description.contains("root"), "Should contain root object")
@@ -241,22 +241,22 @@ final class RendererTests: XCTestCase {
 
   // MARK: - Collections Rendering
 
-  func testRenderArrayLiteral_empty() {
+  func testRenderArrayLiteral_empty() throws {
     let template: Template<Void> = .arrayLiteral([])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ArrayExprSyntax.self), "Should render as ArrayExprSyntax")
     XCTAssertTrue(result.description.contains("["), "Should contain opening bracket")
     XCTAssertTrue(result.description.contains("]"), "Should contain closing bracket")
   }
 
-  func testRenderArrayLiteral_integers() {
+  func testRenderArrayLiteral_integers() throws {
     let template: Template<Void> = .arrayLiteral([
       .literal(.integer(1)),
       .literal(.integer(2)),
       .literal(.integer(3)),
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ArrayExprSyntax.self), "Should render as ArrayExprSyntax")
     XCTAssertTrue(result.description.contains("1"), "Should contain element 1")
@@ -264,13 +264,13 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("3"), "Should contain element 3")
   }
 
-  func testRenderArrayLiteral_mixedExpressions() {
+  func testRenderArrayLiteral_mixedExpressions() throws {
     let template: Template<String> = .arrayLiteral([
       .literal(.string("hello")),
       .variable("name", payload: "meta"),
       .literal(.string("world")),
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ArrayExprSyntax.self), "Should render as ArrayExprSyntax")
     XCTAssertTrue(result.description.contains("hello"), "Should contain string literal")
@@ -280,13 +280,13 @@ final class RendererTests: XCTestCase {
 
   // MARK: - Declarations Rendering
 
-  func testRenderVariableDeclaration() {
+  func testRenderVariableDeclaration() throws {
     let template: Template<Int> = .variableDeclaration(
       name: "result",
       type: "Int",
       initializer: .literal(.integer(42))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     // Limitation: Only renders initializer expression (full declaration requires statement context)
     XCTAssertTrue(
@@ -296,7 +296,7 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("42"), "Should contain initializer value")
   }
 
-  func testRenderVariableDeclaration_complexInitializer() {
+  func testRenderVariableDeclaration_complexInitializer() throws {
     let template: Template<String> = .variableDeclaration(
       name: "sum",
       type: "Int",
@@ -306,7 +306,7 @@ final class RendererTests: XCTestCase {
         right: .variable("b", payload: "meta2")
       )
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     // Renders only the initializer expression (a + b). See
     // `testRenderConditional`'s comment on `SequenceExprSyntax` vs
@@ -322,7 +322,7 @@ final class RendererTests: XCTestCase {
 
   // MARK: - Edge Cases and Complex Expressions
 
-  func testRenderNestedExpressions() {
+  func testRenderNestedExpressions() throws {
     // property.method(arg1, arg2 + arg3)
     let template: Template<Int> = .functionCall(
       function: "method",
@@ -338,7 +338,7 @@ final class RendererTests: XCTestCase {
         ),
       ]
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(FunctionCallExprSyntax.self), "Should render as FunctionCallExprSyntax")
     XCTAssertTrue(result.description.contains("method"), "Should contain method name")
@@ -354,7 +354,7 @@ final class RendererTests: XCTestCase {
     )
   }
 
-  func testRenderComplexConditional() {
+  func testRenderComplexConditional() throws {
     // (x > 0) ? (x * 2) : 0
     let template: Template<String> = .conditional(
       condition: .binaryOperation(
@@ -369,7 +369,7 @@ final class RendererTests: XCTestCase {
       ),
       elseBranch: .literal(.integer(0))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     // See `testRenderConditional`'s comment on `SequenceExprSyntax` vs
     // `TernaryExprSyntax` — both are token-equivalent here.
@@ -382,7 +382,7 @@ final class RendererTests: XCTestCase {
     XCTAssertTrue(result.description.contains("*"), "Should contain multiplication operator")
   }
 
-  func testRenderPropertyAccessOnFunctionCall() {
+  func testRenderPropertyAccessOnFunctionCall() throws {
     // myFunction().property
     let template: Template<Void> = .propertyAccess(
       base: .functionCall(
@@ -391,22 +391,22 @@ final class RendererTests: XCTestCase {
       ),
       property: "property"
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(MemberAccessExprSyntax.self), "Should render as MemberAccessExprSyntax")
     XCTAssertTrue(result.description.contains("myFunction"), "Should contain function name")
     XCTAssertTrue(result.description.contains("property"), "Should contain property name")
   }
 
-  func testRenderPayloadIsDiscarded() {
+  func testRenderPayloadIsDiscarded() throws {
     // Verify that payload type parameter A is discarded during rendering
     let template1: Template<Int> = .variable("x", payload: 42)
     let template2: Template<String> = .variable("x", payload: "metadata")
     let template3: Template<Bool> = .variable("x", payload: true)
 
-    let result1 = Renderer.render(template1)
-    let result2 = Renderer.render(template2)
-    let result3 = Renderer.render(template3)
+    let result1 = try Renderer.render(template1)
+    let result2 = try Renderer.render(template2)
+    let result3 = try Renderer.render(template3)
 
     // All should produce identical SwiftSyntax output (identifier "x")
     XCTAssertEqual(

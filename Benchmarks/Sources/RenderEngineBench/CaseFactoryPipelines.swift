@@ -99,7 +99,7 @@ struct MTKCaseFactoryPipeline: CaseFactoryPipeline {
                     body: [.expression(construction)]
                 )
             )
-            return Renderer.render(function)
+            return try! Renderer.render(function)
         }
     }
 }

@@ -11,13 +11,13 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - Let Binding Tests
 
-  func testRenderLetBinding_withoutType() {
+  func testRenderLetBinding_withoutType() throws {
     let statement: Statement<Void> = .letBinding(
       name: "result",
       type: nil,
       initializer: .literal(.integer(42))
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("let result"), "Should contain let binding")
@@ -25,13 +25,13 @@ final class StatementRendererTests: XCTestCase {
     XCTAssertFalse(description.contains(":"), "Should not contain type annotation")
   }
 
-  func testRenderLetBinding_withType() {
+  func testRenderLetBinding_withType() throws {
     let statement: Statement<String> = .letBinding(
       name: "value",
       type: "Int",
       initializer: .literal(.integer(100))
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("let value"), "Should contain let binding with name")
@@ -39,7 +39,7 @@ final class StatementRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("= 100"), "Should contain initializer value")
   }
 
-  func testRenderLetBinding_complexInitializer() {
+  func testRenderLetBinding_complexInitializer() throws {
     let statement: Statement<Int> = .letBinding(
       name: "sum",
       type: "Int",
@@ -49,7 +49,7 @@ final class StatementRendererTests: XCTestCase {
         right: .variable("b", payload: 2)
       )
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("let sum"), "Should contain let binding")
@@ -59,13 +59,13 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - Var Binding Tests
 
-  func testRenderVarBinding_withoutType() {
+  func testRenderVarBinding_withoutType() throws {
     let statement: Statement<Void> = .varBinding(
       name: "counter",
       type: nil,
       initializer: .literal(.integer(0))
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("var counter"), "Should contain var binding")
@@ -73,13 +73,13 @@ final class StatementRendererTests: XCTestCase {
     XCTAssertFalse(description.contains(":"), "Should not contain type annotation")
   }
 
-  func testRenderVarBinding_withType() {
+  func testRenderVarBinding_withType() throws {
     let statement: Statement<Bool> = .varBinding(
       name: "isActive",
       type: "Bool",
       initializer: .literal(.boolean(true))
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("var isActive"), "Should contain var binding with name")
@@ -89,12 +89,12 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - Guard Statement Tests
 
-  func testRenderGuardStatement_simpleCondition() {
+  func testRenderGuardStatement_simpleCondition() throws {
     let statement: Statement<Void> = .guardStatement(
       condition: .variable("isValid", payload: ()),
       elseBody: [.returnStatement(nil)]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("guard"), "Should contain guard keyword")
@@ -103,7 +103,7 @@ final class StatementRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("return"), "Should contain return in else body")
   }
 
-  func testRenderGuardStatement_complexElseBody() {
+  func testRenderGuardStatement_complexElseBody() throws {
     let statement: Statement<String> = .guardStatement(
       condition: .binaryOperation(
         left: .variable("count", payload: "meta"),
@@ -120,7 +120,7 @@ final class StatementRendererTests: XCTestCase {
         .returnStatement(.literal(.nil)),
       ]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("guard"), "Should contain guard keyword")
@@ -131,7 +131,7 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - If Statement Tests
 
-  func testRenderIfStatement_withoutElse() {
+  func testRenderIfStatement_withoutElse() throws {
     let statement: Statement<Int> = .ifStatement(
       condition: .variable("shouldPrint", payload: 1),
       thenBody: [
@@ -144,7 +144,7 @@ final class StatementRendererTests: XCTestCase {
       ],
       elseBody: nil
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("if"), "Should contain if keyword")
@@ -153,7 +153,7 @@ final class StatementRendererTests: XCTestCase {
     XCTAssertFalse(description.contains("else"), "Should not contain else keyword")
   }
 
-  func testRenderIfStatement_withElse() {
+  func testRenderIfStatement_withElse() throws {
     let statement: Statement<Void> = .ifStatement(
       condition: .binaryOperation(
         left: .variable("x", payload: ()),
@@ -167,7 +167,7 @@ final class StatementRendererTests: XCTestCase {
         .returnStatement(.literal(.integer(-1)))
       ]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("if"), "Should contain if keyword")
@@ -177,7 +177,7 @@ final class StatementRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("return -1"), "Should contain else return")
   }
 
-  func testRenderIfStatement_multipleStatementsInBranches() {
+  func testRenderIfStatement_multipleStatementsInBranches() throws {
     let statement: Statement<String> = .ifStatement(
       condition: .literal(.boolean(true)),
       thenBody: [
@@ -194,7 +194,7 @@ final class StatementRendererTests: XCTestCase {
         .returnStatement(.variable("other", payload: "meta")),
       ]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("if"), "Should contain if keyword")
@@ -206,24 +206,24 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - Return Statement Tests
 
-  func testRenderReturnStatement_withoutExpression() {
+  func testRenderReturnStatement_withoutExpression() throws {
     let statement: Statement<Void> = .returnStatement(nil)
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertEqual(description, "return", "Should render as bare return statement")
   }
 
-  func testRenderReturnStatement_withLiteral() {
+  func testRenderReturnStatement_withLiteral() throws {
     let statement: Statement<Int> = .returnStatement(.literal(.integer(42)))
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("return"), "Should contain return keyword")
     XCTAssertTrue(description.contains("42"), "Should contain return value")
   }
 
-  func testRenderReturnStatement_withComplexExpression() {
+  func testRenderReturnStatement_withComplexExpression() throws {
     let statement: Statement<String> = .returnStatement(
       .binaryOperation(
         left: .variable("x", payload: "meta"),
@@ -231,7 +231,7 @@ final class StatementRendererTests: XCTestCase {
         right: .literal(.integer(2))
       )
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("return"), "Should contain return keyword")
@@ -240,18 +240,18 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - Throw Statement Tests
 
-  func testRenderThrowStatement_simpleLiteral() {
+  func testRenderThrowStatement_simpleLiteral() throws {
     let statement: Statement<Void> = .throwStatement(
       .variable("error", payload: ())
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("throw"), "Should contain throw keyword")
     XCTAssertTrue(description.contains("error"), "Should contain error variable")
   }
 
-  func testRenderThrowStatement_functionCall() {
+  func testRenderThrowStatement_functionCall() throws {
     let statement: Statement<String> = .throwStatement(
       .functionCall(
         function: "MyError",
@@ -259,7 +259,7 @@ final class StatementRendererTests: XCTestCase {
           (label: "message", value: .literal(.string("Something failed")))
         ])
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("throw"), "Should contain throw keyword")
@@ -270,7 +270,7 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - Expression Statement Tests
 
-  func testRenderExpressionStatement_functionCall() {
+  func testRenderExpressionStatement_functionCall() throws {
     let statement: Statement<Void> = .expression(
       .functionCall(
         function: "print",
@@ -278,21 +278,21 @@ final class StatementRendererTests: XCTestCase {
           (label: nil, value: .literal(.string("hello")))
         ])
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("print"), "Should contain function call")
     XCTAssertTrue(description.contains("hello"), "Should contain argument")
   }
 
-  func testRenderExpressionStatement_propertyAccess() {
+  func testRenderExpressionStatement_propertyAccess() throws {
     let statement: Statement<Int> = .expression(
       .propertyAccess(
         base: .variable("object", payload: 1),
         property: "method"
       )
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("object"), "Should contain base object")
@@ -301,7 +301,7 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - Multiple Statements Rendering
 
-  func testRenderStatements_multipleStatements() {
+  func testRenderStatements_multipleStatements() throws {
     let statements: [Statement<String>] = [
       .letBinding(name: "x", type: "Int", initializer: .literal(.integer(1))),
       .letBinding(name: "y", type: "Int", initializer: .literal(.integer(2))),
@@ -313,7 +313,7 @@ final class StatementRendererTests: XCTestCase {
         )
       ),
     ]
-    let result = Renderer.renderStatements(statements)
+    let result = try Renderer.renderStatements(statements)
 
     XCTAssertEqual(result.count, 3, "Should render all 3 statements")
 
@@ -323,14 +323,14 @@ final class StatementRendererTests: XCTestCase {
     XCTAssertTrue(fullDescription.contains("return x + y"), "Should contain return statement")
   }
 
-  func testRenderStatements_emptyArray() {
+  func testRenderStatements_emptyArray() throws {
     let statements: [Statement<Void>] = []
-    let result = Renderer.renderStatements(statements)
+    let result = try Renderer.renderStatements(statements)
 
     XCTAssertTrue(result.isEmpty, "Should render empty list for empty array")
   }
 
-  func testRenderStatements_mixedStatementTypes() {
+  func testRenderStatements_mixedStatementTypes() throws {
     let statements: [Statement<Int>] = [
       .guardStatement(
         condition: .variable("isValid", payload: 1),
@@ -346,7 +346,7 @@ final class StatementRendererTests: XCTestCase {
       .varBinding(name: "result", type: "Int", initializer: .literal(.integer(0))),
       .throwStatement(.variable("error", payload: 2)),
     ]
-    let result = Renderer.renderStatements(statements)
+    let result = try Renderer.renderStatements(statements)
 
     XCTAssertEqual(result.count, 4, "Should render all 4 statements")
 
@@ -359,7 +359,7 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - For-In Statement Tests
 
-  func testRenderForInStatement_simple() {
+  func testRenderForInStatement_simple() throws {
     let stmt: Statement<Void> = .forInStatement(
       variable: "item",
       collection: .variable("items", payload: ()),
@@ -372,13 +372,13 @@ final class StatementRendererTests: XCTestCase {
           ))
       ]
     )
-    let result = Renderer.render(stmt)
+    let result = try Renderer.render(stmt)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("for item in items"), "Should contain for-in syntax")
     XCTAssertTrue(text.contains("result.append(item)"), "Should contain body expression")
   }
 
-  func testRenderForInStatement_withLetBinding() {
+  func testRenderForInStatement_withLetBinding() throws {
     let stmt: Statement<Void> = .forInStatement(
       variable: "element",
       collection: .variable("array", payload: ()),
@@ -397,7 +397,7 @@ final class StatementRendererTests: XCTestCase {
           )),
       ]
     )
-    let result = Renderer.render(stmt)
+    let result = try Renderer.render(stmt)
     let text = result.formatted().description
     XCTAssertTrue(
       text.contains("for element in array"), "Should contain for-in syntax with element")
@@ -405,7 +405,7 @@ final class StatementRendererTests: XCTestCase {
 
   // MARK: - If-Let Binding Tests
 
-  func testRenderIfLetBinding_withoutElse() {
+  func testRenderIfLetBinding_withoutElse() throws {
     let stmt: Statement<Void> = .ifLetBinding(
       name: "value",
       type: nil,
@@ -413,13 +413,13 @@ final class StatementRendererTests: XCTestCase {
       thenBody: [.returnStatement(.variable("value", payload: ()))],
       elseBody: nil
     )
-    let result = Renderer.render(stmt)
+    let result = try Renderer.render(stmt)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("let value"), "Should contain let binding")
     XCTAssertTrue(text.contains("optional"), "Should contain initializer")
   }
 
-  func testRenderIfLetBinding_withElse() {
+  func testRenderIfLetBinding_withElse() throws {
     let stmt: Statement<Void> = .ifLetBinding(
       name: "value",
       type: nil,
@@ -427,13 +427,13 @@ final class StatementRendererTests: XCTestCase {
       thenBody: [.returnStatement(.variable("value", payload: ()))],
       elseBody: [.returnStatement(.literal(.nil))]
     )
-    let result = Renderer.render(stmt)
+    let result = try Renderer.render(stmt)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("let value"), "Should contain let binding")
     XCTAssertTrue(text.contains("else"), "Should contain else branch")
   }
 
-  func testRenderIfLetBinding_withType() {
+  func testRenderIfLetBinding_withType() throws {
     let stmt: Statement<Void> = .ifLetBinding(
       name: "value",
       type: "String",
@@ -441,7 +441,7 @@ final class StatementRendererTests: XCTestCase {
       thenBody: [.returnStatement(.variable("value", payload: ()))],
       elseBody: nil
     )
-    let result = Renderer.render(stmt)
+    let result = try Renderer.render(stmt)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("let value"), "Should contain let binding")
     XCTAssertTrue(text.contains("String"), "Should contain type annotation")

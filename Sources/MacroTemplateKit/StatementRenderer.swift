@@ -22,8 +22,8 @@ extension Renderer {
   ///
   /// - Parameter statement: Statement to render
   /// - Returns: SwiftSyntax code block item containing the rendered statement
-  public static func render<A: Sendable>(_ statement: Statement<A>) -> CodeBlockItemSyntax {
-    renderParsed(statement)
+  public static func render<A: Sendable>(_ statement: Statement<A>) throws -> CodeBlockItemSyntax {
+    try renderParsed(statement)
   }
 
   /// Legacy per-node structural implementation that `render(_: Statement<A>)`
@@ -89,8 +89,8 @@ extension Renderer {
   /// - Returns: SwiftSyntax code block item list
   public static func renderStatements<A: Sendable>(
     _ statements: [Statement<A>]
-  ) -> CodeBlockItemListSyntax {
-    CodeBlockItemListSyntax(statements.map { render($0) })
+  ) throws -> CodeBlockItemListSyntax {
+    CodeBlockItemListSyntax(try statements.map { try render($0) })
   }
 
   /// Legacy per-node structural counterpart to `renderStatements(_:)`,
@@ -363,11 +363,13 @@ extension Renderer {
   /// `render(_: Statement<A>)` entry point above; it remains a separate
   /// internal name so the token-parity suite can call it directly alongside
   /// `legacyRender(_:)`.
-  static func renderParsed<A: Sendable>(_ statement: Statement<A>) -> CodeBlockItemSyntax {
+  static func renderParsed<A: Sendable>(_ statement: Statement<A>) throws -> CodeBlockItemSyntax {
     var buffer = ""
     SourceEmitter.emit(statement, into: &buffer)
     let item = CodeBlockItemSyntax("\(raw: buffer)")
-    assert(!item.hasError, "SourceEmitter produced unparsable statement: \(buffer)")
+    guard !item.hasError else {
+      throw RenderError.make(kind: .statement, source: buffer, node: item)
+    }
     guard mightNeedSegmentMerge(buffer) else { return item }
     return StringSegmentMerger().visit(item)
   }

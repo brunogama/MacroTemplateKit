@@ -17,7 +17,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
   // MARK: - Functor Law 1: Identity
   // template.map { $0 } == template
 
-  func testFunctorIdentityLaw_literal_integer() {
+  func testFunctorIdentityLaw_literal_integer() throws {
     let template: Template<Int> = .literal(.integer(42))
     let mapped = template.map { $0 }
     XCTAssertEqual(
@@ -27,26 +27,26 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  func testFunctorIdentityLaw_literal_string() {
+  func testFunctorIdentityLaw_literal_string() throws {
     let template: Template<String> = .literal(.string("hello"))
     let mapped = template.map { $0 }
     XCTAssertEqual(mapped, template, "Identity law failed for string literal")
   }
 
-  func testFunctorIdentityLaw_literal_boolean() {
+  func testFunctorIdentityLaw_literal_boolean() throws {
     let templateTrue: Template<Bool> = .literal(.boolean(true))
     let templateFalse: Template<Bool> = .literal(.boolean(false))
     XCTAssertEqual(templateTrue.map { $0 }, templateTrue, "Identity law failed for true literal")
     XCTAssertEqual(templateFalse.map { $0 }, templateFalse, "Identity law failed for false literal")
   }
 
-  func testFunctorIdentityLaw_literal_nil() {
+  func testFunctorIdentityLaw_literal_nil() throws {
     let template: Template<Int> = .literal(.nil)
     let mapped = template.map { $0 }
     XCTAssertEqual(mapped, template, "Identity law failed for nil literal")
   }
 
-  func testFunctorIdentityLaw_variable() {
+  func testFunctorIdentityLaw_variable() throws {
     let template: Template<String> = .variable("myVar", payload: "metadata")
     let mapped = template.map { $0 }
     XCTAssertEqual(
@@ -56,7 +56,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  func testFunctorIdentityLaw_conditional() {
+  func testFunctorIdentityLaw_conditional() throws {
     let template: Template<Int> = .conditional(
       condition: .literal(.boolean(true)),
       thenBranch: .variable("x", payload: 1),
@@ -70,7 +70,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  func testFunctorIdentityLaw_functionCall() {
+  func testFunctorIdentityLaw_functionCall() throws {
     let template: Template<String> = .functionCall(
       function: "print",
       arguments: [
@@ -86,7 +86,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  func testFunctorIdentityLaw_binaryOperation() {
+  func testFunctorIdentityLaw_binaryOperation() throws {
     let template: Template<Int> = .binaryOperation(
       left: .literal(.integer(1)),
       operator: "+",
@@ -96,7 +96,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(mapped, template, "Identity law failed for binary operation")
   }
 
-  func testFunctorIdentityLaw_propertyAccess() {
+  func testFunctorIdentityLaw_propertyAccess() throws {
     let template: Template<String> = .propertyAccess(
       base: .variable("object", payload: "metadata"),
       property: "property"
@@ -105,7 +105,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(mapped, template, "Identity law failed for property access")
   }
 
-  func testFunctorIdentityLaw_arrayLiteral() {
+  func testFunctorIdentityLaw_arrayLiteral() throws {
     let template: Template<Int> = .arrayLiteral([
       .literal(.integer(1)),
       .variable("x", payload: 10),
@@ -115,7 +115,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(mapped, template, "Identity law failed for array literal")
   }
 
-  func testFunctorIdentityLaw_variableDeclaration() {
+  func testFunctorIdentityLaw_variableDeclaration() throws {
     let template: Template<String> = .variableDeclaration(
       name: "result",
       type: "Int",
@@ -125,7 +125,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(mapped, template, "Identity law failed for variable declaration")
   }
 
-  func testFunctorIdentityLaw_loop() {
+  func testFunctorIdentityLaw_loop() throws {
     let template: Template<Int> = .loop(
       variable: "item",
       collection: .variable("items", payload: 1),
@@ -135,7 +135,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(mapped, template, "Identity law failed for loop")
   }
 
-  func testFunctorIdentityLaw_complexNested() {
+  func testFunctorIdentityLaw_complexNested() throws {
     // Test deeply nested structure: conditional containing function call with binary operations
     let template: Template<String> = .conditional(
       condition: .binaryOperation(
@@ -169,7 +169,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
   // MARK: - Functor Law 2: Composition
   // template.map(f).map(g) == template.map { g(f($0)) }
 
-  func testFunctorCompositionLaw_simple() {
+  func testFunctorCompositionLaw_simple() throws {
     let template: Template<Int> = .variable("x", payload: 10)
 
     let transform1: (Int) -> String = { "\($0)" }
@@ -185,7 +185,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  func testFunctorCompositionLaw_nestedTemplate() {
+  func testFunctorCompositionLaw_nestedTemplate() throws {
     let template: Template<Int> = .conditional(
       condition: .literal(.boolean(true)),
       thenBranch: .variable("x", payload: 1),
@@ -205,7 +205,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  func testFunctorCompositionLaw_functionCall() {
+  func testFunctorCompositionLaw_functionCall() throws {
     let template: Template<String> = .functionCall(
       function: "print",
       arguments: [
@@ -227,7 +227,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     )
   }
 
-  func testFunctorCompositionLaw_arrayLiteral() {
+  func testFunctorCompositionLaw_arrayLiteral() throws {
     let template: Template<Int> = .arrayLiteral([
       .variable("a", payload: 1),
       .variable("b", payload: 2),
@@ -249,7 +249,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
 
   // MARK: - Structure Preservation
 
-  func testMapPreservesTemplateStructure() {
+  func testMapPreservesTemplateStructure() throws {
     // Verify mapping doesn't change .conditional to .functionCall, etc.
     let conditional: Template<Int> = .conditional(
       condition: .literal(.boolean(true)),
@@ -272,7 +272,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     }
   }
 
-  func testMapOnlyAffectsPayload() {
+  func testMapOnlyAffectsPayload() throws {
     // Verify literal values unchanged, only variable payloads transformed
     let template: Template<String> = .binaryOperation(
       left: .literal(.integer(10)),  // Should remain unchanged
@@ -294,7 +294,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     }
   }
 
-  func testMapPreservesLiteralValues() {
+  func testMapPreservesLiteralValues() throws {
     // All literal types should pass through unchanged
     let intLit: Template<Int> = .literal(.integer(42))
     let doubleLit: Template<Int> = .literal(.double(3.14))
@@ -309,7 +309,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(nilLit.map { $0 * 2 }, .literal(.nil))
   }
 
-  func testMapPreservesVariableNames() {
+  func testMapPreservesVariableNames() throws {
     // Variable names should remain unchanged, only payloads transform
     let template: Template<Int> = .variable("myVariable", payload: 10)
     let mapped = template.map { $0 * 2 }
@@ -320,7 +320,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     }
   }
 
-  func testMapPreservesFunctionNames() {
+  func testMapPreservesFunctionNames() throws {
     // Function names should remain unchanged
     let template: Template<Int> = .functionCall(
       function: "myFunction",
@@ -342,7 +342,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     }
   }
 
-  func testMapPreservesOperators() {
+  func testMapPreservesOperators() throws {
     // Binary operators should remain unchanged
     let template: Template<String> = .binaryOperation(
       left: .variable("x", payload: "a"),
@@ -363,7 +363,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     }
   }
 
-  func testMapPreservesPropertyNames() {
+  func testMapPreservesPropertyNames() throws {
     // Property names should remain unchanged
     let template: Template<Int> = .propertyAccess(
       base: .variable("object", payload: 1),
@@ -382,7 +382,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     }
   }
 
-  func testMapPreservesLoopStructure() {
+  func testMapPreservesLoopStructure() throws {
     // Loop variable name and collection should remain unchanged
     let template: Template<Int> = .loop(
       variable: "item",
@@ -403,7 +403,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     }
   }
 
-  func testMapPreservesDeclarationStructure() {
+  func testMapPreservesDeclarationStructure() throws {
     // Variable name and type should remain unchanged
     let template: Template<String> = .variableDeclaration(
       name: "myVar",
@@ -426,7 +426,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
 
   // MARK: - Functor Laws for tupleLiteral
 
-  func testFunctorIdentityLaw_tupleLiteral() {
+  func testFunctorIdentityLaw_tupleLiteral() throws {
     let template: Template<Int> = .tupleLiteral([
       .variable("x", payload: 1),
       .literal(.integer(2)),
@@ -434,7 +434,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(template.map { $0 }, template)
   }
 
-  func testFunctorCompositionLaw_tupleLiteral() {
+  func testFunctorCompositionLaw_tupleLiteral() throws {
     let template: Template<Int> = .tupleLiteral([
       .variable("x", payload: 3),
       .variable("y", payload: 4),
@@ -446,7 +446,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
 
   // MARK: - Functor Laws for subscriptCall
 
-  func testFunctorIdentityLaw_subscriptCall() {
+  func testFunctorIdentityLaw_subscriptCall() throws {
     let template: Template<Int> = .subscriptCall(
       base: .variable("d", payload: 1),
       arguments: [(label: "default", value: .variable("x", payload: 2))]
@@ -454,7 +454,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
     XCTAssertEqual(template.map { $0 }, template)
   }
 
-  func testFunctorCompositionLaw_subscriptCall() {
+  func testFunctorCompositionLaw_subscriptCall() throws {
     let template: Template<Int> = .subscriptCall(
       base: .variable("d", payload: 1),
       arguments: [(label: nil, value: .variable("k", payload: 2))]
@@ -466,7 +466,7 @@ final class TemplateFunctorLawsTests: XCTestCase {
 
   // MARK: - Functor Laws for enumDecl
 
-  func testMapPreservesEnumDeclarationStructure() {
+  func testMapPreservesEnumDeclarationStructure() throws {
     let decl: Declaration<Int> = .enumDecl(
       EnumSignature(
         name: "Test",

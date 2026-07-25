@@ -1,6 +1,6 @@
 # The parse gate throws instead of asserting
 
-**Status:** accepted
+**Status:** accepted — implemented
 
 The render engine no longer builds SwiftSyntax nodes structurally; `SourceEmitter` appends
 Swift source text to a buffer that `Renderer` parses once per fragment. That makes an
@@ -40,6 +40,16 @@ into a proper compiler diagnostic without the author writing any handling code.
   library, never a recoverable condition in the author's macro. The throw exists to produce
   a good diagnostic and name the culprit, not to offer a retry path. Documentation should
   say so, or authors will reach for `try!`.
+- **The leaf fast path is outside the gate.** `Renderer.renderLeaf` builds
+  `.variable` and simple literals structurally to avoid allocating a parse arena
+  per call, so their contents are never parsed and never validated. A malformed
+  identifier does not even set `hasError` — it becomes a well-formed token
+  holding garbage text, which nothing notices until the compiler reads the
+  emitted source. `RenderErrorTests` pins this behaviour so a future change is a
+  decision rather than an accident. Closing it means validating identifiers,
+  which would also reject `.variable` used as a raw-text escape hatch — the
+  workaround callers needed before `Template.syntax` existed.
+
 - **The gate is syntactic only.** It catches malformed emitter output (`foo(`, unbalanced
   braces). It does not catch well-formed-but-wrong output: `Template.operation(left:
   .literal(1), op: "&&", right: .literal("hello"))` emits `1 && "hello"`, which parses

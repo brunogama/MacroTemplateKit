@@ -12,7 +12,7 @@ final class DeclarationRendererTests: XCTestCase {
 
     // MARK: - Function Declaration Tests
 
-    func testRenderFunction_simple() {
+    func testRenderFunction_simple() throws {
         let function = Declaration<Void>.function(
             FunctionSignature(
                 name: "greet",
@@ -30,7 +30,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(function)
+        let result = try Renderer.render(function)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("func greet"), "Should contain function name")
@@ -40,7 +40,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("}"), "Should contain closing brace")
     }
 
-    func testRenderFunction_withParameters() {
+    func testRenderFunction_withParameters() throws {
         let function = Declaration<String>.function(
             FunctionSignature(
                 name: "add",
@@ -60,7 +60,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(function)
+        let result = try Renderer.render(function)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("func add"), "Should contain function name")
@@ -70,7 +70,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("return a + b"), "Should contain return statement")
     }
 
-    func testRenderFunction_withLabelsAndParameters() {
+    func testRenderFunction_withLabelsAndParameters() throws {
         let function = Declaration<Int>.function(
             FunctionSignature(
                 name: "greet",
@@ -81,7 +81,7 @@ final class DeclarationRendererTests: XCTestCase {
                 body: []
             )
         )
-        let result = Renderer.render(function)
+        let result = try Renderer.render(function)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("func greet"), "Should contain function name")
@@ -90,7 +90,7 @@ final class DeclarationRendererTests: XCTestCase {
             description.contains("times count: Int"), "Should contain second labeled parameter")
     }
 
-    func testRenderFunction_async() {
+    func testRenderFunction_async() throws {
         let function = Declaration<Void>.function(
             FunctionSignature(
                 name: "fetchData",
@@ -103,7 +103,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(function)
+        let result = try Renderer.render(function)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("func fetchData"), "Should contain function name")
@@ -111,7 +111,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("-> Data"), "Should contain return type")
     }
 
-    func testRenderFunction_throws() {
+    func testRenderFunction_throws() throws {
         let function = Declaration<Bool>.function(
             FunctionSignature(
                 name: "validate",
@@ -139,7 +139,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(function)
+        let result = try Renderer.render(function)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("func validate"), "Should contain function name")
@@ -149,7 +149,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("throw"), "Should contain throw statement")
     }
 
-    func testRenderFunction_asyncThrows() {
+    func testRenderFunction_asyncThrows() throws {
         let function = Declaration<String>.function(
             FunctionSignature(
                 name: "process",
@@ -162,7 +162,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(function)
+        let result = try Renderer.render(function)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("func process"), "Should contain function name")
@@ -171,7 +171,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("-> Result"), "Should contain return type")
     }
 
-    func testRenderFunction_inoutParameter() {
+    func testRenderFunction_inoutParameter() throws {
         let function = Declaration<Void>.function(
             FunctionSignature(
                 name: "swap",
@@ -182,14 +182,14 @@ final class DeclarationRendererTests: XCTestCase {
                 body: []
             )
         )
-        let result = Renderer.render(function)
+        let result = try Renderer.render(function)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("func swap"), "Should contain function name")
         XCTAssertTrue(description.contains("inout Int"), "Should contain inout modifier on parameters")
     }
 
-    func testRenderFunction_withAttributesGenericParametersAndWhereClause() {
+    func testRenderFunction_withAttributesGenericParametersAndWhereClause() throws {
         let function = Declaration<Void>.function(
             FunctionSignature(
                 accessLevel: .public,
@@ -218,7 +218,7 @@ final class DeclarationRendererTests: XCTestCase {
                 body: []
             )
         )
-        let result = Renderer.render(function)
+        let result = try Renderer.render(function)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("@MainActor"), "Should contain MainActor attribute")
@@ -250,7 +250,7 @@ final class DeclarationRendererTests: XCTestCase {
 
     // MARK: - Property Declaration Tests
 
-    func testRenderProperty_letWithType() {
+    func testRenderProperty_letWithType() throws {
         let property = Declaration<Int>.property(
             PropertySignature(
                 name: "constantValue",
@@ -260,7 +260,7 @@ final class DeclarationRendererTests: XCTestCase {
                 initializer: .literal(.integer(42))
             )
         )
-        let result = Renderer.render(property)
+        let result = try Renderer.render(property)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("let constantValue"), "Should contain let property name")
@@ -269,7 +269,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertFalse(description.contains("static"), "Should not contain static modifier")
     }
 
-    func testRenderProperty_varWithoutType() {
+    func testRenderProperty_varWithoutType() throws {
         let property = Declaration<Void>.property(
             PropertySignature(
                 name: "mutableValue",
@@ -279,7 +279,7 @@ final class DeclarationRendererTests: XCTestCase {
                 initializer: .literal(.string("default"))
             )
         )
-        let result = Renderer.render(property)
+        let result = try Renderer.render(property)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("var mutableValue"), "Should contain var property name")
@@ -287,7 +287,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertFalse(description.contains(":"), "Should not contain type annotation")
     }
 
-    func testRenderProperty_static() {
+    func testRenderProperty_static() throws {
         let property = Declaration<String>.property(
             PropertySignature(
                 name: "shared",
@@ -297,7 +297,7 @@ final class DeclarationRendererTests: XCTestCase {
                 initializer: .functionCall(function: "Instance", arguments: [])
             )
         )
-        let result = Renderer.render(property)
+        let result = try Renderer.render(property)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("static"), "Should contain static modifier")
@@ -306,7 +306,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("Instance()"), "Should contain initializer call")
     }
 
-    func testRenderProperty_withoutInitializer() {
+    func testRenderProperty_withoutInitializer() throws {
         let property = Declaration<Bool>.property(
             PropertySignature(
                 name: "placeholder",
@@ -316,7 +316,7 @@ final class DeclarationRendererTests: XCTestCase {
                 initializer: nil
             )
         )
-        let result = Renderer.render(property)
+        let result = try Renderer.render(property)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("var placeholder"), "Should contain var property name")
@@ -326,7 +326,7 @@ final class DeclarationRendererTests: XCTestCase {
 
     // MARK: - Computed Property Tests
 
-    func testRenderComputedProperty_getterOnly() {
+    func testRenderComputedProperty_getterOnly() throws {
         let property = Declaration<Void>.computedProperty(
             ComputedPropertySignature(
                 name: "fullName",
@@ -344,7 +344,7 @@ final class DeclarationRendererTests: XCTestCase {
                 setter: nil
             )
         )
-        let result = Renderer.render(property)
+        let result = try Renderer.render(property)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("var fullName"), "Should contain property name")
@@ -354,7 +354,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertFalse(description.contains("set"), "Should not contain set accessor")
     }
 
-    func testRenderComputedProperty_getterAndSetter() {
+    func testRenderComputedProperty_getterAndSetter() throws {
         let property = Declaration<Int>.computedProperty(
             ComputedPropertySignature(
                 name: "count",
@@ -380,7 +380,7 @@ final class DeclarationRendererTests: XCTestCase {
                 )
             )
         )
-        let result = Renderer.render(property)
+        let result = try Renderer.render(property)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("var count"), "Should contain property name")
@@ -391,7 +391,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("updateStorage"), "Should contain setter body")
     }
 
-    func testRenderComputedProperty_static() {
+    func testRenderComputedProperty_static() throws {
         let property = Declaration<String>.computedProperty(
             ComputedPropertySignature(
                 name: "className",
@@ -403,7 +403,7 @@ final class DeclarationRendererTests: XCTestCase {
                 setter: nil
             )
         )
-        let result = Renderer.render(property)
+        let result = try Renderer.render(property)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("static"), "Should contain static modifier")
@@ -412,7 +412,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("get"), "Should contain get accessor")
     }
 
-    func testRenderComputedProperty_customSetterParameter() {
+    func testRenderComputedProperty_customSetterParameter() throws {
         let property = Declaration<Bool>.computedProperty(
             ComputedPropertySignature(
                 name: "isEnabled",
@@ -433,7 +433,7 @@ final class DeclarationRendererTests: XCTestCase {
                 )
             )
         )
-        let result = Renderer.render(property)
+        let result = try Renderer.render(property)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("var isEnabled"), "Should contain property name")
@@ -443,7 +443,7 @@ final class DeclarationRendererTests: XCTestCase {
 
     // MARK: - Extension Declaration Tests
 
-    func testRenderExtension_withoutConformances() {
+    func testRenderExtension_withoutConformances() throws {
         let extensionDecl = Declaration<Void>.extensionDecl(
             ExtensionSignature(
                 typeName: "MyType",
@@ -451,7 +451,7 @@ final class DeclarationRendererTests: XCTestCase {
                 members: []
             )
         )
-        let result = Renderer.render(extensionDecl)
+        let result = try Renderer.render(extensionDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("extension MyType"), "Should contain extension keyword")
@@ -460,7 +460,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertFalse(description.contains(":"), "Should not contain conformance colon")
     }
 
-    func testRenderExtension_withConformances() {
+    func testRenderExtension_withConformances() throws {
         let extensionDecl = Declaration<Int>.extensionDecl(
             ExtensionSignature(
                 typeName: "MyType",
@@ -468,7 +468,7 @@ final class DeclarationRendererTests: XCTestCase {
                 members: []
             )
         )
-        let result = Renderer.render(extensionDecl)
+        let result = try Renderer.render(extensionDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("extension MyType"), "Should contain extension keyword")
@@ -477,7 +477,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("Hashable"), "Should contain second conformance")
     }
 
-    func testRenderExtension_withMembers() {
+    func testRenderExtension_withMembers() throws {
         let extensionDecl = Declaration<String>.extensionDecl(
             ExtensionSignature(
                 typeName: "MyType",
@@ -507,7 +507,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(extensionDecl)
+        let result = try Renderer.render(extensionDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("extension MyType"), "Should contain extension keyword")
@@ -516,7 +516,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("func greet"), "Should contain function member")
     }
 
-    func testRenderExtension_withAccessLevel() {
+    func testRenderExtension_withAccessLevel() throws {
         let extensionDecl = Declaration<Void>.extensionDecl(
             ExtensionSignature(
                 accessLevel: .public,
@@ -525,14 +525,14 @@ final class DeclarationRendererTests: XCTestCase {
                 members: []
             )
         )
-        let result = Renderer.render(extensionDecl)
+        let result = try Renderer.render(extensionDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("public extension MyType"), "Should contain public modifier")
         XCTAssertTrue(description.contains("Equatable"), "Should contain conformance")
     }
 
-    func testRenderExtension_withLegacyWhereRequirement() {
+    func testRenderExtension_withLegacyWhereRequirement() throws {
         let extensionDecl = Declaration<Void>.extensionDecl(
             ExtensionSignature(
                 typeName: "Box",
@@ -543,7 +543,7 @@ final class DeclarationRendererTests: XCTestCase {
                 members: []
             )
         )
-        let result = Renderer.render(extensionDecl)
+        let result = try Renderer.render(extensionDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("extension Box"), "Should contain extension keyword")
@@ -556,7 +556,7 @@ final class DeclarationRendererTests: XCTestCase {
 
     // MARK: - Struct Declaration Tests
 
-    func testRenderStruct_empty() {
+    func testRenderStruct_empty() throws {
         let structDecl = Declaration<Void>.structDecl(
             StructSignature(
                 name: "EmptyStruct",
@@ -564,7 +564,7 @@ final class DeclarationRendererTests: XCTestCase {
                 members: []
             )
         )
-        let result = Renderer.render(structDecl)
+        let result = try Renderer.render(structDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("struct EmptyStruct"), "Should contain struct keyword")
@@ -572,7 +572,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("}"), "Should contain closing brace")
     }
 
-    func testRenderStruct_withConformances() {
+    func testRenderStruct_withConformances() throws {
         let structDecl = Declaration<Bool>.structDecl(
             StructSignature(
                 name: "Person",
@@ -580,7 +580,7 @@ final class DeclarationRendererTests: XCTestCase {
                 members: []
             )
         )
-        let result = Renderer.render(structDecl)
+        let result = try Renderer.render(structDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("struct Person"), "Should contain struct name")
@@ -589,7 +589,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("Sendable"), "Should contain second conformance")
     }
 
-    func testRenderStruct_withMembers() {
+    func testRenderStruct_withMembers() throws {
         let structDecl = Declaration<Int>.structDecl(
             StructSignature(
                 name: "Point",
@@ -625,7 +625,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(structDecl)
+        let result = try Renderer.render(structDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("struct Point"), "Should contain struct name")
@@ -636,7 +636,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("to other: Point"), "Should contain function parameter")
     }
 
-    func testRenderStruct_withAttributesGenericsAndWhereClause() {
+    func testRenderStruct_withAttributesGenericsAndWhereClause() throws {
         let structDecl = Declaration<Void>.structDecl(
             StructSignature(
                 accessLevel: .public,
@@ -654,7 +654,7 @@ final class DeclarationRendererTests: XCTestCase {
                 members: []
             )
         )
-        let result = Renderer.render(structDecl)
+        let result = try Renderer.render(structDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("@available"), "Should contain availability attribute")
@@ -672,7 +672,7 @@ final class DeclarationRendererTests: XCTestCase {
 
     // MARK: - Nested Declaration Tests
 
-    func testRenderStruct_withNestedStruct() {
+    func testRenderStruct_withNestedStruct() throws {
         let structDecl = Declaration<String>.structDecl(
             StructSignature(
                 name: "OuterStruct",
@@ -696,7 +696,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(structDecl)
+        let result = try Renderer.render(structDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("struct OuterStruct"), "Should contain outer struct")
@@ -704,7 +704,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(description.contains("let value: Int"), "Should contain nested property")
     }
 
-    func testRenderExtension_withNestedExtensions() {
+    func testRenderExtension_withNestedExtensions() throws {
         let extensionDecl = Declaration<Void>.extensionDecl(
             ExtensionSignature(
                 typeName: "MyType",
@@ -719,7 +719,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(extensionDecl)
+        let result = try Renderer.render(extensionDecl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("extension MyType"), "Should contain outer extension")
@@ -729,14 +729,14 @@ final class DeclarationRendererTests: XCTestCase {
 
     // MARK: - Enum Declaration Tests
 
-    func testRenderEnum_empty() {
+    func testRenderEnum_empty() throws {
         let decl: Declaration<Void> = .enumDecl(EnumSignature(name: "Direction"))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.formatted().description
         XCTAssertTrue(text.contains("enum Direction"))
     }
 
-    func testRenderEnum_withCases() {
+    func testRenderEnum_withCases() throws {
         let decl: Declaration<Void> = .enumDecl(
             EnumSignature(
                 name: "Direction",
@@ -747,7 +747,7 @@ final class DeclarationRendererTests: XCTestCase {
                     EnumCaseSignature(name: "west"),
                 ]
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.formatted().description
         XCTAssertTrue(text.contains("case north"))
         XCTAssertTrue(text.contains("case south"))
@@ -755,7 +755,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(text.contains("case west"))
     }
 
-    func testRenderEnum_withConformances() {
+    func testRenderEnum_withConformances() throws {
         let decl: Declaration<Void> = .enumDecl(
             EnumSignature(
                 name: "Status",
@@ -765,14 +765,14 @@ final class DeclarationRendererTests: XCTestCase {
                     EnumCaseSignature(name: "inactive", rawValue: "inactive"),
                 ]
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.formatted().description
         XCTAssertTrue(text.contains("enum Status"))
         XCTAssertTrue(text.contains("String"))
         XCTAssertTrue(text.contains("CaseIterable"))
     }
 
-    func testRenderEnum_withAssociatedTypes() {
+    func testRenderEnum_withAssociatedTypes() throws {
         let decl: Declaration<Void> = .enumDecl(
             EnumSignature(
                 name: "Result",
@@ -781,13 +781,13 @@ final class DeclarationRendererTests: XCTestCase {
                     EnumCaseSignature(name: "failure", associatedTypes: ["Error"]),
                 ]
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.formatted().description
         XCTAssertTrue(text.contains("case success(String)"))
         XCTAssertTrue(text.contains("case failure(Error)"))
     }
 
-    func testRenderEnum_withMembers() {
+    func testRenderEnum_withMembers() throws {
         let decl: Declaration<Void> = .enumDecl(
             EnumSignature(
                 accessLevel: .public,
@@ -805,14 +805,14 @@ final class DeclarationRendererTests: XCTestCase {
                         ))
                 ]
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.formatted().description
         XCTAssertTrue(text.contains("public enum Color"))
         XCTAssertTrue(text.contains("case red"))
         XCTAssertTrue(text.contains("var label"))
     }
 
-    func testRenderEnum_withAttributesParameterPackAndWhereClause() {
+    func testRenderEnum_withAttributesParameterPackAndWhereClause() throws {
         let decl: Declaration<Void> = .enumDecl(
             EnumSignature(
                 attributes: [.mainActor],
@@ -828,7 +828,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ]
             )
         )
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.formatted().description
         XCTAssertTrue(text.contains("@MainActor"))
         XCTAssertTrue(text.contains("enum Event<each Payload>"))
@@ -838,44 +838,44 @@ final class DeclarationRendererTests: XCTestCase {
 
     // MARK: - Type Alias Declaration Tests
 
-    func testRenderTypeAlias_simple() {
+    func testRenderTypeAlias_simple() throws {
         let decl: Declaration<Void> = .typeAlias(
             TypeAliasSignature(
                 name: "RawValue",
                 existingType: "UInt8"
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.description
         XCTAssertTrue(text.contains("typealias RawValue"))
         XCTAssertTrue(text.contains("UInt8"))
     }
 
-    func testRenderTypeAlias_public() {
+    func testRenderTypeAlias_public() throws {
         let decl: Declaration<Void> = .typeAlias(
             TypeAliasSignature(
                 accessLevel: .public,
                 name: "Identifier",
                 existingType: "String"
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.description
         XCTAssertTrue(text.contains("public typealias Identifier"))
         XCTAssertTrue(text.contains("String"))
     }
 
-    func testRenderTypeAlias_genericType() {
+    func testRenderTypeAlias_genericType() throws {
         let decl: Declaration<Void> = .typeAlias(
             TypeAliasSignature(
                 name: "StringArray",
                 existingType: "Array<String>"
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.description
         XCTAssertTrue(text.contains("typealias StringArray"))
         XCTAssertTrue(text.contains("Array<String>"))
     }
 
-    func testRenderTypeAlias_withAttributesGenericsAndWhereClause() {
+    func testRenderTypeAlias_withAttributesGenericsAndWhereClause() throws {
         let decl: Declaration<Void> = .typeAlias(
             TypeAliasSignature(
                 accessLevel: .public,
@@ -891,7 +891,7 @@ final class DeclarationRendererTests: XCTestCase {
                     .conformance("each Input", "Sendable")
                 ]
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
         let text = result.formatted().description
         XCTAssertTrue(text.contains("@available"))
         XCTAssertTrue(text.contains("macOS"))
@@ -901,7 +901,7 @@ final class DeclarationRendererTests: XCTestCase {
         XCTAssertTrue(text.contains("where each Input: Sendable"))
     }
 
-    func testRenderTypeAlias_mapPreservesStructure() {
+    func testRenderTypeAlias_mapPreservesStructure() throws {
         let decl: Declaration<Int> = .typeAlias(
             TypeAliasSignature(
                 name: "Foo",
@@ -916,7 +916,7 @@ final class DeclarationRendererTests: XCTestCase {
         }
     }
 
-    func testRenderInitializer_withAttributesGenericsAndWhereClause() {
+    func testRenderInitializer_withAttributesGenericsAndWhereClause() throws {
         let decl: Declaration<Void> = .initDecl(
             InitializerSignature(
                 accessLevel: .public,
@@ -938,7 +938,7 @@ final class DeclarationRendererTests: XCTestCase {
                 ],
                 body: []
             ))
-        let result = Renderer.render(decl)
+        let result = try Renderer.render(decl)
 
         let description = result.formatted().description
         XCTAssertTrue(description.contains("@MainActor"), "Should contain initializer attribute")

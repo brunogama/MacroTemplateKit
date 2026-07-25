@@ -22,8 +22,8 @@ extension Renderer {
     ///
     /// - Parameter declaration: Declaration to render
     /// - Returns: SwiftSyntax declaration node
-    public static func render<A: Sendable>(_ declaration: Declaration<A>) -> DeclSyntax {
-        renderParsed(declaration)
+    public static func render<A: Sendable>(_ declaration: Declaration<A>) throws -> DeclSyntax {
+        try renderParsed(declaration)
     }
 
     /// Legacy per-node structural implementation that `render(_: Declaration<A>)`
@@ -454,11 +454,13 @@ extension Renderer {
     /// `render(_: Declaration<A>)` entry point above; it remains a separate
     /// internal name so the token-parity suite can call it directly
     /// alongside `legacyRender(_:)`.
-    static func renderParsed<A: Sendable>(_ declaration: Declaration<A>) -> DeclSyntax {
+    static func renderParsed<A: Sendable>(_ declaration: Declaration<A>) throws -> DeclSyntax {
         var buffer = ""
         SourceEmitter.emit(declaration, into: &buffer)
         let decl: DeclSyntax = "\(raw: buffer)"
-        assert(!decl.hasError, "SourceEmitter produced unparsable declaration: \(buffer)")
+        guard !decl.hasError else {
+            throw RenderError.make(kind: .declaration, source: buffer, node: decl)
+        }
         guard mightNeedSegmentMerge(buffer) else { return decl }
         return StringSegmentMerger().visit(decl)
     }

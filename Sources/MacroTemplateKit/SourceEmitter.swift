@@ -183,16 +183,13 @@ enum SourceEmitter {
                 emitClosureSignature(sig, into: &buffer)
                 buffer.append(" in ")
             }
-            // `.formatted()` before `.trimmedDescription`: the structural
-            // nodes `renderStatements` builds via convenience initializers
-            // don't always carry the internal trivia needed to keep
-            // adjacent tokens lexically separate once re-embedded as raw
-            // text (e.g. a bare `return x` can come out as the two tokens
-            // "return"/"x" with no separating trivia, which would re-lex as
-            // the single identifier "returnx" after this text is spliced
-            // into the buffer and reparsed). `.formatted()` normalizes
-            // inter-token trivia first so the re-parse can't merge tokens.
-            buffer.append(Renderer.renderStatements(sig.body).formatted().trimmedDescription)
+            // Emitted straight into the buffer rather than routed through
+            // `Renderer.renderStatements(...).formatted().trimmedDescription`:
+            // that built syntax nodes, normalised their trivia, serialised
+            // them back to text, and let this buffer's parse re-parse the
+            // result — a full round trip inside the emitter. `emitStatements`
+            // writes explicit separators, so tokens cannot re-lex together.
+            emitStatements(sig.body, into: &buffer)
             buffer.append(" }")
 
         case .assignment(let lhs, let rhs):

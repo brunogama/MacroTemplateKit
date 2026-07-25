@@ -5,7 +5,7 @@ extension FunctionSignature where A: Sendable {
     public var asDeclaration: Declaration<A> { .function(self) }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration) }
+    public var rendered: DeclSyntax { get throws { try Renderer.render(asDeclaration) } }
 }
 
 extension InitializerSignature where A: Sendable {
@@ -13,7 +13,7 @@ extension InitializerSignature where A: Sendable {
     public var asDeclaration: Declaration<A> { .initDecl(self) }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration) }
+    public var rendered: DeclSyntax { get throws { try Renderer.render(asDeclaration) } }
 }
 
 extension PropertySignature where A: Sendable {
@@ -21,7 +21,7 @@ extension PropertySignature where A: Sendable {
     public var asDeclaration: Declaration<A> { .property(self) }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration) }
+    public var rendered: DeclSyntax { get throws { try Renderer.render(asDeclaration) } }
 }
 
 extension ComputedPropertySignature where A: Sendable {
@@ -29,7 +29,7 @@ extension ComputedPropertySignature where A: Sendable {
     public var asDeclaration: Declaration<A> { .computedProperty(self) }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration) }
+    public var rendered: DeclSyntax { get throws { try Renderer.render(asDeclaration) } }
 }
 
 extension ExtensionSignature where A: Sendable {
@@ -37,7 +37,7 @@ extension ExtensionSignature where A: Sendable {
     public var asDeclaration: Declaration<A> { .extensionDecl(self) }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration) }
+    public var rendered: DeclSyntax { get throws { try Renderer.render(asDeclaration) } }
 }
 
 extension StructSignature where A: Sendable {
@@ -45,7 +45,7 @@ extension StructSignature where A: Sendable {
     public var asDeclaration: Declaration<A> { .structDecl(self) }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration) }
+    public var rendered: DeclSyntax { get throws { try Renderer.render(asDeclaration) } }
 }
 
 extension EnumSignature where A: Sendable {
@@ -53,7 +53,7 @@ extension EnumSignature where A: Sendable {
     public var asDeclaration: Declaration<A> { .enumDecl(self) }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration) }
+    public var rendered: DeclSyntax { get throws { try Renderer.render(asDeclaration) } }
 }
 
 extension TypeAliasSignature {
@@ -66,5 +66,5 @@ extension TypeAliasSignature {
     }
 
     /// Renders this signature directly to `DeclSyntax`.
-    public var rendered: DeclSyntax { Renderer.render(asDeclaration()) }
+    public var rendered: DeclSyntax { get throws { try Renderer.render(asDeclaration()) } }
 }

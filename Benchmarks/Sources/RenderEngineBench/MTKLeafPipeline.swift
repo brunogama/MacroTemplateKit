@@ -27,7 +27,7 @@ struct MTKLeafPipeline: ASTGeneratorPipeline {
     }
 
     private static func storageMember() -> DeclSyntax {
-        Renderer.render(
+        try! Renderer.render(
             Declaration<Void>.property(
                 PropertySignature(
                     name: "_storage",
@@ -42,10 +42,10 @@ struct MTKLeafPipeline: ASTGeneratorPipeline {
     // get { _storage["name", default: <default>] as! <Type> }
     private static func getter(for property: StoredProperty) -> AccessorDeclSyntax {
         let subscriptWithDefault = SubscriptCallExprSyntax(
-            calledExpression: Renderer.render(Template<Void>.variable("_storage")),
+            calledExpression: try! Renderer.render(Template<Void>.variable("_storage")),
             arguments: LabeledExprListSyntax([
                 LabeledExprSyntax(
-                    expression: Renderer.render(Template<Void>.literal(property.name)),
+                    expression: try! Renderer.render(Template<Void>.literal(property.name)),
                     trailingComma: .commaToken()
                 ),
                 LabeledExprSyntax(
@@ -82,7 +82,7 @@ struct MTKLeafPipeline: ASTGeneratorPipeline {
         return AccessorDeclSyntax(
             accessorSpecifier: .keyword(.set),
             body: CodeBlockSyntax(
-                statements: CodeBlockItemListSyntax([Renderer.render(assignment)])
+                statements: CodeBlockItemListSyntax([try! Renderer.render(assignment)])
             )
         )
     }

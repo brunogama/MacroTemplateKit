@@ -6,7 +6,7 @@ final class WitherTests: XCTestCase {
 
     // MARK: - FunctionSignature
 
-    func testFunctionSignature_withName() {
+    func testFunctionSignature_withName() throws {
         let sig = FunctionSignature<Void>(name: "original")
         let modified = sig.withName("renamed")
         XCTAssertEqual(modified.name, "renamed")
@@ -14,33 +14,33 @@ final class WitherTests: XCTestCase {
         XCTAssertEqual(modified.isAsync, sig.isAsync)
     }
 
-    func testFunctionSignature_withAccessLevel() {
+    func testFunctionSignature_withAccessLevel() throws {
         let sig = FunctionSignature<Void>(name: "test")
         let modified = sig.withAccessLevel(.public)
         XCTAssertEqual(modified.accessLevel, .public)
         XCTAssertEqual(modified.name, "test")
     }
 
-    func testFunctionSignature_withIsAsync() {
+    func testFunctionSignature_withIsAsync() throws {
         let sig = FunctionSignature<Void>(name: "test")
         let modified = sig.withIsAsync(true)
         XCTAssertTrue(modified.isAsync)
         XCTAssertEqual(modified.name, "test")
     }
 
-    func testFunctionSignature_withCanThrow() {
+    func testFunctionSignature_withCanThrow() throws {
         let sig = FunctionSignature<Void>(name: "test")
         let modified = sig.withCanThrow(true)
         XCTAssertTrue(modified.canThrow)
     }
 
-    func testFunctionSignature_withReturnType() {
+    func testFunctionSignature_withReturnType() throws {
         let sig = FunctionSignature<Void>(name: "test")
         let modified = sig.withReturnType("String")
         XCTAssertEqual(modified.returnType, "String")
     }
 
-    func testFunctionSignature_addingParameter() {
+    func testFunctionSignature_addingParameter() throws {
         let sig = FunctionSignature<Void>(name: "test")
         let modified = sig.addingParameter(
             ParameterSignature(label: nil, name: "x", type: "Int")
@@ -49,7 +49,7 @@ final class WitherTests: XCTestCase {
         XCTAssertEqual(modified.parameters[0].name, "x")
     }
 
-    func testFunctionSignature_removingParameter() {
+    func testFunctionSignature_removingParameter() throws {
         let sig = FunctionSignature<Void>(
             name: "test",
             parameters: [
@@ -62,7 +62,7 @@ final class WitherTests: XCTestCase {
         XCTAssertEqual(modified.parameters[0].name, "b")
     }
 
-    func testFunctionSignature_addingAttribute() {
+    func testFunctionSignature_addingAttribute() throws {
         let sig = FunctionSignature<Void>(name: "test")
         let modified = sig.addingAttribute(.mainActor)
         XCTAssertEqual(modified.attributes.count, 1)
@@ -71,13 +71,13 @@ final class WitherTests: XCTestCase {
 
     // MARK: - InitializerSignature
 
-    func testInitializerSignature_withIsFailable() {
+    func testInitializerSignature_withIsFailable() throws {
         let sig = InitializerSignature<Void>()
         let modified = sig.withIsFailable(true)
         XCTAssertTrue(modified.isFailable)
     }
 
-    func testInitializerSignature_addingParameter() {
+    func testInitializerSignature_addingParameter() throws {
         let sig = InitializerSignature<Void>()
         let modified = sig.addingParameter(
             ParameterSignature(label: nil, name: "value", type: "String")
@@ -87,14 +87,14 @@ final class WitherTests: XCTestCase {
 
     // MARK: - PropertySignature
 
-    func testPropertySignature_withName() {
+    func testPropertySignature_withName() throws {
         let sig = PropertySignature<Void>(name: "count", type: "Int")
         let modified = sig.withName("total")
         XCTAssertEqual(modified.name, "total")
         XCTAssertEqual(modified.type, "Int")
     }
 
-    func testPropertySignature_withIsLet() {
+    func testPropertySignature_withIsLet() throws {
         let sig = PropertySignature<Void>(name: "count", type: "Int", isLet: true)
         let modified = sig.withIsLet(false)
         XCTAssertFalse(modified.isLet)
@@ -102,7 +102,7 @@ final class WitherTests: XCTestCase {
 
     // MARK: - ComputedPropertySignature
 
-    func testComputedPropertySignature_withType() {
+    func testComputedPropertySignature_withType() throws {
         let sig = ComputedPropertySignature<Void>(
             name: "value", type: "Int", getter: []
         )
@@ -113,7 +113,7 @@ final class WitherTests: XCTestCase {
 
     // MARK: - SetterSignature
 
-    func testSetterSignature_withParameterName() {
+    func testSetterSignature_withParameterName() throws {
         let sig = SetterSignature<Void>(body: [])
         let modified = sig.withParameterName("val")
         XCTAssertEqual(modified.parameterName, "val")
@@ -121,14 +121,14 @@ final class WitherTests: XCTestCase {
 
     // MARK: - ExtensionSignature
 
-    func testExtensionSignature_withAccessLevel() {
+    func testExtensionSignature_withAccessLevel() throws {
         let sig = ExtensionSignature<Void>(typeName: "MyType")
         let modified = sig.withAccessLevel(.public)
         XCTAssertEqual(modified.accessLevel, .public)
         XCTAssertEqual(modified.typeName, "MyType")
     }
 
-    func testExtensionSignature_withTypeName() {
+    func testExtensionSignature_withTypeName() throws {
         let sig = ExtensionSignature<Void>(
             accessLevel: .public,
             typeName: "MyType",
@@ -142,14 +142,14 @@ final class WitherTests: XCTestCase {
         XCTAssertEqual(modified.members.count, 1)
     }
 
-    func testExtensionSignature_addingConformance() {
+    func testExtensionSignature_addingConformance() throws {
         let sig = ExtensionSignature<Void>(typeName: "MyType")
         let modified = sig.addingConformance("Equatable")
         XCTAssertEqual(modified.conformances, ["Equatable"])
         XCTAssertEqual(modified.typeName, "MyType")
     }
 
-    func testExtensionSignature_addingMember() {
+    func testExtensionSignature_addingMember() throws {
         let sig = ExtensionSignature<Void>(typeName: "MyType")
         let member = Declaration<Void>.function(FunctionSignature(name: "foo", body: []))
         let modified = sig.addingMember(member)
@@ -158,13 +158,13 @@ final class WitherTests: XCTestCase {
 
     // MARK: - StructSignature
 
-    func testStructSignature_withName() {
+    func testStructSignature_withName() throws {
         let sig = StructSignature<Void>(name: "Point")
         let modified = sig.withName("Vector")
         XCTAssertEqual(modified.name, "Vector")
     }
 
-    func testStructSignature_addingConformance() {
+    func testStructSignature_addingConformance() throws {
         let sig = StructSignature<Void>(name: "Point")
         let modified = sig.addingConformance("Hashable")
         XCTAssertEqual(modified.conformances, ["Hashable"])
@@ -172,14 +172,14 @@ final class WitherTests: XCTestCase {
 
     // MARK: - EnumSignature
 
-    func testEnumSignature_addingCase() {
+    func testEnumSignature_addingCase() throws {
         let sig = EnumSignature<Void>(name: "Direction")
         let modified = sig.addingCase(EnumCaseSignature(name: "north"))
         XCTAssertEqual(modified.cases.count, 1)
         XCTAssertEqual(modified.cases[0].name, "north")
     }
 
-    func testEnumSignature_withName() {
+    func testEnumSignature_withName() throws {
         let sig = EnumSignature<Void>(name: "Old")
         let modified = sig.withName("New")
         XCTAssertEqual(modified.name, "New")
@@ -187,14 +187,14 @@ final class WitherTests: XCTestCase {
 
     // MARK: - TypeAliasSignature
 
-    func testTypeAliasSignature_withExistingType() {
+    func testTypeAliasSignature_withExistingType() throws {
         let sig = TypeAliasSignature(name: "Handler", existingType: "() -> Void")
         let modified = sig.withExistingType("(Int) -> Void")
         XCTAssertEqual(modified.existingType, "(Int) -> Void")
         XCTAssertEqual(modified.name, "Handler")
     }
 
-    func testTypeAliasSignature_withName() {
+    func testTypeAliasSignature_withName() throws {
         let sig = TypeAliasSignature(name: "Old", existingType: "Int")
         let modified = sig.withName("New")
         XCTAssertEqual(modified.name, "New")
