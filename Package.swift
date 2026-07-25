@@ -1,8 +1,9 @@
 // swift-tools-version: 5.10
-// Development manifest -- builds MacroTemplateKit from source (requires swift-syntax).
-// MacroTemplateKit is a compile-time library statically linked into macro binaries.
-// When macros ship as .artifactbundle binaries, MTK is baked in -- consumers never
-// resolve it or swift-syntax. Package.binary.swift exists for completeness.
+// KEEP IN SYNC WITH Package.swift. Everything below line 1 of the two manifests
+// must be byte-identical; `Scripts/check-manifests.sh` enforces it in CI. They
+// have drifted before -- MacroExamples was added to one and not the other, and
+// because a Swift 6 toolchain resolves this file and ignores Package.swift, the
+// gap was invisible until someone built on an older toolchain.
 import PackageDescription
 
 let package = Package(
@@ -55,6 +56,14 @@ let package = Package(
         .product(name: "SwiftDiagnostics", package: "swift-syntax"),
       ],
       path: "Examples",
+      exclude: [
+        "README.md",
+        "AccessorAndBodyMacros/README.md",
+        "ExpressionMacros/README.md",
+        "ExtensionMacros/README.md",
+        "MemberMacros/README.md",
+        "PeerMacros/README.md",
+      ],
       swiftSettings: [
         .enableExperimentalFeature("StrictConcurrency")
       ]
