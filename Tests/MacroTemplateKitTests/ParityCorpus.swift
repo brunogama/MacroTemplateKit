@@ -61,7 +61,12 @@ enum ParityCorpus {
 
     // MARK: Access
     .subscriptAccess(base: .variable("array"), index: .literal(.integer(0))),
-    .subscriptCall(base: .variable("dict"), arguments: [(label: nil, value: .literal(.string("k"))), (label: "default", value: .literal(.integer(0)))]),
+    .subscriptCall(
+        base: .variable("dict"),
+        arguments: [
+            (label: nil, value: .literal(.string("k"))),
+            (label: "default", value: .literal(.integer(0))),
+        ]),
 
     // MARK: Unwrapping
     .forceUnwrap(.variable("optional")),
@@ -252,4 +257,3 @@ enum ParityCorpus {
     ),
   ]
 }
-

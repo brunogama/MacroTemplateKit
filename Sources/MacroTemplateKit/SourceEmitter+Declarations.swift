@@ -23,7 +23,11 @@ extension SourceEmitter {
             // effectSpecifiers(async, throws), returnClause),
             // genericWhereClause, body).
             emit(attributes: signature.attributes, into: &buffer)
-            emit(modifiers: signature.accessLevel, isStatic: signature.isStatic, isMutating: signature.isMutating, into: &buffer)
+            emit(
+                modifiers: signature.accessLevel,
+                isStatic: signature.isStatic,
+                isMutating: signature.isMutating,
+                into: &buffer)
             buffer.append("func ")
             buffer.append(escapeIdentifier(signature.name))
             emit(genericParameters: signature.genericParameters, into: &buffer)

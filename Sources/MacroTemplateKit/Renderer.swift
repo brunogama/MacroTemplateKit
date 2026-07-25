@@ -35,26 +35,13 @@ public struct Renderer {
         try renderParsed(template)
     }
 
-
     // MARK: - Literal Rendering
-
-
-
-
-
 
     // MARK: - Variable Rendering
 
-
     // MARK: - Control Flow Rendering
 
-
-
-
     // MARK: - Operations Rendering
-
-
-
 
     /// Whether `name` is a bare Swift identifier, and therefore safe to turn
     /// into a token without parsing it first.
@@ -100,35 +87,21 @@ public struct Renderer {
         }
     }
 
-
-
-
     // MARK: - Effects Rendering
-
 
     // MARK: - Generic Call Rendering
 
-
     // MARK: - Labeled Expression List Helper
-
 
     // MARK: - Declarations Rendering
 
-
     // MARK: - Collections Rendering
 
-
-
     // MARK: - Extension Cases Rendering
-
-
-
-
 
 }
 
 extension Renderer {
-
 
 }
 
@@ -172,12 +145,13 @@ extension Renderer {
     /// that happens to look like `\##n`) only costs an unnecessary merger
     /// pass, never a skipped one — false positives are acceptable, false
     /// negatives are not.
-    // Internal rather than private: `Renderer.renderParsed(_: Statement<A>)`
-    // (`StatementRenderer.swift`) reuses this same scan rather than
-    // duplicating it, since a `Statement` buffer embeds `Template` source
-    // text via `SourceEmitter.emit(_: Template<A>, into:)` and is therefore
-    // just as susceptible to the escaped-newline segment-splitting quirk
-    // documented on `StringSegmentMerger` below.
+    ///
+    /// Internal rather than private: `Renderer.renderParsed(_: Statement<A>)`
+    /// (`StatementRenderer.swift`) reuses this same scan rather than
+    /// duplicating it, since a `Statement` buffer embeds `Template` source
+    /// text via `SourceEmitter.emit(_: Template<A>, into:)` and is therefore
+    /// just as susceptible to the escaped-newline segment-splitting quirk
+    /// documented on `StringSegmentMerger` below.
     static func mightNeedSegmentMerge(_ buffer: String) -> Bool {
         var previousWasBackslash = false
         for scalar in buffer.unicodeScalars {

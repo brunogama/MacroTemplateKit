@@ -34,5 +34,9 @@ if swift package --help 2>&1 | grep -q "native  *- Native Build System"; then
   BUILD_SYSTEM_ARGS=(--build-system native)
 fi
 
+# `${arr[@]+"${arr[@]}"}` rather than a bare `"${arr[@]}"`: macOS ships bash 3.2,
+# where expanding an empty array under `set -u` is an unbound-variable error.
+# The empty branch is the one CI takes -- its Swift 6.0 toolchain predates the
+# `--build-system` flag -- so this path is reached there and not locally.
 set -x
-swift build "${BUILD_SYSTEM_ARGS[@]}" -Xswiftc -warnings-as-errors "$@"
+swift build ${BUILD_SYSTEM_ARGS[@]+"${BUILD_SYSTEM_ARGS[@]}"} -Xswiftc -warnings-as-errors "$@"

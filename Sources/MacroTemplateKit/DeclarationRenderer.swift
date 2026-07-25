@@ -52,24 +52,9 @@ extension Renderer {
         return extensionDecl
     }
 
-
     // MARK: - Private Declaration Helpers
 
-
-
-
-
-
-
-
-
-
-
     // MARK: - Modifier Helpers
-
-
-
-
 
     // MARK: - Parameter Helpers
 

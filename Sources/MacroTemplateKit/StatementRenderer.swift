@@ -25,7 +25,6 @@ extension Renderer {
     try renderParsed(statement)
   }
 
-
   /// Renders multiple statements to CodeBlockItemListSyntax.
   ///
   /// - Parameter statements: Array of statements to render
@@ -36,24 +35,11 @@ extension Renderer {
     CodeBlockItemListSyntax(try statements.map { try render($0) })
   }
 
-
   // MARK: - Private Statement Helpers
-
-
-
-
-
-
-
-
-
 
   // MARK: - Guard Let Binding
 
-
   // MARK: - Switch Statement
-
-
 
   // MARK: - Assignment Statement
 
