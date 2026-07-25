@@ -84,7 +84,7 @@ DeclSyntax  ──►  Extractor.extract  ──►  Declaration<Never>
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
 ],
 targets: [
@@ -696,7 +696,7 @@ For downstream macro packages, prefer the tagged binary release:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6"),
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0")
 ]
 ```
@@ -726,7 +726,7 @@ binary release.
 
 **File > Add Package Dependencies**, enter `https://github.com/brunogama/MacroTemplateKit.git`, then:
 
-- select version `0.0.6` or later to consume the binary release
+- select version `0.1.0` or later to consume the binary release
 - use a branch or local checkout only when developing MacroTemplateKit itself
 
 ## Contributing

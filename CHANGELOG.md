@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-25
+
 ### Breaking Changes
 
 - `Renderer.render`, `StatementRenderer.render`, `DeclarationRenderer.render`,
@@ -254,7 +256,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of MacroTemplateKit v0.0.1
 
-[Unreleased]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.5...HEAD
+[Unreleased]: https://github.com/brunogama/MacroTemplateKit/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.7...v0.1.0
 [0.0.5]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/brunogama/MacroTemplateKit/compare/v.0.0.3...v0.0.4
 [.0.0.3]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.1...v.0.0.3
