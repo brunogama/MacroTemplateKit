@@ -123,6 +123,29 @@ public indirect enum Statement<A> {
   /// SwiftSyntax equivalent: `InfixOperatorExprSyntax` wrapped in `CodeBlockItemSyntax`
   case assignmentStatement(lhs: Template<A>, rhs: Template<A>)
 
+  // MARK: - Pattern Matching
+
+  /// guard case <pattern> = value else { ... }
+  ///
+  /// The pattern-matching counterpart to `guardLetBinding`, which can only
+  /// unwrap an optional. Enum-driven macros need this to destructure a case:
+  /// `guard case let .success(value) = result else { return nil }`.
+  ///
+  /// SwiftSyntax equivalent: `GuardStmtSyntax` with a
+  /// `MatchingPatternConditionSyntax` condition
+  case guardCase(pattern: MatchPattern<A>, value: Template<A>, elseBody: [Statement<A>])
+
+  /// if case <pattern> = value { ... } else { ... }
+  ///
+  /// SwiftSyntax equivalent: `IfExprSyntax` with a
+  /// `MatchingPatternConditionSyntax` condition
+  case ifCase(
+    pattern: MatchPattern<A>,
+    value: Template<A>,
+    thenBody: [Statement<A>],
+    elseBody: [Statement<A>]?
+  )
+
   // MARK: - Break Statement
 
   /// break
@@ -202,6 +225,19 @@ extension Statement {
       )
     case .assignmentStatement(let lhs, let rhs):
       return .assignmentStatement(lhs: lhs.map(transform), rhs: rhs.map(transform))
+    case .guardCase(let pattern, let value, let elseBody):
+      return .guardCase(
+        pattern: pattern.map(transform),
+        value: value.map(transform),
+        elseBody: elseBody.map { $0.map(transform) }
+      )
+    case .ifCase(let pattern, let value, let thenBody, let elseBody):
+      return .ifCase(
+        pattern: pattern.map(transform),
+        value: value.map(transform),
+        thenBody: thenBody.map { $0.map(transform) },
+        elseBody: elseBody?.map { $0.map(transform) }
+      )
     case .breakStatement:
       return .breakStatement
     }

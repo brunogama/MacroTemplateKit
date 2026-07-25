@@ -352,11 +352,11 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
 
 /// MacroTemplateKit values, one render per generated declaration.
 ///
-/// The guard-case matching pattern has no typed representation in `Statement`,
-/// so it rides through `.variable`'s raw-source escape hatch — the same route
-/// `AddAsyncMacro` uses for patterns. That is honest idiomatic usage today,
-/// and it is also a measurement of the escape hatch's cost: the pattern text
-/// is interpolated per case and parsed as part of the fragment.
+/// The guard-case matching pattern uses `Statement.guardCase` and
+/// `MatchPattern`, added because this benchmark was the thing that exposed
+/// their absence: the pattern previously rode through `.variable`'s raw-source
+/// escape hatch, so the library's best workload leaned on its least typed
+/// feature.
 struct MTKCasePathPipeline: CaseFactoryPipeline {
     static let name = "mtk"
     static let summary = "MacroTemplateKit templates, one render per declaration"
@@ -374,8 +374,9 @@ struct MTKCasePathPipeline: CaseFactoryPipeline {
                     ))
             ])
             let extract = Template<Void>.closure(body: [
-                .guardStatement(
-                    condition: .variable("case let .\(enumCase.name)(value) = $0"),
+                .guardCase(
+                    pattern: .enumCase(enumCase.name, binding: "value"),
+                    value: .variable("$0"),
                     elseBody: [.returnStatement(.literal(.nil))]
                 ),
                 .returnStatement(.variable("value")),

@@ -40,6 +40,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a custom operator can state how tightly it binds.
 - `RenderError` carries the offending source and the parse diagnostics, and
   names MacroTemplateKit rather than the caller.
+- `MatchPattern` and the `Statement.guardCase` / `Statement.ifCase` cases, for
+  destructuring an enum case: `guard case let .success(value) = result else`.
+  Previously this could only be written by handing raw source to
+  `Template.variable`, which meant it was invisible to `map` and unchecked
+  until the parse gate. `MatchPattern` covers enum cases, tuples, wildcards,
+  bindings, and expression patterns, hoisting a single `let` in front of the
+  whole pattern when any name is bound. Named `MatchPattern` because a bare
+  `Pattern` shadows out in any file importing XCTest.
+
+  Typed patterns cost about 10% against the raw-string form on the `case-path`
+  benchmark --- an indirect enum allocates a box and a subpattern array per
+  case where an interpolated `String` allocated once. The benchmark uses the
+  typed form and the published ratio moved accordingly, from 0.67x to 0.74x.
+  `.variable` remains available where that 10% matters.
 
 ### Bug Fixes
 
@@ -66,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   | workload | shape | ratio |
   |---|---|---|
-  | case-path | `@CasePathable`-style property per case | 0.67--0.68x |
+  | case-path | `@CasePathable`-style property per case | 0.74--0.77x |
   | generate | accessor pairs over stored properties | 0.75--0.78x |
   | case-factory | static factories over enum cases | 0.94--0.96x (parity) |
 

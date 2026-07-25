@@ -127,8 +127,93 @@ extension SourceEmitter {
             buffer.append(" = ")
             emit(rhs, into: &buffer)
 
+        case .guardCase(let pattern, let value, let elseBody):
+            buffer.append("guard ")
+            emitMatch(pattern, value: value, into: &buffer)
+            buffer.append(" else {\n")
+            emitStatements(elseBody, into: &buffer)
+            buffer.append("}")
+
+        case .ifCase(let pattern, let value, let thenBody, let elseBody):
+            buffer.append("if ")
+            emitMatch(pattern, value: value, into: &buffer)
+            buffer.append(" {\n")
+            emitStatements(thenBody, into: &buffer)
+            buffer.append("}")
+            if let elseBody {
+                buffer.append(" else {\n")
+                emitStatements(elseBody, into: &buffer)
+                buffer.append("}")
+            }
+
         case .breakStatement:
             buffer.append("break")
+        }
+    }
+
+    /// Emits `case <pattern> = <value>`, the shared condition form of
+    /// `guard case` and `if case`.
+    private static func emitMatch<A: Sendable>(
+        _ pattern: MatchPattern<A>,
+        value: Template<A>,
+        into buffer: inout String
+    ) {
+        buffer.append("case ")
+        emit(pattern, into: &buffer)
+        buffer.append(" = ")
+        emit(value, into: &buffer)
+    }
+
+    /// Emits a pattern, hoisting a single `let` to the front when it binds
+    /// any name.
+    ///
+    /// `case let .success(value)` and `case .success(let value)` are the same
+    /// pattern to Swift. Hoisting is chosen because it is what the standard
+    /// library and the CasePaths macros emit, and because it keeps the
+    /// recursive walk free of binding state — the decision is made once at
+    /// the root by `bindsAnyName` rather than threaded down.
+    static func emit<A: Sendable>(_ pattern: MatchPattern<A>, into buffer: inout String) {
+        if pattern.bindsAnyName {
+            buffer.append("let ")
+        }
+        emitPatternBody(pattern, into: &buffer)
+    }
+
+    private static func emitPatternBody<A: Sendable>(
+        _ pattern: MatchPattern<A>,
+        into buffer: inout String
+    ) {
+        switch pattern {
+        case .enumCase(let name, let subpatterns):
+            // The leading dot keeps the enum type inferred from the matched
+            // value; a qualified `MyEnum.success` is an expression pattern
+            // and belongs in `.value`.
+            buffer.append(".")
+            buffer.append(escapeIdentifier(name))
+            guard !subpatterns.isEmpty else { return }
+            buffer.append("(")
+            for (index, subpattern) in subpatterns.enumerated() {
+                if index > 0 { buffer.append(", ") }
+                emitPatternBody(subpattern, into: &buffer)
+            }
+            buffer.append(")")
+
+        case .bind(let name):
+            buffer.append(escapeIdentifier(name))
+
+        case .wildcard:
+            buffer.append("_")
+
+        case .tuple(let subpatterns):
+            buffer.append("(")
+            for (index, subpattern) in subpatterns.enumerated() {
+                if index > 0 { buffer.append(", ") }
+                emitPatternBody(subpattern, into: &buffer)
+            }
+            buffer.append(")")
+
+        case .value(let template):
+            emit(template, into: &buffer)
         }
     }
 
