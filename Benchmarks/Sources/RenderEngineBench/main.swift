@@ -131,6 +131,15 @@ func printTable(results: [BenchResult], sizes: [Int], baselineName: String) {
 let equivalenceFixture = Fixtures.structDecl(propertyCount: 6)
 let caseFactoryEquivalenceFixture = Fixtures.enumDecl(caseCount: 6)
 
+/// Set when any workload's equivalence check fails, and turned into a non-zero
+/// exit at the end of the run.
+///
+/// The check used to only print `❌` and carry on, so a CI job invoking this
+/// binary passed whether or not the pipelines still produced the same tokens.
+/// ADR 0005 clause 3 gates merges on this check, which it could not do while
+/// nothing observed the result.
+var equivalenceFailed = false
+
 /// Runs one workload end-to-end: select pipelines by name, gate on output
 /// equivalence, measure every (pipeline × size) cell, and print the table
 /// with the first selected pipeline as the ratio baseline.
@@ -157,6 +166,7 @@ func runWorkload<Pipeline, Fixture>(
 
     if let mismatch = firstMismatch(selected.map { (name($0), parts($0, equivalenceFixture)) }) {
         print("❌ Output equivalence check FAILED — timings below compare different work:\n\(mismatch)\n")
+        equivalenceFailed = true
     } else {
         print("✅ Output equivalence check passed (token-identical across pipelines)\n")
     }
@@ -315,3 +325,8 @@ if options.workloads.contains("accumulate") {
 print("iterations=\(options.iterations) warmup=\(options.warmup) swift-syntax=\(swiftSyntaxVersion) (sink=\(sink))")
 
 if options.workloads.contains("trivia") { triviaAudit() }
+
+if equivalenceFailed {
+    print("\nExiting non-zero: at least one workload's pipelines are not token-identical.")
+    exit(1)
+}
