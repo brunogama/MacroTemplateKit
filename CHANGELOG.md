@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SetterSignature.parameterName` is now `String?` and defaults to `nil`,
   emitting the bare `set { ... }` form. Previously it was mandatory, so every
   generated setter carried an explicit `(newValue)`.
+- Closure parameters with an explicit type now emit the colon: `{ (x: Int) in }`
+  where the previous output was `{ (x Int) in }`. The old form parses --- Swift
+  reads it as a parameter with two *names* rather than a typed one --- so it
+  never failed the parse gate, and token-parity against the legacy renderer
+  actively pinned it in place, since that renderer omitted the colon too.
+  Deleting the legacy path is what allowed the fix. Any golden files or string
+  comparisons covering typed closure parameters will need updating.
 
 ### Added
 
@@ -54,11 +61,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Performance
 
 - Rendering goes through a source-text emitter and one parse per fragment.
-  Against hand-written SwiftSyntax producing token-identical output: 0.59--0.64x
-  time and ~0.55x retained memory, consistent across two macro shapes at sizes
-  4/16/64/256. Previously the kit ran at 0.98--0.99x, so it cost nothing and
-  bought nothing. Absolute figures are microseconds per expansion --- this is
-  not a build-time story. See `docs/adr/0002-relax-render-engine-merge-gate.md`.
+  Against a hand-written SwiftSyntax baseline that hoists its loop invariants,
+  producing token-identical output, `min` over 3 runs at sizes 16/64/256:
+
+  | workload | shape | ratio |
+  |---|---|---|
+  | case-path | `@CasePathable`-style property per case | 0.67--0.68x |
+  | generate | accessor pairs over stored properties | 0.75--0.78x |
+  | case-factory | static factories over enum cases | 0.94--0.96x (parity) |
+
+  Depth decides: structural construction pays per node, the emitter appends text
+  and parses once per declaration, so the deeper the generated declaration the
+  further ahead the library gets. Previously the kit ran at 0.98--0.99x, so it
+  cost nothing and bought nothing; it now ranges from parity to a comfortable
+  win depending on shape. Absolute figures are microseconds per expansion ---
+  this is not a build-time story.
+
+  Two earlier claims in this section were wrong and are withdrawn:
+
+  - **`~0.55x retained memory` is removed.** It was measured with every rendered
+    tree held alive at once. A plugin serialises each expansion and drops the
+    tree, so peak memory is one expansion's worth however many expansions a
+    build performs --- measured flat across a 2048x sweep. The ratio is real per
+    live tree and is then multiplied by a count that is always 1.
+    See `docs/adr/0003-memory-win-does-not-accumulate.md`.
+  - **`0.59--0.64x` compared against a baseline that rebuilt expansion-invariant
+    nodes inside its per-item loop.** Hoisting them alone makes that baseline up
+    to 1.60x faster. The ratios above use the hoisted baseline.
+    See `docs/adr/0004-baselines-must-hoist-invariants.md`.
+
+  See also `docs/adr/0002-relax-render-engine-merge-gate.md`.
 
 ### Bug Fixes
 
