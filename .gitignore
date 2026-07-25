@@ -72,3 +72,6 @@ coverage/
 # Documentation
 docs/_build/
 .docusaurus/
+
+# Agent working notes — deliberately untracked
+docs/agents/
