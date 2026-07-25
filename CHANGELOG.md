@@ -46,8 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Template.variable`, which meant it was invisible to `map` and unchecked
   until the parse gate. `MatchPattern` covers enum cases, tuples, wildcards,
   bindings, and expression patterns, hoisting a single `let` in front of the
-  whole pattern when any name is bound. Named `MatchPattern` because a bare
-  `Pattern` shadows out in any file importing XCTest.
+  whole pattern when any name is bound. Named `MatchPattern` because it covers
+  only match position, not the binding patterns in a signature or a `let`. A
+  bare `Pattern` also shadows out under `import XCTest`, though not under
+  SwiftSyntax, which defines no such type.
 
   Typed patterns cost about 10% against the raw-string form on the `case-path`
   benchmark --- an indirect enum allocates a box and a subpattern array per

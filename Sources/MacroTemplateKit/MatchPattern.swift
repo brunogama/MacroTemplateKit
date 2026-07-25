@@ -16,13 +16,16 @@
 /// same thing; the hoisted form is the one the standard library and the
 /// CasePaths macros emit.
 ///
-/// Named `MatchPattern` rather than `Pattern` for two reasons. A bare
-/// `Pattern` shadows out in any file importing XCTest — the tests for this
-/// type could not name it without qualification, which is a fair warning
-/// about what users would hit. And it only covers *match* position — `case`
-/// labels, `guard case`, `if case` — not the binding patterns in a function
-/// signature or a `let` declaration, so the narrower name is also the more
-/// accurate one.
+/// Named `MatchPattern` rather than `Pattern` because it only covers *match*
+/// position — `case` labels, `guard case`, `if case` — not the binding
+/// patterns in a function signature or a `let` declaration.
+///
+/// A bare `Pattern` also shadows out under `import XCTest`, which is how the
+/// name first came up: the tests for this type would not compile. That is
+/// narrower than it first looked, though — SwiftSyntax defines no bare
+/// `Pattern`, only `PatternSyntaxEnum`, so a macro implementation importing
+/// SwiftSyntax and SwiftSyntaxMacros would never have hit it. Test files
+/// would. The accuracy argument is the one carrying the decision.
 public indirect enum MatchPattern<A> {
   /// An enum case, optionally destructuring its associated values:
   /// `.success`, `.success(value)`, `.point(x, y)`.
