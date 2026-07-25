@@ -40,15 +40,16 @@ into a proper compiler diagnostic without the author writing any handling code.
   library, never a recoverable condition in the author's macro. The throw exists to produce
   a good diagnostic and name the culprit, not to offer a retry path. Documentation should
   say so, or authors will reach for `try!`.
-- **The leaf fast path is outside the gate.** `Renderer.renderLeaf` builds
-  `.variable` and simple literals structurally to avoid allocating a parse arena
-  per call, so their contents are never parsed and never validated. A malformed
-  identifier does not even set `hasError` — it becomes a well-formed token
-  holding garbage text, which nothing notices until the compiler reads the
-  emitted source. `RenderErrorTests` pins this behaviour so a future change is a
-  decision rather than an accident. Closing it means validating identifiers,
-  which would also reject `.variable` used as a raw-text escape hatch — the
-  workaround callers needed before `Template.syntax` existed.
+- **The leaf fast path takes only bare identifiers.** `Renderer.renderLeaf`
+  builds `.variable` and simple literals structurally to avoid allocating a
+  parse arena per call, which means their contents are never parsed. Left
+  unrestricted that was a hole in the gate: a malformed name became a
+  well-formed token *holding* garbage text, with `hasError` false, unnoticed
+  until the compiler read the emitted source. The fast path now applies only
+  when the name is a plain identifier; anything else falls through to
+  emit-and-parse and is caught here. That keeps `.variable` usable as the
+  raw-source escape hatch it doubles as — `AddAsyncMacro` passes a pattern
+  through it — while closing the bypass. The check costs nothing measurable.
 
 - **The gate is syntactic only.** It catches malformed emitter output (`foo(`, unbalanced
   braces). It does not catch well-formed-but-wrong output: `Template.operation(left:

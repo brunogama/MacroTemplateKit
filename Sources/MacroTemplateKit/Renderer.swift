@@ -1,3 +1,4 @@
+import Foundation
 import SwiftSyntax
 import SwiftSyntaxBuilder
 
@@ -203,6 +204,22 @@ public struct Renderer {
         )
     }
 
+    /// Whether `name` is a bare Swift identifier, and therefore safe to turn
+    /// into a token without parsing it first.
+    ///
+    /// `.variable` doubles as the kit's raw-source escape hatch — callers pass
+    /// things like `".success(let value)"` through it — so the fast path must
+    /// not assume its contents are an identifier. Anything else returns false,
+    /// falls through to emit-and-parse, and is validated by the parse gate
+    /// there. That keeps the optimisation from becoming a hole in the gate.
+    private static func isPlainIdentifier(_ name: String) -> Bool {
+        guard let first = name.unicodeScalars.first else { return false }
+        guard first == "_" || CharacterSet.letters.contains(first) else { return false }
+        return name.unicodeScalars.dropFirst().allSatisfy {
+            $0 == "_" || CharacterSet.alphanumerics.contains($0)
+        }
+    }
+
     /// Builds the handful of templates whose syntax is a single token, without
     /// going through the parser. Returns `nil` for everything else, which then
     /// takes the emit-and-parse path.
@@ -216,7 +233,7 @@ public struct Renderer {
         switch template {
         case .syntax(let node):
             node
-        case .variable(let name, _):
+        case .variable(let name, _) where isPlainIdentifier(name):
             ExprSyntax(
                 DeclReferenceExprSyntax(baseName: .identifier(SourceEmitter.escapeIdentifier(name)))
             )

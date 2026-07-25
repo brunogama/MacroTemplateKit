@@ -38,26 +38,26 @@ final class RenderErrorTests: XCTestCase {
     XCTAssertTrue(error.description.contains("unexpected end"))
   }
 
-  /// Documents a real hole rather than asserting desired behaviour.
+  /// The leaf fast path must not become a hole in the parse gate.
   ///
-  /// `renderLeaf` builds `.variable` structurally to avoid allocating a parse
-  /// arena per call, which means the name is never validated — a malformed
-  /// identifier becomes a malformed token and reaches the compiler unchecked.
-  /// The parse gate only guards templates that actually go through the parser.
-  ///
-  /// Closing this needs a decision: validating identifiers would also reject
-  /// `.variable` used as a raw-text escape hatch, which is what callers had to
-  /// do before `.syntax` existed.
-  func testLeafPathCurrentlyBypassesTheParseGate() throws {
-    let malformed = Template<Void>.variable("(((", payload: ())
+  /// `renderLeaf` builds `.variable` structurally to avoid a parse arena per
+  /// call, so its contents are never parsed. It therefore takes the fast path
+  /// only for bare identifiers; anything else falls through to emit-and-parse
+  /// and is caught here.
+  func testMalformedIdentifierFallsThroughToTheParseGate() {
+    XCTAssertThrowsError(try Renderer.render(Template<Void>.variable("(((", payload: ()))) {
+      XCTAssertEqual(($0 as? RenderError)?.kind, .expression)
+    }
+  }
 
-    let rendered = try Renderer.render(malformed)
+  /// `.variable` doubles as the raw-source escape hatch — `AddAsyncMacro` uses
+  /// it for a pattern — so non-identifier contents must still render, just via
+  /// the parser rather than the fast path.
+  func testVariableStillWorksAsARawSourceEscapeHatch() throws {
+    let rendered = try Renderer.render(Template<Void>.variable("foo.bar()", payload: ()))
 
-    // Worse than an error node: a structurally built token simply *holds* the
-    // garbage text, so `hasError` is false and nothing downstream notices
-    // until the compiler tries to make sense of the emitted source.
     XCTAssertFalse(rendered.hasError)
-    XCTAssertEqual(rendered.description, "(((")
+    XCTAssertEqual(rendered.trimmedDescription, "foo.bar()")
   }
 
   func testWellFormedTemplatesDoNotThrow() throws {
