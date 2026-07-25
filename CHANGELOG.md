@@ -58,11 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bare `Pattern` also shadows out under `import XCTest`, though not under
   SwiftSyntax, which defines no such type.
 
-  Typed patterns cost about 10% against the raw-string form on the `case-path`
-  benchmark --- an indirect enum allocates a box and a subpattern array per
-  case where an interpolated `String` allocated once. The benchmark uses the
-  typed form and the published ratio moved accordingly, from 0.67x to 0.74x.
-  `.variable` remains available where that 10% matters.
+  Typed patterns measured about 10% slower than the raw-string form on the
+  `case-path` benchmark when first introduced. That figure came from comparing
+  two benchmark sessions, anchored by a baseline that happened to read
+  identically in both --- weaker evidence than an in-process comparison, and
+  below the bar ADR 0005 clause 0 now sets. Treat it as indicative, not
+  measured. `.variable` remains available for raw source where it matters.
 
 ### Bug Fixes
 

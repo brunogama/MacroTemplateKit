@@ -26,7 +26,18 @@
 /// `Pattern`, only `PatternSyntaxEnum`, so a macro implementation importing
 /// SwiftSyntax and SwiftSyntaxMacros would never have hit it. Test files
 /// would. The accuracy argument is the one carrying the decision.
-public indirect enum MatchPattern<A> {
+/// Deliberately not `indirect`: every recursive reference goes through
+/// `[MatchPattern<A>]`, and `Array` is already a pointer-sized struct, so the
+/// enum has no directly-recursive payload to box, so `indirect` only added a
+/// heap box per node including the leaves (`.bind`, `.wildcard`).
+///
+/// No performance claim is attached to removing it. Measuring the difference
+/// means comparing two builds of this library, which is a cross-session
+/// comparison — the thing ADR 0005 clause 0 rules out, since absolutes drift
+/// ~10% between runs on the reference hardware. Measured either way the
+/// `case-path` ratio reads 0.67× at 16 and 256 cases. The change stands
+/// because the boxing was unnecessary, not because a number moved.
+public enum MatchPattern<A> {
   /// An enum case, optionally destructuring its associated values:
   /// `.success`, `.success(value)`, `.point(x, y)`.
   ///
