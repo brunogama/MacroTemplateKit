@@ -6,6 +6,7 @@ import SwiftSyntax
 let allPipelines: [ASTGeneratorPipeline] = [
     StructuralPipeline(),
     MTKPipeline(),
+    MTKLeafPipeline(),
     InterpolationPipeline(),
     ReparsePipeline(),
     ParseBackedMTKPipeline(),
