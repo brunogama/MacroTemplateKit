@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- `Renderer.render`, `StatementRenderer.render`, `DeclarationRenderer.render`,
+  `renderStatements`, and the `rendered` convenience properties now `throw`.
+  The parse gate was an `assert`, which is stripped from release builds --- the
+  only configuration a macro plugin ships in --- so a malformed emit reached the
+  compiler as a broken tree and was blamed on the user's macro. Call sites need
+  `try`; `rendered` is now a throwing computed property. See
+  `docs/adr/0001-parse-gate-throws.md`.
+- `Template.binaryOperation` and the `operation` factory take an `Operator`
+  instead of a `String`. String literals still work, so `operator: "+"` is
+  unchanged; custom operators can now declare their precedence.
+- `SetterSignature.parameterName` is now `String?` and defaults to `nil`,
+  emitting the bare `set { ... }` form. Previously it was mandatory, so every
+  generated setter carried an explicit `(newValue)`.
+
+### Added
+
+- `Template.cast(_:type:kind:)` for `as`, `as?`, and `as!`. Without it the kit
+  could not express a forced cast at all.
+- `Template.syntax(_:)` splices an existing `ExprSyntax` into a template,
+  instead of routing its description through `.variable`.
+- `Operator`, `Precedence`, and `Associativity` are public, so a macro emitting
+  a custom operator can state how tightly it binds.
+- `RenderError` carries the offending source and the parse diagnostics, and
+  names MacroTemplateKit rather than the caller.
+
+### Bug Fixes
+
+- Nested operations are parenthesised by precedence. `.operation(.operation(a,
+  "+", b), "*", c)` emitted `a + b * c` --- it parsed cleanly and passed token
+  parity, so nothing caught it, and the generated code silently meant something
+  other than what the template said.
+- Reserved keywords used as identifiers are backtick-escaped, so a property
+  named `default` or `class` generates code that compiles. Contextual keywords
+  (`open`, `some`, `get`) and expression keywords (`self`, `super`, `nil`) are
+  deliberately left bare.
+- The leaf fast path no longer bypasses the parse gate. `.variable` is built
+  structurally only when its contents are a plain identifier; anything else
+  falls through to the parser, which validates it.
+- `SourceEmitter` no longer renders closure bodies by calling back into the
+  parse-backed renderer and re-serialising the result --- a round trip inside
+  the emitter.
+
+### Performance
+
+- Rendering goes through a source-text emitter and one parse per fragment.
+  Against hand-written SwiftSyntax producing token-identical output: 0.59--0.64x
+  time and ~0.55x retained memory, consistent across two macro shapes at sizes
+  4/16/64/256. Previously the kit ran at 0.98--0.99x, so it cost nothing and
+  bought nothing. Absolute figures are microseconds per expansion --- this is
+  not a build-time story. See `docs/adr/0002-relax-render-engine-merge-gate.md`.
+
 ### Bug Fixes
 
 - Address second round of PR #20 review feedback
