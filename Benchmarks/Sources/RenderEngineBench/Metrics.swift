@@ -115,3 +115,7 @@ func firstMismatch(_ outputs: [(name: String, parts: OutputParts)]) -> String? {
     }
     return nil
 }
+
+func outputParts(of output: [DeclSyntax]) -> OutputParts {
+    output.enumerated().map { ("declaration #\($0.offset)", tokenStream($0.element)) }
+}

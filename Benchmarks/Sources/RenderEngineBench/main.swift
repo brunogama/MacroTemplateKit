@@ -14,6 +14,11 @@ let allPipelines: [ASTGeneratorPipeline] = [
     MemoizedMTKPipeline(),
 ]
 
+let allCaseFactoryPipelines: [CaseFactoryPipeline] = [
+    StructuralCaseFactoryPipeline(),
+    MTKCaseFactoryPipeline(),
+]
+
 let allEditPipelines: [TreeEditPipeline] = [
     WithEditPipeline(),
     RewriterEditPipeline(),
@@ -27,7 +32,8 @@ let swiftSyntaxVersion = "603.0.2"
 struct Options {
     var pipelineNames = allPipelines.map { type(of: $0).name }
     var editPipelineNames = allEditPipelines.map { type(of: $0).name }
-    var workloads = ["generate", "edit"]
+    var caseFactoryPipelineNames = allCaseFactoryPipelines.map { type(of: $0).name }
+    var workloads = ["generate", "edit", "case-factory"]
     var sizes = [4, 16, 64, 256]
     var iterations = 300
     var warmup = 50
@@ -115,17 +121,20 @@ func printTable(results: [BenchResult], sizes: [Int], baselineName: String) {
 // MARK: - Workload runner
 
 let equivalenceFixture = Fixtures.structDecl(propertyCount: 6)
+let caseFactoryEquivalenceFixture = Fixtures.enumDecl(caseCount: 6)
 
 /// Runs one workload end-to-end: select pipelines by name, gate on output
 /// equivalence, measure every (pipeline × size) cell, and print the table
 /// with the first selected pipeline as the ratio baseline.
-func runWorkload<Pipeline>(
+func runWorkload<Pipeline, Fixture>(
     header: String,
     registry: [Pipeline],
     requestedNames: [String],
     name: (Pipeline) -> String,
-    parts: (Pipeline, StructDeclSyntax) -> OutputParts,
-    measure: (Pipeline, StructDeclSyntax) -> (TimingStats, retainedBytesPerIteration: Double)
+    fixture: (Int) -> Fixture,
+    equivalenceFixture: Fixture,
+    parts: (Pipeline, Fixture) -> OutputParts,
+    measure: (Pipeline, Fixture) -> (TimingStats, retainedBytesPerIteration: Double)
 ) {
     let selected = requestedNames.compactMap { requested in
         registry.first { name($0) == requested }
@@ -146,9 +155,9 @@ func runWorkload<Pipeline>(
 
     var results: [BenchResult] = []
     for size in options.sizes {
-        let structDecl = Fixtures.structDecl(propertyCount: size)
+        let sizedFixture = fixture(size)
         for pipeline in selected {
-            let (timing, retained) = measure(pipeline, structDecl)
+            let (timing, retained) = measure(pipeline, sizedFixture)
             results.append(
                 BenchResult(
                     pipeline: name(pipeline),
@@ -170,6 +179,8 @@ if options.workloads.contains("generate") {
         registry: allPipelines,
         requestedNames: options.pipelineNames,
         name: { type(of: $0).name },
+        fixture: { Fixtures.structDecl(propertyCount: $0) },
+        equivalenceFixture: equivalenceFixture,
         parts: { pipeline, fixture in
             outputParts(of: pipeline.expand(properties: extractStoredProperties(from: fixture)))
         },
@@ -187,10 +198,33 @@ if options.workloads.contains("edit") {
         registry: allEditPipelines,
         requestedNames: options.editPipelineNames,
         name: { type(of: $0).name },
+        fixture: { Fixtures.structDecl(propertyCount: $0) },
+        equivalenceFixture: equivalenceFixture,
         parts: { pipeline, fixture in outputParts(of: pipeline.edit(fixture)) },
         measure: { pipeline, structDecl in
             measureLoop(warmup: options.warmup, iterations: options.iterations) {
                 pipeline.edit(structDecl)
+            }
+        }
+    )
+}
+
+if options.workloads.contains("case-factory") {
+    runWorkload(
+        header: "## Workload: case-factory — one static factory per enum case (declaration shape, not accessor shape)",
+        registry: allCaseFactoryPipelines,
+        requestedNames: options.caseFactoryPipelineNames,
+        name: { type(of: $0).name },
+        fixture: { Fixtures.enumDecl(caseCount: $0) },
+        equivalenceFixture: caseFactoryEquivalenceFixture,
+        parts: { pipeline, fixture in
+            outputParts(
+                of: pipeline.expand(
+                    cases: extractEnumCases(from: fixture), enumName: fixture.name.text))
+        },
+        measure: { pipeline, enumDecl in
+            measureLoop(warmup: options.warmup, iterations: options.iterations) {
+                pipeline.expand(cases: extractEnumCases(from: enumDecl), enumName: enumDecl.name.text)
             }
         }
     )
