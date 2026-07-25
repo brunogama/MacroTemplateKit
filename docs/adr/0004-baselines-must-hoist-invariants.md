@@ -82,10 +82,24 @@ correction itself. At sizes 16/64/256, `min` over 3 runs:
 | `structural-interned` (trivia) | 140.6 | 546.3 | 2249 |
 | cost of trivia | +1.0% | +1.4% | +3.8% |
 
-**Trivia costs 1–4%, not enough to move any conclusion.** The prediction below — that a
-trivia-matched baseline "would be slower and would widen the margin" — was right in direction
-and wrong in magnitude. The deferral was justified on the grounds that correcting it would
-flatter our own numbers; the correction was worth less than the measurement noise.
+**On `case-factory`, trivia costs 1–4% — not enough to move that conclusion.** On the other
+two workloads it is worth considerably more, because they carry more whitespace per generated
+declaration. With every baseline matched:
+
+| workload | trivia-free baseline | trivia-matched baseline |
+|---|---|---|
+| generate | 0.77× | **0.74×** |
+| case-factory | 1.00–1.02× | 1.00–1.02× |
+| case-path | 0.75× | **0.67–0.69×** |
+
+So the prediction below — that a trivia-matched baseline "would be slower and would widen the
+margin" — was right, and the initial `case-factory`-only measurement was the misleading one.
+Writing the effect off as negligible after measuring it on the single workload where it *is*
+negligible was the same mistake as publishing a favourable number from one session: a real
+measurement, generalised past what it covered.
+
+This correction makes the library look better, which is exactly why it is stated at this
+length.
 
 **The measurement noise is the real finding.** Running the correction surfaced that
 `case-factory` absolutes drift ~10% between sessions for *identical* code: `mtk` at size 16
@@ -104,9 +118,10 @@ Re-measured with everything in one process, `case-factory` is:
 The earlier figure was session-favourable noise, published because it was collected in a
 session that happened to favour it and never re-run in the same process as its baseline.
 
-`generate` (0.75–0.79×) and `case-path` (0.73–0.78×) reproduce their published figures in the
-same session, so the effect is specific to `case-factory` — the workload with the smallest
-per-item work, where a 10% drift swamps the difference being measured.
+`generate` and `case-path` reproduced their published figures in the same session, so the
+effect is specific to `case-factory` — the workload with the smallest per-item work, where a
+10% drift swamps the difference being measured. (Both have since moved again, for the
+unrelated trivia reason above.)
 
 ### Methodology consequences
 
@@ -116,6 +131,8 @@ per-item work, where a 10% drift swamps the difference being measured.
   below this harness's demonstrated stability.
 - Keep `interned-notrivia` in the registry. It is the control that makes the trivia claim
   falsifiable rather than asserted.
+- Measure a bias on every workload before deciding it is negligible. Whitespace volume scales
+  with declaration shape, so a single-workload sample said 1–4% where the true range is 1–8%.
 
 ## Original text: known remaining bias, uncorrected
 

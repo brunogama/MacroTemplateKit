@@ -27,26 +27,31 @@ struct StructuralPipeline: ASTGeneratorPipeline {
             arguments: LabeledExprListSyntax([
                 LabeledExprSyntax(
                     expression: ExprSyntax(StringLiteralExprSyntax(content: property.name)),
-                    trailingComma: .commaToken()
+                    trailingComma: .commaToken(trailingTrivia: .space)
                 ),
                 LabeledExprSyntax(
                     label: .identifier("default"),
-                    colon: .colonToken(),
+                    colon: .colonToken(trailingTrivia: .space),
                     expression: property.defaultValue
                 ),
             ])
         )
         let forceCast = AsExprSyntax(
             expression: ExprSyntax(subscriptWithDefault),
-            questionOrExclamationMark: .exclamationMarkToken(),
-            type: property.type
+            asKeyword: .keyword(.as, leadingTrivia: .space),
+            questionOrExclamationMark: .exclamationMarkToken(trailingTrivia: .space),
+            // `.trimmed`: the type node comes from the parsed fixture and
+            // carries its trailing space, which `mtk` does not emit.
+            type: property.type.trimmed
         )
         return AccessorDeclSyntax(
-            accessorSpecifier: .keyword(.get),
+            accessorSpecifier: .keyword(.get, trailingTrivia: .space),
             body: CodeBlockSyntax(
+                leftBrace: .leftBraceToken(trailingTrivia: .newline),
                 statements: CodeBlockItemListSyntax([
                     CodeBlockItemSyntax(item: .expr(ExprSyntax(forceCast)))
-                ])
+                ]),
+                rightBrace: .rightBraceToken(leadingTrivia: .newline)
             )
         )
     }
@@ -66,16 +71,19 @@ struct StructuralPipeline: ASTGeneratorPipeline {
         let assignment = SequenceExprSyntax(
             elements: ExprListSyntax([
                 ExprSyntax(storageSubscript),
-                ExprSyntax(AssignmentExprSyntax()),
+                ExprSyntax(AssignmentExprSyntax(
+                    leadingTrivia: .space, trailingTrivia: .space)),
                 ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier("newValue"))),
             ])
         )
         return AccessorDeclSyntax(
-            accessorSpecifier: .keyword(.set),
+            accessorSpecifier: .keyword(.set, trailingTrivia: .space),
             body: CodeBlockSyntax(
+                leftBrace: .leftBraceToken(trailingTrivia: .newline),
                 statements: CodeBlockItemListSyntax([
                     CodeBlockItemSyntax(item: .expr(ExprSyntax(assignment)))
-                ])
+                ]),
+                rightBrace: .rightBraceToken(leadingTrivia: .newline)
             )
         )
     }

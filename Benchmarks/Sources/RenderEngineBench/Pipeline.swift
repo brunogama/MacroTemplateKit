@@ -39,17 +39,23 @@ protocol ASTGeneratorPipeline {
 func storageVariableDecl() -> VariableDeclSyntax {
     let dictionaryType = DictionaryTypeSyntax(
         key: TypeSyntax(IdentifierTypeSyntax(name: .identifier("String"))),
+        colon: .colonToken(trailingTrivia: .space),
         value: TypeSyntax(IdentifierTypeSyntax(name: .identifier("Any")))
     )
     let binding = PatternBindingSyntax(
         pattern: IdentifierPatternSyntax(identifier: .identifier("_storage")),
-        typeAnnotation: TypeAnnotationSyntax(type: TypeSyntax(dictionaryType)),
+        typeAnnotation: TypeAnnotationSyntax(
+            colon: .colonToken(trailingTrivia: .space),
+            type: TypeSyntax(dictionaryType),
+            trailingTrivia: .space
+        ),
         initializer: InitializerClauseSyntax(
+            equal: .equalToken(trailingTrivia: .space),
             value: DictionaryExprSyntax(content: .colon(.colonToken()))
         )
     )
     return VariableDeclSyntax(
-        bindingSpecifier: .keyword(.var),
+        bindingSpecifier: .keyword(.var, trailingTrivia: .space),
         bindings: PatternBindingListSyntax([binding])
     )
 }

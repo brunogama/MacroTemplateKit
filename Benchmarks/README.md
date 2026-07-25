@@ -117,20 +117,24 @@ history to resurrect it against a future swift-syntax release.
 
 | workload | props | structural | structural-interned | mtk | vs interned |
 |---|---|---|---|---|---|
-| generate | 16 | 355.9 | 291.9 | 226.1 | **0.77×** |
-| generate | 64 | 1414 | 1183 | 929.9 | **0.79×** |
-| generate | 256 | 5618 | 4831 | 3610 | **0.75×** |
+| generate | 16 | 416.0 | 299.9 | 222.5 | **0.74×** |
+| generate | 64 | 1662 | 1198 | 887.6 | **0.74×** |
+| generate | 256 | 6758 | 4803 | 3569 | **0.74×** |
 | case-factory | 16 | 247.5 | 140.6 | 140.8 | **1.00×** |
 | case-factory | 64 | 969 | 546.3 | 554.8 | **1.02×** |
 | case-factory | 256 | 3924 | 2249 | 2253 | **1.00×** |
-| case-path | 16 | 663.6 | 409.7 | 319.2 | **0.78×** |
-| case-path | 64 | 2695 | 1696 | 1240 | **0.73×** |
-| case-path | 256 | 10788 | 6767 | 5122 | **0.76×** |
+| case-path | 16 | 724.4 | 443.0 | 307.0 | **0.69×** |
+| case-path | 64 | 2948 | 1831 | 1231 | **0.67×** |
+| case-path | 256 | 11896 | 7452 | 5065 | **0.68×** |
+
+All baselines emit trivia comparable to `mtk`; earlier revisions of this table
+used trivia-free baselines and understated the library by 1–8% depending on how
+much whitespace the shape carries.
 
 **Depth decides.** The three workloads are ordered by how deep the generated
 declaration is, and the ratio tracks it: flat static factories land at parity or
-a shade worse, accessor pairs at ~0.77×, and an `AnyCasePath` property — closures
-inside labeled arguments inside a generic getter, ~70 nodes — at ~0.76×. Structural construction
+a shade worse, accessor pairs at ~0.74×, and an `AnyCasePath` property — closures
+inside labeled arguments inside a generic getter, ~70 nodes — at ~0.68×. Structural construction
 pays per node; the emitter appends text and parses once per declaration. Hoisting
 cannot close that gap, because the tree varies per case at its leaves and must
 still be assembled per case.
@@ -167,7 +171,7 @@ before the variant was removed):
 Headline findings (stable across reruns):
 
 1. **`mtk` beats a competent hand-rolled baseline on nested declarations, and
-   ties on flat ones** — 0.74–0.78× on `case-path` and `generate`, 0.94–0.96×
+   ties on flat ones** — 0.67–0.74× on `case-path` and `generate`, 1.00–1.02×
    on `case-factory`. Depth is the variable. (This supersedes the earlier
    "`mtk` ≈ `structural`" finding, which measured the pre-cutover renderer.)
 2. **Parsing small fragments beats structural construction** (~0.6× time): the

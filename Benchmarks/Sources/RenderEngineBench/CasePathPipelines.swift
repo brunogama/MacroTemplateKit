@@ -41,6 +41,7 @@ struct StructuralCasePathPipeline: CaseFactoryPipeline {
         cases.map { enumCase in
             // { Fixture.case0($0) }
             let embed = ClosureExprSyntax(
+                leftBrace: .leftBraceToken(trailingTrivia: .space),
                 statements: CodeBlockItemListSyntax([
                     CodeBlockItemSyntax(
                         item: .expr(
@@ -79,36 +80,45 @@ struct StructuralCasePathPipeline: CaseFactoryPipeline {
                 )
             )
             let guardStatement = GuardStmtSyntax(
+                guardKeyword: .keyword(.guard, trailingTrivia: .space),
                 conditions: ConditionElementListSyntax([
                     ConditionElementSyntax(
                         condition: .matchingPattern(
                             MatchingPatternConditionSyntax(
+                                caseKeyword: .keyword(.case, trailingTrivia: .space),
                                 pattern: ValueBindingPatternSyntax(
-                                    bindingSpecifier: .keyword(.let),
+                                    bindingSpecifier: .keyword(.let, trailingTrivia: .space),
                                     pattern: PatternSyntax(matchPattern)
                                 ),
                                 initializer: InitializerClauseSyntax(
+                                    equal: .equalToken(leadingTrivia: .space, trailingTrivia: .space),
                                     value: DeclReferenceExprSyntax(
                                         baseName: .dollarIdentifier("$0")))
                             )))
                 ]),
+                elseKeyword: .keyword(.else, leadingTrivia: .space, trailingTrivia: .space),
                 body: CodeBlockSyntax(
+                    leftBrace: .leftBraceToken(trailingTrivia: .space),
                     statements: CodeBlockItemListSyntax([
                         CodeBlockItemSyntax(
                             item: .stmt(
                                 StmtSyntax(
                                     ReturnStmtSyntax(
+                                        returnKeyword: .keyword(.return, trailingTrivia: .space),
                                         expression: ExprSyntax(NilLiteralExprSyntax())))))
-                    ])
+                    ]),
+                    rightBrace: .rightBraceToken(leadingTrivia: .space)
                 )
             )
             let extract = ClosureExprSyntax(
+                leftBrace: .leftBraceToken(trailingTrivia: .space),
                 statements: CodeBlockItemListSyntax([
                     CodeBlockItemSyntax(item: .stmt(StmtSyntax(guardStatement))),
                     CodeBlockItemSyntax(
                         item: .stmt(
                             StmtSyntax(
                                 ReturnStmtSyntax(
+                                    returnKeyword: .keyword(.return, leadingTrivia: .space, trailingTrivia: .space),
                                     expression: ExprSyntax(
                                         DeclReferenceExprSyntax(
                                             baseName: .identifier("value"))))))),
@@ -123,13 +133,13 @@ struct StructuralCasePathPipeline: CaseFactoryPipeline {
                 arguments: LabeledExprListSyntax([
                     LabeledExprSyntax(
                         label: .identifier("embed"),
-                        colon: .colonToken(),
+                        colon: .colonToken(trailingTrivia: .space),
                         expression: embed,
-                        trailingComma: .commaToken()
+                        trailingComma: .commaToken(trailingTrivia: .space)
                     ),
                     LabeledExprSyntax(
                         label: .identifier("extract"),
-                        colon: .colonToken(),
+                        colon: .colonToken(trailingTrivia: .space),
                         expression: extract
                     ),
                 ]),
@@ -144,34 +154,42 @@ struct StructuralCasePathPipeline: CaseFactoryPipeline {
                         GenericArgumentSyntax(
                             argument: .type(
                                 TypeSyntax(IdentifierTypeSyntax(name: .identifier(enumName)))),
-                            trailingComma: .commaToken()
+                            trailingComma: .commaToken(trailingTrivia: .space)
                         ),
-                        GenericArgumentSyntax(argument: .type(enumCase.payloadType)),
+                        GenericArgumentSyntax(argument: .type(enumCase.payloadType.trimmed)),
                     ])
                 )
             )
             let property = VariableDeclSyntax(
                 modifiers: DeclModifierListSyntax([
-                    DeclModifierSyntax(name: .keyword(.public))
+                    DeclModifierSyntax(name: .keyword(.public, trailingTrivia: .space))
                 ]),
-                bindingSpecifier: .keyword(.var),
+                bindingSpecifier: .keyword(.var, trailingTrivia: .space),
                 bindings: PatternBindingListSyntax([
                     PatternBindingSyntax(
                         pattern: IdentifierPatternSyntax(
                             identifier: .identifier(enumCase.name)),
-                        typeAnnotation: TypeAnnotationSyntax(type: TypeSyntax(returnType)),
+                        typeAnnotation: TypeAnnotationSyntax(
+                            colon: .colonToken(trailingTrivia: .space),
+                            type: TypeSyntax(returnType),
+                            trailingTrivia: .space
+                        ),
                         accessorBlock: AccessorBlockSyntax(
+                            leftBrace: .leftBraceToken(trailingTrivia: .newline),
                             accessors: .accessors(
                                 AccessorDeclListSyntax([
                                     AccessorDeclSyntax(
-                                        accessorSpecifier: .keyword(.get),
+                                        accessorSpecifier: .keyword(.get, trailingTrivia: .space),
                                         body: CodeBlockSyntax(
+                                            leftBrace: .leftBraceToken(trailingTrivia: .newline),
                                             statements: CodeBlockItemListSyntax([
                                                 CodeBlockItemSyntax(
                                                     item: .expr(ExprSyntax(casePathCall)))
-                                            ]))
+                                            ]),
+                                            rightBrace: .rightBraceToken(leadingTrivia: .newline))
                                     )
-                                ]))
+                                ])),
+                            rightBrace: .rightBraceToken(leadingTrivia: .newline)
                         )
                     )
                 ])
@@ -193,11 +211,19 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
 
     private enum Interned {
         static let publicModifier = DeclModifierListSyntax([
-            DeclModifierSyntax(name: .keyword(.public))
+            DeclModifierSyntax(name: .keyword(.public, trailingTrivia: .space))
         ])
-        static let varKeyword = TokenSyntax.keyword(.var)
-        static let getKeyword = TokenSyntax.keyword(.get)
-        static let letKeyword = TokenSyntax.keyword(.let)
+        static let varKeyword = TokenSyntax.keyword(.var, trailingTrivia: .space)
+        static let getKeyword = TokenSyntax.keyword(.get, trailingTrivia: .space)
+        static let colonSpace = TokenSyntax.colonToken(trailingTrivia: .space)
+        static let commaSpace = TokenSyntax.commaToken(trailingTrivia: .space)
+        static let leftBraceNL = TokenSyntax.leftBraceToken(trailingTrivia: .newline)
+        static let rightBraceNL = TokenSyntax.rightBraceToken(leadingTrivia: .newline)
+        static let letKeyword = TokenSyntax.keyword(.let, trailingTrivia: .space)
+        static let caseKeyword = TokenSyntax.keyword(.case, trailingTrivia: .space)
+        static let guardKeyword = TokenSyntax.keyword(.guard, trailingTrivia: .space)
+        static let returnKeyword = TokenSyntax.keyword(.return, trailingTrivia: .space)
+        static let closureBrace = TokenSyntax.leftBraceToken(trailingTrivia: .space)
         static let leftParen = TokenSyntax.leftParenToken()
         static let rightParen = TokenSyntax.rightParenToken()
         static let comma = TokenSyntax.commaToken()
@@ -220,20 +246,26 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
         ])
         /// `= $0` — invariant for every case.
         static let dollarInitializer = InitializerClauseSyntax(
+            equal: .equalToken(leadingTrivia: .space, trailingTrivia: .space),
             value: DeclReferenceExprSyntax(baseName: .dollarIdentifier("$0")))
         /// `{ return nil }` — the entire guard else block.
         static let returnNilBlock = CodeBlockSyntax(
+            leftBrace: .leftBraceToken(trailingTrivia: .space),
             statements: CodeBlockItemListSyntax([
                 CodeBlockItemSyntax(
                     item: .stmt(
-                        StmtSyntax(ReturnStmtSyntax(expression: ExprSyntax(NilLiteralExprSyntax())))))
-            ])
+                        StmtSyntax(ReturnStmtSyntax(
+                            returnKeyword: .keyword(.return, trailingTrivia: .space),
+                            expression: ExprSyntax(NilLiteralExprSyntax())))))
+            ]),
+            rightBrace: .rightBraceToken(leadingTrivia: .space)
         )
         /// `return value` — the extract closure's trailing statement.
         static let returnValueItem = CodeBlockItemSyntax(
             item: .stmt(
                 StmtSyntax(
                     ReturnStmtSyntax(
+                        returnKeyword: .keyword(.return, leadingTrivia: .space, trailingTrivia: .space),
                         expression: ExprSyntax(
                             DeclReferenceExprSyntax(baseName: .identifier("value")))))))
     }
@@ -243,11 +275,12 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
         let enumRef = ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier(enumName)))
         let enumTypeArgument = GenericArgumentSyntax(
             argument: .type(TypeSyntax(IdentifierTypeSyntax(name: .identifier(enumName)))),
-            trailingComma: Interned.comma
+            trailingComma: Interned.commaSpace
         )
 
         return cases.map { enumCase in
             let embed = ClosureExprSyntax(
+                leftBrace: Interned.closureBrace,
                 statements: CodeBlockItemListSyntax([
                     CodeBlockItemSyntax(
                         item: .expr(
@@ -273,10 +306,12 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
                 )
             )
             let guardStatement = GuardStmtSyntax(
+                guardKeyword: .keyword(.guard, trailingTrivia: .space),
                 conditions: ConditionElementListSyntax([
                     ConditionElementSyntax(
                         condition: .matchingPattern(
                             MatchingPatternConditionSyntax(
+                                caseKeyword: Interned.caseKeyword,
                                 pattern: ValueBindingPatternSyntax(
                                     bindingSpecifier: Interned.letKeyword,
                                     pattern: PatternSyntax(matchPattern)
@@ -284,9 +319,11 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
                                 initializer: Interned.dollarInitializer
                             )))
                 ]),
+                elseKeyword: .keyword(.else, leadingTrivia: .space, trailingTrivia: .space),
                 body: Interned.returnNilBlock
             )
             let extract = ClosureExprSyntax(
+                leftBrace: .leftBraceToken(trailingTrivia: .space),
                 statements: CodeBlockItemListSyntax([
                     CodeBlockItemSyntax(item: .stmt(StmtSyntax(guardStatement))),
                     Interned.returnValueItem,
@@ -299,13 +336,13 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
                 arguments: LabeledExprListSyntax([
                     LabeledExprSyntax(
                         label: Interned.embedLabel,
-                        colon: Interned.colon,
+                        colon: Interned.colonSpace,
                         expression: embed,
-                        trailingComma: Interned.comma
+                        trailingComma: Interned.commaSpace
                     ),
                     LabeledExprSyntax(
                         label: Interned.extractLabel,
-                        colon: Interned.colon,
+                        colon: Interned.colonSpace,
                         expression: extract
                     ),
                 ]),
@@ -317,7 +354,7 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
                 genericArgumentClause: GenericArgumentClauseSyntax(
                     arguments: GenericArgumentListSyntax([
                         enumTypeArgument,
-                        GenericArgumentSyntax(argument: .type(enumCase.payloadType)),
+                        GenericArgumentSyntax(argument: .type(enumCase.payloadType.trimmed)),
                     ])
                 )
             )
@@ -328,19 +365,27 @@ struct InternedStructuralCasePathPipeline: CaseFactoryPipeline {
                     PatternBindingSyntax(
                         pattern: IdentifierPatternSyntax(
                             identifier: .identifier(enumCase.name)),
-                        typeAnnotation: TypeAnnotationSyntax(type: TypeSyntax(returnType)),
+                        typeAnnotation: TypeAnnotationSyntax(
+                            colon: Interned.colonSpace,
+                            type: TypeSyntax(returnType),
+                            trailingTrivia: .space
+                        ),
                         accessorBlock: AccessorBlockSyntax(
+                            leftBrace: Interned.leftBraceNL,
                             accessors: .accessors(
                                 AccessorDeclListSyntax([
                                     AccessorDeclSyntax(
                                         accessorSpecifier: Interned.getKeyword,
                                         body: CodeBlockSyntax(
+                                            leftBrace: Interned.leftBraceNL,
                                             statements: CodeBlockItemListSyntax([
                                                 CodeBlockItemSyntax(
                                                     item: .expr(ExprSyntax(casePathCall)))
-                                            ]))
+                                            ]),
+                                            rightBrace: Interned.rightBraceNL)
                                     )
-                                ]))
+                                ])),
+                            rightBrace: Interned.rightBraceNL
                         )
                     )
                 ])

@@ -40,6 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a custom operator can state how tightly it binds.
 - `RenderError` carries the offending source and the parse diagnostics, and
   names MacroTemplateKit rather than the caller.
+- `Renderer.renderExtensionDecl(_:)` returns a concrete `ExtensionDeclSyntax`.
+  `ExtensionMacro.expansion(...)` is required to return `[ExtensionDeclSyntax]`,
+  and the general `render(_:)` returns `DeclSyntax`, so without this every
+  extension macro had to force-unwrap a downcast --- pushing an unwrap that can
+  only fail on a bug in this library into the author's macro. The gap was found
+  by making `Examples/` a build target, which it had never been: 24 example
+  files and 57 call sites had not compiled since `render` began throwing.
 - `MatchPattern` and the `Statement.guardCase` / `Statement.ifCase` cases, for
   destructuring an enum case: `guard case let .success(value) = result else`.
   Previously this could only be written by handing raw source to
@@ -82,9 +89,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   | workload | shape | ratio |
   |---|---|---|
-  | case-path | `@CasePathable`-style property per case | 0.73--0.78x |
-  | generate | accessor pairs over stored properties | 0.75--0.79x |
-  | case-factory | static factories over enum cases | 1.00--1.06x (parity) |
+  | case-path | `@CasePathable`-style property per case | 0.67--0.69x |
+  | generate | accessor pairs over stored properties | 0.74x |
+  | case-factory | static factories over enum cases | 1.00--1.02x (parity) |
 
   Depth decides: structural construction pays per node, the emitter appends text
   and parses once per declaration, so the deeper the generated declaration the
@@ -106,7 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     to 1.75x faster. The ratios above use the hoisted baseline.
     See `docs/adr/0004-baselines-must-hoist-invariants.md`.
   - **A third correction, made after those two.** `case-factory` was restated
-    here as 0.94--0.96x, and is now 1.00--1.06x --- at parity, marginally
+    here as 0.94--0.96x, and is now 1.00--1.02x --- at parity, marginally
     slower. Nothing changed in the library. The earlier figure compared numbers
     collected in different benchmark sessions, and absolutes drift ~10% between
     sessions on this hardware for identical code. Every ratio published now
