@@ -660,6 +660,7 @@ Rendering goes through a source-text emitter and a single parse per fragment rat
 |---|---|---|---|
 | generate | accessor pairs over stored properties | 0.63--0.65x | **0.75--0.78x** |
 | case-factory | static factories over enum cases | 0.57--0.60x | **0.94--0.96x** |
+| case-path | `@CasePathable`-style `AnyCasePath` property per case | 0.41--0.43x | **0.67--0.68x** |
 
 **Read the right-hand column.** The left one compares against a baseline that rebuilds expansion-invariant nodes -- the `static` modifier, both parens, the return type -- once per generated declaration. A macro author writing that by hand would hoist them, and hoisting alone makes the case-factory baseline 38% faster. Crediting the library for that is crediting it for someone else's mistake.
 
@@ -667,6 +668,7 @@ So the honest summary is narrower than it first looked:
 
 - On **generate**, the library is about 25% faster than a competently hand-rolled equivalent.
 - On **case-factory**, it is at **parity**. The apparent 0.6x there was almost entirely baseline error.
+- On **case-path** -- the shape a TCA-style app pays for every case of every `@CasePathable` action enum -- it is about **33% faster even against the hoisted baseline**. The pattern behind all three rows: the deeper the generated declaration, the better the library does. Structural construction pays per node (~70 of them per case-path property, closures inside labeled arguments inside a generic getter); the emitter appends text and parses once per declaration. Hoisting cannot close that gap, because most of the tree varies per case at the leaves but must still be assembled per case.
 
 What survives, and it is the claim that matters: **using the library is no longer a performance tax.** Before this work MacroTemplateKit ran at 0.98--0.99x versus assembling nodes by hand, so it cost nothing and bought nothing. It now ranges from parity to a comfortable win, depending on shape. It is not a free speedup, and this README is not going to tell you it is.
 
@@ -674,6 +676,7 @@ Caveats, stated plainly:
 
 - These are per-expansion figures in the microsecond range. Across a large project they are worth tens of milliseconds of build time, which nobody will notice. Choose this library for what it lets you express, not to speed up your builds.
 - **The baselines attach no trivia.** They emit `staticfuncmakeCase0(_value:String)` where the library emits spaced, newline-separated source. The equivalence gate compares token streams, which strips trivia, so it cannot see this. Whitespace is bytes to write and tokens to allocate, meaning the baselines are measured doing slightly less work -- a bias that runs *against* the library, so the figures above are conservative. It is documented rather than corrected, because a fix that improves our own numbers deserves more scrutiny than one that worsens them. Inspect it with `--workloads trivia`.
+- In the case-path workload, the guard-case matching pattern (`case let .foo(value) = $0`) has no typed representation in `Statement` and rides through `.variable`'s raw-source escape hatch. The measurement is honest -- that is how you would write it today -- but a fifth of that template is a string, not a typed value. The expressiveness gap is real and open.
 - The baselines are hand-written implementations maintained in this repository. An earlier version of this section warned that a SwiftSyntax expert might beat them and narrow these ratios. That is exactly what happened, to us, on our own baseline -- see [ADR 0004](docs/adr/0004-baselines-must-hoist-invariants.md). Treat the remaining margin as an upper bound.
 - **There is no memory claim here, deliberately.** The benchmark does report a ~0.56x figure for bytes retained per expansion, and earlier versions of this table printed it. It does not reach you. A plugin serialises each expansion to source and drops the tree, so peak memory is one expansion's worth no matter how many expansions a build performs -- measured flat across a 2048x sweep, from 64 to 131072 expansions. The difference between pipelines is real per live tree and is then multiplied by a count that is always 1. See [ADR 0003](docs/adr/0003-memory-win-does-not-accumulate.md). Time is the claim, because time is the thing that adds up.
 

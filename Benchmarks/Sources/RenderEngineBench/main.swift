@@ -20,6 +20,12 @@ let allCaseFactoryPipelines: [CaseFactoryPipeline] = [
     MTKCaseFactoryPipeline(),
 ]
 
+let allCasePathPipelines: [CaseFactoryPipeline] = [
+    StructuralCasePathPipeline(),
+    InternedStructuralCasePathPipeline(),
+    MTKCasePathPipeline(),
+]
+
 let allEditPipelines: [TreeEditPipeline] = [
     WithEditPipeline(),
     RewriterEditPipeline(),
@@ -215,6 +221,28 @@ if options.workloads.contains("case-factory") {
         header: "## Workload: case-factory — one static factory per enum case (declaration shape, not accessor shape)",
         registry: allCaseFactoryPipelines,
         requestedNames: options.caseFactoryPipelineNames,
+        name: { type(of: $0).name },
+        fixture: { Fixtures.enumDecl(caseCount: $0) },
+        equivalenceFixture: caseFactoryEquivalenceFixture,
+        parts: { pipeline, fixture in
+            outputParts(
+                of: pipeline.expand(
+                    cases: extractEnumCases(from: fixture), enumName: fixture.name.text))
+        },
+        measure: { pipeline, enumDecl in
+            measureLoop(warmup: options.warmup, iterations: options.iterations) {
+                pipeline.expand(cases: extractEnumCases(from: enumDecl), enumName: enumDecl.name.text)
+            }
+        }
+    )
+}
+
+if options.workloads.contains("case-path") {
+    runWorkload(
+        header:
+            "## Workload: case-path — @CasePathable-style AnyCasePath property per enum case (the TCA shape)",
+        registry: allCasePathPipelines,
+        requestedNames: allCasePathPipelines.map { type(of: $0).name },
         name: { type(of: $0).name },
         fixture: { Fixtures.enumDecl(caseCount: $0) },
         equivalenceFixture: caseFactoryEquivalenceFixture,

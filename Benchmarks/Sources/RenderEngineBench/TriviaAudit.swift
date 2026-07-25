@@ -30,6 +30,14 @@ func triviaAudit() {
         print("")
     }
 
+    for pipeline in allCasePathPipelines {
+        print("=== case-path: \(type(of: pipeline).name) ===")
+        for decl in pipeline.expand(cases: cases, enumName: enumName) {
+            print(decl.description)
+        }
+        print("")
+    }
+
     let structFixture = Fixtures.structDecl(propertyCount: 2)
     let properties = extractStoredProperties(from: structFixture)
 
