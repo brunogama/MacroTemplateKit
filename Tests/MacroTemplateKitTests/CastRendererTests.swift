@@ -53,13 +53,9 @@ final class CastRendererTests: XCTestCase {
       let template = Template<Void>.cast(expr("value"), type: "String", kind: kind)
 
       let parsed = try Renderer.render(template)
-      let legacy = Renderer.legacyRender(template)
 
       XCTAssertFalse(parsed.hasError, "\(kind) should parse cleanly")
-      XCTAssertEqual(
-        parsed.trimmedDescription, legacy.trimmedDescription,
-        "parse-backed and structural output diverged for \(kind)"
-      )
+      XCTAssertEqual(parsed.trimmedDescription, "value \(kind.operatorText) String")
     }
   }
 

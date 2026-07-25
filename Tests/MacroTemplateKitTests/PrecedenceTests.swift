@@ -10,8 +10,9 @@ import XCTest
 /// has no structure to inspect, so its author must track precedence in their
 /// head. A `Template` knows its own shape, so the renderer can do it.
 ///
-/// Every case is checked on both render paths, since a divergence would mean
-/// the parse-backed and structural renderers disagree about meaning.
+/// Each case asserts the emitted text and then re-parses it, so the
+/// parentheses are validated against the compiler's grammar rather than only
+/// against a string.
 final class PrecedenceTests: XCTestCase {
 
   private func v(_ name: String) -> Template<Void> { .variable(name, payload: ()) }
@@ -22,7 +23,7 @@ final class PrecedenceTests: XCTestCase {
     return buffer
   }
 
-  private func assertBothPaths(
+  private func assertRenders(
     _ template: Template<Void>,
     equals expected: String,
     line: UInt = #line
@@ -32,31 +33,23 @@ final class PrecedenceTests: XCTestCase {
     let parsed = try Renderer.render(template)
     XCTAssertFalse(parsed.hasError, "should parse cleanly", line: line)
 
-    // Compare token streams rather than descriptions: the legacy renderer
-    // builds tokens without trivia, so its description has no spaces. Only the
-    // token sequence carries meaning, and that is what the parity harness
-    // compares too.
-    func tokens(_ node: some SyntaxProtocol) -> [String] {
-      node.tokens(viewMode: .sourceAccurate).map(\.text)
-    }
-    XCTAssertEqual(
-      tokens(Renderer.legacyRender(template)), tokens(parsed),
-      "legacy and parse-backed paths disagree", line: line
-    )
+    // Re-parsing proves the parentheses survive the compiler's own grammar
+    // rather than merely looking right as a string.
+    XCTAssertEqual(parsed.trimmedDescription, expected, "reparsed", line: line)
   }
 
   // MARK: - The bug this fixes
 
   func testLooserChildOnLeftIsParenthesized() throws {
     // (a + b) * c — without parens this silently becomes a + b * c
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: .binaryOperation(left: v("a"), operator: "+", right: v("b")), operator: "*", right: v("c")),
       equals: "(a + b) * c"
     )
   }
 
   func testLooserChildOnRightIsParenthesized() throws {
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: v("a"), operator: "*", right: .binaryOperation(left: v("b"), operator: "+", right: v("c"))),
       equals: "a * (b + c)"
     )
@@ -64,7 +57,7 @@ final class PrecedenceTests: XCTestCase {
 
   func testLogicalOperatorsNestByPrecedence() throws {
     // (a || b) && c
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: .binaryOperation(left: v("a"), operator: "||", right: v("b")), operator: "&&", right: v("c")),
       equals: "(a || b) && c"
     )
@@ -74,7 +67,7 @@ final class PrecedenceTests: XCTestCase {
 
   func testTighterChildIsNotParenthesized() throws {
     // a + b * c — the nesting already means what it says
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: v("a"), operator: "+", right: .binaryOperation(left: v("b"), operator: "*", right: v("c"))),
       equals: "a + b * c"
     )
@@ -82,14 +75,14 @@ final class PrecedenceTests: XCTestCase {
 
   func testLeftAssociativeChainIsNotParenthesized() throws {
     // a - b - c, not (a - b) - c
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: .binaryOperation(left: v("a"), operator: "-", right: v("b")), operator: "-", right: v("c")),
       equals: "a - b - c"
     )
   }
 
   func testAtomicOperandsAreNeverParenthesized() throws {
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: .functionCall(function: "f", arguments: []), operator: "+", right: v("b")),
       equals: "f() + b"
     )
@@ -99,7 +92,7 @@ final class PrecedenceTests: XCTestCase {
 
   func testLeftAssociativeOperatorParenthesizesItsRightOperand() throws {
     // a - (b - c) must keep its parentheses, or it means (a - b) - c
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: v("a"), operator: "-", right: .binaryOperation(left: v("b"), operator: "-", right: v("c"))),
       equals: "a - (b - c)"
     )
@@ -107,7 +100,7 @@ final class PrecedenceTests: XCTestCase {
 
   func testRightAssociativeOperatorParenthesizesItsLeftOperand() throws {
     // (a ?? b) ?? c — `??` is right-associative
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: .binaryOperation(left: v("a"), operator: "??", right: v("b")), operator: "??", right: v("c")),
       equals: "(a ?? b) ?? c"
     )
@@ -115,7 +108,7 @@ final class PrecedenceTests: XCTestCase {
 
   func testNonAssociativeOperatorParenthesizesBothSides() throws {
     // `a < b < c` is not valid Swift, so the nesting must be made explicit
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: .binaryOperation(left: v("a"), operator: "<", right: v("b")), operator: "<", right: v("c")),
       equals: "(a < b) < c"
     )
@@ -126,7 +119,7 @@ final class PrecedenceTests: XCTestCase {
   func testCastDoesNotParenthesizeTighterOperand() throws {
     // AdditionPrecedence is higher than CastingPrecedence, so `a + b as! Int`
     // already groups as `(a + b) as! Int`. Adding parentheses would be noise.
-    try assertBothPaths(
+    try assertRenders(
       .cast(.binaryOperation(left: v("a"), operator: "+", right: v("b")), type: "Int", kind: .forced),
       equals: "a + b as! Int"
     )
@@ -135,26 +128,26 @@ final class PrecedenceTests: XCTestCase {
   func testCastParenthesizesLooserOperand() throws {
     // ComparisonPrecedence is lower than CastingPrecedence: without parens
     // `a == b as! Bool` would cast `b`, not the comparison.
-    try assertBothPaths(
+    try assertRenders(
       .cast(.binaryOperation(left: v("a"), operator: "==", right: v("b")), type: "Bool", kind: .forced),
       equals: "(a == b) as! Bool"
     )
   }
 
   func testCastDoesNotParenthesizeAtomicOperand() throws {
-    try assertBothPaths(.cast(v("a"), type: "Int", kind: .forced), equals: "a as! Int")
+    try assertRenders(.cast(v("a"), type: "Int", kind: .forced), equals: "a as! Int")
   }
 
   func testTernaryParenthesizesNestedTernaryCondition() throws {
     let inner = Template<Void>.conditional(condition: v("a"), thenBranch: v("b"), elseBranch: v("c"))
-    try assertBothPaths(
+    try assertRenders(
       .conditional(condition: inner, thenBranch: v("d"), elseBranch: v("e")),
       equals: "(a ? b : c) ? d : e"
     )
   }
 
   func testComparisonInTernaryConditionNeedsNoParentheses() throws {
-    try assertBothPaths(
+    try assertRenders(
       .conditional(
         condition: .binaryOperation(left: v("a"), operator: "<", right: v("b")),
         thenBranch: v("c"),
@@ -170,7 +163,7 @@ final class PrecedenceTests: XCTestCase {
     // Declaring the precedence lets the renderer treat `|>` like any other
     // operator instead of assuming the worst.
     let pipe = Operator("|>", precedence: .multiplication)
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(
         left: .binaryOperation(left: v("a"), operator: pipe, right: v("b")),
         operator: pipe,
@@ -182,7 +175,7 @@ final class PrecedenceTests: XCTestCase {
 
   func testDeclaredPrecedenceStillParenthesizesLooserChildren() throws {
     let pipe = Operator("|>", precedence: .multiplication)
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(
         left: .binaryOperation(left: v("a"), operator: "+", right: v("b")),
         operator: pipe,
@@ -196,7 +189,7 @@ final class PrecedenceTests: XCTestCase {
     // An operator the table doesn't know could have any precedence, so the
     // renderer biases toward redundant parens rather than a silent meaning
     // change.
-    try assertBothPaths(
+    try assertRenders(
       .binaryOperation(left: .binaryOperation(left: v("a"), operator: "|>", right: v("b")), operator: "*", right: v("c")),
       equals: "(a |> b) * c"
     )

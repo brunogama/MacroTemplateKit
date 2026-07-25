@@ -239,13 +239,13 @@ enum SourceEmitter {
         for (index, param) in sig.parameters.enumerated() {
             buffer.append(param.name)
             if let type = param.type {
-                // No colon token here: legacy's
-                // `ClosureParameterSyntax(firstName:type:...)` convenience
-                // init (see `buildClosureSignature` in Renderer.swift)
-                // doesn't thread a colon token between name and type,
-                // unlike e.g. `renderLabeledExprList`'s labeled arguments.
-                // Replicated verbatim for token parity, not "fixed".
-                buffer.append(" ")
+                // `x: Int`. The legacy renderer omitted this colon, because
+                // `ClosureParameterSyntax(firstName:type:)` does not thread one
+                // in, and the emitter replicated that for token parity. It
+                // parses either way — `(x Int)` is read as a parameter with two
+                // *names* rather than a typed one — so the gate never caught
+                // it. With the legacy path gone, parity no longer pins the bug.
+                buffer.append(": ")
                 buffer.append(type)
             }
             if index != sig.parameters.count - 1 { buffer.append(", ") }

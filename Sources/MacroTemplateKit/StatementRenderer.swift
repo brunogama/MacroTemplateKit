@@ -18,7 +18,6 @@ extension Renderer {
   ///
   /// Implemented via the source-emit-then-parse pipeline (`renderParsed(_:)`
   /// below). The per-node structural implementation this superseded is
-  /// retained as `legacyRender(_:)` for token-parity testing.
   ///
   /// - Parameter statement: Statement to render
   /// - Returns: SwiftSyntax code block item containing the rendered statement
@@ -26,62 +25,6 @@ extension Renderer {
     try renderParsed(statement)
   }
 
-  /// Legacy per-node structural implementation that `render(_: Statement<A>)`
-  /// used before the source-emit-then-parse pipeline replaced it, retained
-  /// side-by-side for token-parity testing. Not reachable from the public
-  /// API; scheduled for removal once the parity suite is retired.
-  static func legacyRender<A: Sendable>(_ statement: Statement<A>) -> CodeBlockItemSyntax {
-    switch statement {
-    case .letBinding(let name, let type, let initializer):
-      return renderLetBinding(name: name, type: type, initializer: initializer)
-
-    case .varBinding(let name, let type, let initializer):
-      return renderVarBinding(name: name, type: type, initializer: initializer)
-
-    case .guardStatement(let condition, let elseBody):
-      return renderGuard(condition: condition, elseBody: elseBody)
-
-    case .ifStatement(let condition, let thenBody, let elseBody):
-      return renderIf(condition: condition, thenBody: thenBody, elseBody: elseBody)
-
-    case .forInStatement(let variable, let collection, let body):
-      return renderForInStatement(variable: variable, collection: collection, body: body)
-
-    case .ifLetBinding(let name, let type, let initializer, let thenBody, let elseBody):
-      return renderIfLetBinding(
-        name: name,
-        type: type,
-        initializer: initializer,
-        thenBody: thenBody,
-        elseBody: elseBody
-      )
-
-    case .returnStatement(let expr):
-      return renderReturn(expression: expr)
-
-    case .throwStatement(let expr):
-      return renderThrow(expression: expr)
-
-    case .deferStatement(let body):
-      return renderDefer(body: body)
-
-    case .expression(let expr):
-      return CodeBlockItemSyntax(item: .expr(legacyRender(expr)))
-
-    case .guardLetBinding(let name, let type, let initializer, let elseBody):
-      return renderGuardLetBinding(
-        name: name, type: type, initializer: initializer, elseBody: elseBody)
-
-    case .switchStatement(let subject, let cases):
-      return renderSwitchStatement(subject: subject, cases: cases)
-
-    case .assignmentStatement(let lhs, let rhs):
-      return renderAssignmentStatement(lhs: lhs, rhs: rhs)
-
-    case .breakStatement:
-      return CodeBlockItemSyntax(item: .stmt(StmtSyntax(BreakStmtSyntax())))
-    }
-  }
 
   /// Renders multiple statements to CodeBlockItemListSyntax.
   ///
@@ -93,260 +36,27 @@ extension Renderer {
     CodeBlockItemListSyntax(try statements.map { try render($0) })
   }
 
-  /// Legacy per-node structural counterpart to `renderStatements(_:)`,
-  /// mapping each element through `legacyRender(_: Statement<A>)` instead of
-  /// the source-emit-then-parse `render(_:)`. Used exclusively by the legacy
-  /// helpers below so the retained structural pipeline stays self-contained.
-  static func legacyRenderStatements<A: Sendable>(
-    _ statements: [Statement<A>]
-  ) -> CodeBlockItemListSyntax {
-    CodeBlockItemListSyntax(statements.map { legacyRender($0) })
-  }
 
   // MARK: - Private Statement Helpers
 
-  private static func renderLetBinding<A: Sendable>(
-    name: String,
-    type: String?,
-    initializer: Template<A>
-  ) -> CodeBlockItemSyntax {
-    let pattern = IdentifierPatternSyntax(identifier: .identifier(name))
-    let typeAnnotation = type.map { TypeAnnotationSyntax(type: TypeSyntax(stringLiteral: $0)) }
 
-    let binding = PatternBindingSyntax(
-      pattern: PatternSyntax(pattern),
-      typeAnnotation: typeAnnotation,
-      initializer: InitializerClauseSyntax(value: legacyRender(initializer))
-    )
 
-    let varDecl = VariableDeclSyntax(
-      bindingSpecifier: .keyword(.let),
-      bindings: PatternBindingListSyntax([binding])
-    )
 
-    return CodeBlockItemSyntax(item: .decl(DeclSyntax(varDecl)))
-  }
 
-  private static func renderVarBinding<A: Sendable>(
-    name: String,
-    type: String?,
-    initializer: Template<A>
-  ) -> CodeBlockItemSyntax {
-    let pattern = IdentifierPatternSyntax(identifier: .identifier(name))
-    let typeAnnotation = type.map { TypeAnnotationSyntax(type: TypeSyntax(stringLiteral: $0)) }
 
-    let binding = PatternBindingSyntax(
-      pattern: PatternSyntax(pattern),
-      typeAnnotation: typeAnnotation,
-      initializer: InitializerClauseSyntax(value: legacyRender(initializer))
-    )
 
-    let varDecl = VariableDeclSyntax(
-      bindingSpecifier: .keyword(.var),
-      bindings: PatternBindingListSyntax([binding])
-    )
 
-    return CodeBlockItemSyntax(item: .decl(DeclSyntax(varDecl)))
-  }
 
-  private static func renderGuard<A: Sendable>(
-    condition: Template<A>,
-    elseBody: [Statement<A>]
-  ) -> CodeBlockItemSyntax {
-    let conditionElement = ConditionElementSyntax(
-      condition: .expression(legacyRender(condition))
-    )
-
-    let guardStmt = GuardStmtSyntax(
-      conditions: ConditionElementListSyntax([conditionElement]),
-      body: CodeBlockSyntax(statements: legacyRenderStatements(elseBody))
-    )
-
-    return CodeBlockItemSyntax(item: .stmt(StmtSyntax(guardStmt)))
-  }
-
-  private static func renderIf<A: Sendable>(
-    condition: Template<A>,
-    thenBody: [Statement<A>],
-    elseBody: [Statement<A>]?
-  ) -> CodeBlockItemSyntax {
-    let conditionElement = ConditionElementSyntax(
-      condition: .expression(legacyRender(condition))
-    )
-
-    let elseClause: IfExprSyntax.ElseBody? = elseBody.map { body in
-      .codeBlock(CodeBlockSyntax(statements: legacyRenderStatements(body)))
-    }
-
-    let ifExpr = IfExprSyntax(
-      conditions: ConditionElementListSyntax([conditionElement]),
-      body: CodeBlockSyntax(statements: legacyRenderStatements(thenBody)),
-      elseKeyword: elseBody != nil ? .keyword(.else) : nil,
-      elseBody: elseClause
-    )
-
-    return CodeBlockItemSyntax(item: .expr(ExprSyntax(ifExpr)))
-  }
-
-  private static func renderForInStatement<A: Sendable>(
-    variable: String,
-    collection: Template<A>,
-    body: [Statement<A>]
-  ) -> CodeBlockItemSyntax {
-    let forInStmt = ForStmtSyntax(
-      pattern: PatternSyntax(IdentifierPatternSyntax(identifier: .identifier(variable))),
-      sequence: legacyRender(collection),
-      body: CodeBlockSyntax(statements: legacyRenderStatements(body))
-    )
-
-    return CodeBlockItemSyntax(item: .stmt(StmtSyntax(forInStmt)))
-  }
-
-  private static func renderIfLetBinding<A: Sendable>(
-    name: String,
-    type: String?,
-    initializer: Template<A>,
-    thenBody: [Statement<A>],
-    elseBody: [Statement<A>]?
-  ) -> CodeBlockItemSyntax {
-    let typeAnnotation: TypeAnnotationSyntax? = type.map { typeName in
-      TypeAnnotationSyntax(
-        type: TypeSyntax(IdentifierTypeSyntax(name: .identifier(typeName)))
-      )
-    }
-
-    let binding = OptionalBindingConditionSyntax(
-      bindingSpecifier: .keyword(.let),
-      pattern: PatternSyntax(IdentifierPatternSyntax(identifier: .identifier(name))),
-      typeAnnotation: typeAnnotation,
-      initializer: InitializerClauseSyntax(value: legacyRender(initializer))
-    )
-
-    let conditionElement = ConditionElementSyntax(
-      condition: .optionalBinding(binding)
-    )
-
-    let elseClause: IfExprSyntax.ElseBody? = elseBody.map { body in
-      .codeBlock(CodeBlockSyntax(statements: legacyRenderStatements(body)))
-    }
-
-    let ifExpr = IfExprSyntax(
-      conditions: ConditionElementListSyntax([conditionElement]),
-      body: CodeBlockSyntax(statements: legacyRenderStatements(thenBody)),
-      elseKeyword: elseBody != nil ? .keyword(.else) : nil,
-      elseBody: elseClause
-    )
-
-    return CodeBlockItemSyntax(item: .expr(ExprSyntax(ifExpr)))
-  }
-
-  private static func renderReturn<A: Sendable>(expression: Template<A>?) -> CodeBlockItemSyntax {
-    let returnStmt = ReturnStmtSyntax(expression: expression.map { legacyRender($0) })
-    return CodeBlockItemSyntax(item: .stmt(StmtSyntax(returnStmt)))
-  }
-
-  private static func renderThrow<A: Sendable>(expression: Template<A>) -> CodeBlockItemSyntax {
-    let throwStmt = ThrowStmtSyntax(expression: legacyRender(expression))
-    return CodeBlockItemSyntax(item: .stmt(StmtSyntax(throwStmt)))
-  }
-
-  private static func renderDefer<A: Sendable>(body: [Statement<A>]) -> CodeBlockItemSyntax {
-    let deferStmt = DeferStmtSyntax(
-      body: CodeBlockSyntax(statements: legacyRenderStatements(body))
-    )
-    return CodeBlockItemSyntax(item: .stmt(StmtSyntax(deferStmt)))
-  }
 
   // MARK: - Guard Let Binding
 
-  private static func renderGuardLetBinding<A: Sendable>(
-    name: String,
-    type: String?,
-    initializer: Template<A>,
-    elseBody: [Statement<A>]
-  ) -> CodeBlockItemSyntax {
-    let typeAnnotation: TypeAnnotationSyntax? = type.map { typeName in
-      TypeAnnotationSyntax(
-        type: TypeSyntax(IdentifierTypeSyntax(name: .identifier(typeName)))
-      )
-    }
-
-    let binding = OptionalBindingConditionSyntax(
-      bindingSpecifier: .keyword(.let),
-      pattern: PatternSyntax(IdentifierPatternSyntax(identifier: .identifier(name))),
-      typeAnnotation: typeAnnotation,
-      initializer: InitializerClauseSyntax(value: legacyRender(initializer))
-    )
-
-    let conditionElement = ConditionElementSyntax(
-      condition: .optionalBinding(binding)
-    )
-
-    let guardStmt = GuardStmtSyntax(
-      conditions: ConditionElementListSyntax([conditionElement]),
-      body: CodeBlockSyntax(statements: legacyRenderStatements(elseBody))
-    )
-
-    return CodeBlockItemSyntax(item: .stmt(StmtSyntax(guardStmt)))
-  }
 
   // MARK: - Switch Statement
 
-  private static func renderSwitchStatement<A: Sendable>(
-    subject: Template<A>,
-    cases: [SwitchCase<A>]
-  ) -> CodeBlockItemSyntax {
-    let switchCaseSyntaxItems: [SwitchCaseListSyntax.Element] = cases.map { switchCase in
-      let caseSyntax = renderSwitchCase(switchCase)
-      return SwitchCaseListSyntax.Element(caseSyntax)
-    }
 
-    let switchExpr = SwitchExprSyntax(
-      subject: legacyRender(subject),
-      cases: SwitchCaseListSyntax(switchCaseSyntaxItems)
-    )
-
-    return CodeBlockItemSyntax(item: .expr(ExprSyntax(switchExpr)))
-  }
-
-  private static func renderSwitchCase<A: Sendable>(_ switchCase: SwitchCase<A>) -> SwitchCaseSyntax
-  {
-    let label: SwitchCaseSyntax.Label
-    switch switchCase.pattern {
-    case .expression(let expr):
-      let caseItem = SwitchCaseItemSyntax(
-        pattern: PatternSyntax(ExpressionPatternSyntax(expression: legacyRender(expr)))
-      )
-      label = .case(SwitchCaseLabelSyntax(caseItems: SwitchCaseItemListSyntax([caseItem])))
-    case .stringLiteral(let s):
-      let strExpr = ExprSyntax(StringLiteralExprSyntax(content: s))
-      let caseItem = SwitchCaseItemSyntax(
-        pattern: PatternSyntax(ExpressionPatternSyntax(expression: strExpr))
-      )
-      label = .case(SwitchCaseLabelSyntax(caseItems: SwitchCaseItemListSyntax([caseItem])))
-    case .defaultCase:
-      label = .default(SwitchDefaultLabelSyntax())
-    }
-
-    return SwitchCaseSyntax(
-      label: label,
-      statements: legacyRenderStatements(switchCase.body)
-    )
-  }
 
   // MARK: - Assignment Statement
 
-  private static func renderAssignmentStatement<A: Sendable>(
-    lhs: Template<A>,
-    rhs: Template<A>
-  ) -> CodeBlockItemSyntax {
-    let assignExpr = InfixOperatorExprSyntax(
-      leftOperand: legacyRender(lhs),
-      operator: AssignmentExprSyntax(),
-      rightOperand: legacyRender(rhs)
-    )
-    return CodeBlockItemSyntax(item: .expr(ExprSyntax(assignExpr)))
-  }
 }
 
 extension Renderer {
@@ -360,9 +70,9 @@ extension Renderer {
   /// `CodeBlockItemSyntax` has a string-interpolation initializer in
   /// swift-syntax 603.0.2, so no `CodeBlockItemListSyntax(...).first!`
   /// fallback is needed here. This is the implementation behind the public
-  /// `render(_: Statement<A>)` entry point above; it remains a separate
-  /// internal name so the token-parity suite can call it directly alongside
-  /// `legacyRender(_:)`.
+  /// `render(_: Statement<A>)` entry point above, kept under a separate
+  /// internal name so tests can call it without going through `try`-wrapping
+  /// at every call site.
   static func renderParsed<A: Sendable>(_ statement: Statement<A>) throws -> CodeBlockItemSyntax {
     var buffer = ""
     SourceEmitter.emit(statement, into: &buffer)

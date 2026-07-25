@@ -5,26 +5,10 @@ import XCTest
 
 /// Renders `node` to its raw source-accurate token stream, space-joined.
 ///
-/// Used by `assertTokenParity` to compare two SwiftSyntax nodes structurally
-/// via their token text rather than via full-tree equality, so trivia
+/// Compares nodes by token text rather than full-tree equality, so trivia
 /// differences (e.g. layout-only whitespace) don't cause false negatives.
 func tokenStream(_ node: some SyntaxProtocol) -> String {
   node.tokens(viewMode: .sourceAccurate).map(\.text).joined(separator: " ")
-}
-
-/// Asserts that two SwiftSyntax nodes render to the same token stream.
-///
-/// This is the core parity check used to compare the legacy per-node
-/// structural renderer against the future source-emit-then-parse renderer:
-/// two syntactically different render pipelines should still produce the
-/// same sequence of tokens for the same input.
-func assertTokenParity(
-  _ reference: some SyntaxProtocol,
-  _ candidate: some SyntaxProtocol,
-  file: StaticString = #filePath,
-  line: UInt = #line
-) {
-  XCTAssertEqual(tokenStream(reference), tokenStream(candidate), file: file, line: line)
 }
 
 /// Corpus of `Template`, `Statement`, and `Declaration` values covering every
@@ -32,11 +16,8 @@ func assertTokenParity(
 /// `Statement.swift`, and `Declaration.swift`, which are the sole authority
 /// on case names and associated values).
 ///
-/// This corpus is consumed by the token-parity test suite that validates the
-/// new source-emit-then-parse renderer against the existing structural
-/// renderer: every entry here must render without error under the current
-/// renderer, and (once the new renderer exists) must produce an identical
-/// token stream under both renderers.
+/// This corpus is consumed by `GoldenStreamTests`: every entry must render
+/// without error, and must produce the token stream recorded there.
 enum ParityCorpus {
   // Cover EVERY Template case (22 total, including `subscriptCall` which is
   // present in Template.swift but was omitted from the original task-brief
@@ -272,142 +253,3 @@ enum ParityCorpus {
   ]
 }
 
-final class ParityHarnessTests: XCTestCase {
-  func testHarnessDetectsEquality() throws {
-    let node = try Renderer.render(Template<Void>.variable("x"))
-    assertTokenParity(node, node)
-  }
-
-  func testCorpusRendersWithoutErrors() throws {
-    for template in ParityCorpus.templates {
-      XCTAssertFalse(try Renderer.render(template).hasError, "\(template)")
-    }
-    for statement in ParityCorpus.statements {
-      XCTAssertFalse(try Renderer.render(statement).hasError, "\(statement)")
-    }
-    for declaration in ParityCorpus.declarations {
-      XCTAssertFalse(try Renderer.render(declaration).hasError, "\(declaration)")
-    }
-  }
-}
-
-final class TemplateCorpusParityTests: XCTestCase {
-    func testAllTemplateCasesParity() throws {
-        for template in ParityCorpus.templates {
-            assertTokenParity(Renderer.legacyRender(template), try Renderer.render(template))
-        }
-    }
-}
-
-final class DeclarationCorpusParityTests: XCTestCase {
-    func testAllDeclarationCasesParity() throws {
-        for declaration in ParityCorpus.declarations {
-            assertTokenParity(Renderer.legacyRender(declaration), try Renderer.render(declaration))
-        }
-    }
-}
-
-final class StatementCorpusParityTests: XCTestCase {
-    func testAllStatementCasesParity() throws {
-        for statement in ParityCorpus.statements {
-            assertTokenParity(Renderer.legacyRender(statement), try Renderer.render(statement))
-        }
-    }
-
-    /// Regression test for the segment-merge reuse decision in
-    /// `Renderer.renderParsed(_: Statement<A>)`: a `Statement` buffer embeds
-    /// `Template` source text (here, a string literal with consecutive
-    /// escaped newlines) via `SourceEmitter.emit(_: Template<A>, into:)`, so
-    /// it is just as susceptible as a bare `Template` buffer to
-    /// `StringSegmentMerger`'s target lexer quirk. Confirms the shared
-    /// `mightNeedSegmentMerge`/`StringSegmentMerger` path (promoted to
-    /// internal in `Renderer.swift` for this reuse) actually engages at
-    /// statement granularity, not just expression granularity.
-    func testLetBindingWithMultilineStringInitializerParity() throws {
-        let statement: Statement<Void> = .letBinding(
-            name: "message",
-            type: nil,
-            initializer: .literal(.string("line1\nline2\nline3\nline4\nline5"))
-        )
-        assertTokenParity(Renderer.legacyRender(statement), try Renderer.render(statement))
-    }
-}
-
-final class TemplateEmitterParityTests: XCTestCase {
-    func testLiteralAndVariableParity() throws {
-        let cases: [Template<Void>] = [
-            .literal(.integer(42)), .literal(.double(1.5)),
-            .literal(.string("he said \"hi\"\nline2")),
-            .literal(.boolean(true)), .literal(.nil),
-            .variable("newValue"),
-        ]
-        for template in cases {
-            assertTokenParity(Renderer.legacyRender(template), try Renderer.render(template))
-        }
-    }
-
-    /// Regression test for `StringSegmentMerger`: a string literal with 3+
-    /// consecutive escaped newlines forces SwiftParser to split it into 4+
-    /// `stringSegment` tokens, all of which must merge back into the single
-    /// segment the structural renderer produces.
-    func testStringSegmentMergerHandlesManyConsecutiveEscapedNewlines() throws {
-        let template: Template<Void> = .literal(.string("line1\nline2\nline3\nline4\nline5"))
-        assertTokenParity(Renderer.legacyRender(template), try Renderer.render(template))
-    }
-
-    /// Regression test for `StringSegmentMerger`: an escaped newline sitting
-    /// at the very end of a string literal's content forces the lexer to
-    /// produce a trailing empty `stringSegment`, which must still merge
-    /// cleanly rather than leaving a stray empty segment behind.
-    func testStringSegmentMergerHandlesTrailingEscapedNewline() throws {
-        let template: Template<Void> = .literal(.string("trailing\n"))
-        assertTokenParity(Renderer.legacyRender(template), try Renderer.render(template))
-    }
-
-    /// Regression test for `StringSegmentMerger`: plain string segments on
-    /// either side of a real `\(...)` interpolation must merge independently
-    /// without touching the `.expressionSegment` between them.
-    ///
-    /// Exercises `StringSegmentMerger` directly against hand-parsed source
-    /// (rather than through `Renderer.renderParsed(_:)`) to pin down the
-    /// exact segment-count/content assertions at the merge boundary — a
-    /// level of detail `assertTokenParity`'s token-stream comparison
-    /// deliberately doesn't surface. `TemplateCorpusParityTests` separately
-    /// covers `Template.stringInterpolation` end-to-end via
-    /// `Renderer.renderParsed(_:)`.
-    func testStringSegmentMergerHandlesInterpolationAdjacentSegments() throws {
-        // Raw string literal so `\n` and `\(x)` below are literal source
-        // text (not interpreted by *this* file's parser), matching what
-        // SwiftParser would see if it parsed this text as Swift source:
-        // a string literal with an escaped newline immediately before and
-        // after a real interpolation.
-        let source = #""before\nmid\(x)after\ntail""#
-        let expr: ExprSyntax = "\(raw: source)"
-        XCTAssertFalse(expr.hasError, "test fixture source failed to parse: \(source)")
-
-        let merged = StringSegmentMerger().visit(expr)
-        guard let literal = merged.as(StringLiteralExprSyntax.self) else {
-            return XCTFail("expected a string literal expression, got \(merged.kind)")
-        }
-        let segments = Array(literal.segments)
-        XCTAssertEqual(
-            segments.count, 3,
-            "expected leading and trailing string segments merged around the interpolation, got \(segments)"
-        )
-        guard segments.count == 3 else { return }
-
-        guard case .stringSegment(let leading) = segments[0] else {
-            return XCTFail("expected a merged leading string segment, got \(segments[0])")
-        }
-        XCTAssertEqual(leading.content.text, "before\\nmid")
-
-        guard case .expressionSegment = segments[1] else {
-            return XCTFail("expected the interpolation's expression segment to be left untouched, got \(segments[1])")
-        }
-
-        guard case .stringSegment(let trailing) = segments[2] else {
-            return XCTFail("expected a merged trailing string segment, got \(segments[2])")
-        }
-        XCTAssertEqual(trailing.content.text, "after\\ntail")
-    }
-}

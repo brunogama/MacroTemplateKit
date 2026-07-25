@@ -534,9 +534,9 @@ structurally-assembled invalid trees."
 
 ---
 
-### Task 7: Delete the legacy structural path
+### Task 7: Delete the legacy structural path — DONE
 
-> **Revised after Tasks 1-6 shipped.** The direction still holds — once the
+> **Revised after Tasks 1-6 shipped, then executed.** The direction still holds — once the
 > parse-backed path is the only one, the legacy renderer is dead weight and the
 > parity harness has nothing to compare against, so parity tests become *golden*
 > token-stream tests. Four things changed underneath this task:
