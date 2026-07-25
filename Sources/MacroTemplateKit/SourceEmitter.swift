@@ -14,8 +14,11 @@ enum SourceEmitter {
             buffer.append(escapeIdentifier(name))
 
         case .conditional(let condition, let thenBranch, let elseBranch):
-            // Legacy builds TernaryExprSyntax: condition ? thenBranch : elseBranch
-            emit(condition, into: &buffer)
+            // Legacy builds TernaryExprSyntax: condition ? thenBranch : elseBranch.
+            // Only the condition can need parentheses — the branches are
+            // delimited by `?` and `:`, and `?:` is right-associative so a
+            // nested ternary in the else branch reads correctly bare.
+            emit(condition, parenthesizedInside: .ternary, on: .left, into: &buffer)
             buffer.append(" ? ")
             emit(thenBranch, into: &buffer)
             buffer.append(" : ")
@@ -48,14 +51,12 @@ enum SourceEmitter {
             buffer.append(")")
 
         case .binaryOperation(let left, let op, let right):
-            // No parens inserted here: precedence-sensitive nesting is the
-            // corpus's responsibility (per case-mapping reference), matching
-            // the legacy InfixOperatorExprSyntax construction exactly.
-            emit(left, into: &buffer)
+            let parent = precedenceGroup(forOperator: op) ?? .assignment
+            emit(left, parenthesizedInside: parent, on: .left, into: &buffer)
             buffer.append(" ")
             buffer.append(op)
             buffer.append(" ")
-            emit(right, into: &buffer)
+            emit(right, parenthesizedInside: parent, on: .right, into: &buffer)
 
         case .propertyAccess(let base, let property):
             emit(base, into: &buffer)
@@ -134,9 +135,7 @@ enum SourceEmitter {
             buffer.append("!")
 
         case .cast(let inner, let type, let kind):
-            // No parens around `inner`: matches AsExprSyntax construction,
-            // which likewise leaves precedence to the caller.
-            emit(inner, into: &buffer)
+            emit(inner, parenthesizedInside: .casting, on: .left, into: &buffer)
             buffer.append(" ")
             buffer.append(kind.operatorText)
             buffer.append(" ")
@@ -269,6 +268,26 @@ enum SourceEmitter {
             buffer.append("\"")
             buffer.append(pounds)
         }
+    }
+
+    /// Emits `template` as an operand of an enclosing operator, adding
+    /// parentheses when omitting them would change how the result parses.
+    ///
+    /// This is the guarantee a hand-written source string cannot offer: a
+    /// string has no structure to inspect, so its author must track precedence
+    /// themselves. A `Template` knows its own shape.
+    static func emit<A: Sendable>(
+        _ template: Template<A>,
+        parenthesizedInside parent: Precedence,
+        on side: Template<A>.Side,
+        into buffer: inout String
+    ) {
+        guard template.needsParentheses(inside: parent, on: side) else {
+            return emit(template, into: &buffer)
+        }
+        buffer.append("(")
+        emit(template, into: &buffer)
+        buffer.append(")")
     }
 
     /// Swift keywords that are reserved everywhere and therefore need backtick

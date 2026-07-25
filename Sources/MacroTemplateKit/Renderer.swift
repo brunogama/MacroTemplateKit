@@ -111,7 +111,7 @@ public struct Renderer {
     ) -> ExprSyntax {
         ExprSyntax(
             TernaryExprSyntax(
-                condition: legacyRender(condition),
+                condition: legacyRender(condition, parenthesizedInside: .ternary, on: .left),
                 thenExpression: legacyRender(thenBranch),
                 elseExpression: legacyRender(elseBranch)
             )
@@ -203,16 +203,61 @@ public struct Renderer {
         )
     }
 
+    /// Builds the handful of templates whose syntax is a single token, without
+    /// going through the parser. Returns `nil` for everything else, which then
+    /// takes the emit-and-parse path.
+    ///
+    /// Restricted to cases whose structural construction is unambiguously
+    /// identical to what parsing the same text yields — identifiers and the
+    /// simple literals. Anything requiring escaping decisions (strings), or any
+    /// composite, is left to the parser rather than duplicated here, so the two
+    /// paths cannot drift.
+    private static func renderLeaf<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
+        switch template {
+        case .variable(let name, _):
+            ExprSyntax(
+                DeclReferenceExprSyntax(baseName: .identifier(SourceEmitter.escapeIdentifier(name)))
+            )
+        case .literal(.integer(let value)):
+            ExprSyntax(IntegerLiteralExprSyntax(literal: .integerLiteral(String(value))))
+        case .literal(.boolean(let value)):
+            ExprSyntax(BooleanLiteralExprSyntax(literal: .keyword(value ? .true : .false)))
+        case .literal(.nil):
+            ExprSyntax(NilLiteralExprSyntax())
+        default:
+            nil
+        }
+    }
+
+    /// Renders `template` as an operand of an enclosing operator, wrapping it
+    /// in a tuple expression when omitting parentheses would change how the
+    /// result parses. Mirrors `SourceEmitter.emit(_:parenthesizedInside:on:)`
+    /// so the two paths stay token-identical.
+    private static func legacyRender<A: Sendable>(
+        _ template: Template<A>,
+        parenthesizedInside parent: Precedence,
+        on side: Template<A>.Side
+    ) -> ExprSyntax {
+        let rendered = legacyRender(template)
+        guard template.needsParentheses(inside: parent, on: side) else { return rendered }
+        return ExprSyntax(
+            TupleExprSyntax(
+                elements: LabeledExprListSyntax([LabeledExprSyntax(expression: rendered)])
+            )
+        )
+    }
+
     private static func renderBinaryOperation<A: Sendable>(
         _ left: Template<A>,
         _ op: String,
         _ right: Template<A>
     ) -> ExprSyntax {
-        ExprSyntax(
+        let parent = precedenceGroup(forOperator: op) ?? .assignment
+        return ExprSyntax(
             InfixOperatorExprSyntax(
-                leftOperand: legacyRender(left),
+                leftOperand: legacyRender(left, parenthesizedInside: parent, on: .left),
                 operator: BinaryOperatorExprSyntax(operator: .binaryOperator(op)),
-                rightOperand: legacyRender(right)
+                rightOperand: legacyRender(right, parenthesizedInside: parent, on: .right)
             )
         )
     }
@@ -356,6 +401,7 @@ public struct Renderer {
         case .forceUnwrap(let expr):
             return ExprSyntax(ForceUnwrapExprSyntax(expression: legacyRender(expr)))
         case .cast(let expr, let type, let kind):
+            let castOperand = legacyRender(expr, parenthesizedInside: .casting, on: .left)
             // Trivia is explicit here: the `?`/`!` binds tight to `as`, and the
             // space before the type hangs off whichever token comes last.
             let mark: TokenSyntax? =
@@ -366,7 +412,7 @@ public struct Renderer {
                 }
             return ExprSyntax(
                 AsExprSyntax(
-                    expression: legacyRender(expr),
+                    expression: castOperand,
                     asKeyword: .keyword(
                         .as,
                         leadingTrivia: .space,
@@ -535,6 +581,14 @@ extension Renderer {
     /// remains a separate internal name so the token-parity suite can call it
     /// directly alongside `legacyRender(_:)`.
     static func renderParsed<A: Sendable>(_ template: Template<A>) -> ExprSyntax {
+        // Leaves bypass the parser entirely. A parse allocates a
+        // `RawSyntaxArena` that the returned node keeps alive, so the renderer's
+        // cost is driven by how many times it is called, not by how much output
+        // it produces — rendering a bare identifier is otherwise as expensive as
+        // rendering a whole declaration. Building these structurally keeps a
+        // caller who renders leaf expressions in a loop off that cliff.
+        if let leaf = renderLeaf(template) { return leaf }
+
         var buffer = ""
         SourceEmitter.emit(template, into: &buffer)
         let expr: ExprSyntax = "\(raw: buffer)"
