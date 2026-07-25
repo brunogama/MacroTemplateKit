@@ -53,6 +53,27 @@ swift build
 swift test
 ```
 
+To build the way CI does, with warnings treated as errors:
+
+```bash
+./Scripts/build.sh              # debug
+./Scripts/build.sh -c release   # release
+```
+
+Use the script rather than `swift build -Xswiftc -warnings-as-errors` directly.
+`-Xswiftc` applies to dependencies too, and swift-syntax compiles some targets
+with `-suppress-warnings`, which is a hard conflict under the `swiftbuild` build
+system that Swift 6.2 made the default. The script selects `native` when the
+toolchain offers it so local and CI agree; see the comment at the top of it.
+
+The package has two manifests. SwiftPM reads `Package@swift-6.0.swift` on any
+Swift 6 toolchain and ignores `Package.swift` entirely, so edit whichever you
+like and then mirror it — everything below line 1 must be identical:
+
+```bash
+./Scripts/check-manifests.sh
+```
+
 ### Local CI (Run Before Pushing)
 
 To avoid CI ping-pong, run the same checks CI runs for PRs:
