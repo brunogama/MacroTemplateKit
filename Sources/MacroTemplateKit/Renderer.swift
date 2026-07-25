@@ -214,6 +214,8 @@ public struct Renderer {
     /// paths cannot drift.
     private static func renderLeaf<A: Sendable>(_ template: Template<A>) -> ExprSyntax? {
         switch template {
+        case .syntax(let node):
+            node
         case .variable(let name, _):
             ExprSyntax(
                 DeclReferenceExprSyntax(baseName: .identifier(SourceEmitter.escapeIdentifier(name)))
@@ -400,6 +402,8 @@ public struct Renderer {
             return Renderer.renderSubscriptCall(base, arguments)
         case .forceUnwrap(let expr):
             return ExprSyntax(ForceUnwrapExprSyntax(expression: legacyRender(expr)))
+        case .syntax(let node):
+            return node
         case .cast(let expr, let type, let kind):
             let castOperand = legacyRender(expr, parenthesizedInside: .casting, on: .left)
             // Trivia is explicit here: the `?`/`!` binds tight to `as`, and the

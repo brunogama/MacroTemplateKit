@@ -53,11 +53,9 @@ struct MTKPipeline: ASTGeneratorPipeline {
                 base: .variable("_storage"),
                 arguments: [
                     (label: nil, value: .literal(.string(property.name))),
-                    // The fixture hands us the default as an ExprSyntax, and the
-                    // kit has no verbatim/raw-expression case — `.variable` is
-                    // the only way to splice existing source text into a
-                    // template, since it emits its name unchanged.
-                    (label: "default", value: .variable(property.defaultValue.trimmedDescription)),
+                    // The fixture hands us the default as an ExprSyntax; splice
+                    // the node rather than its description.
+                    (label: "default", value: .syntax(property.defaultValue)),
                 ]
             ),
             type: typeName,

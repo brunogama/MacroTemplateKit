@@ -223,6 +223,10 @@ extension Template: Equatable where A: Equatable {
       return l == r
     case (.cast(let l, let lType, let lKind), .cast(let r, let rType, let rKind)):
       return l == r && lType == rType && lKind == rKind
+    case (.syntax(let l), .syntax(let r)):
+      // Compared by rendered text, not node identity: two separately built
+      // nodes for the same expression are the same template value.
+      return l.description == r.description
     case (.stringInterpolation(let l), .stringInterpolation(let r)):
       return l == r
     case (.closure(let l), .closure(let r)):
@@ -395,6 +399,10 @@ extension Template: Hashable where A: Hashable {
     case .forceUnwrap(let inner):
       hasher.combine(15)
       hasher.combine(inner)
+      return true
+    case .syntax(let node):
+      hasher.combine(23)
+      hasher.combine(node.description)
       return true
     case .cast(let inner, let type, let kind):
       hasher.combine(22)

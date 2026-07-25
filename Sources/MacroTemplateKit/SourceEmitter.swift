@@ -134,6 +134,13 @@ enum SourceEmitter {
             emit(inner, into: &buffer)
             buffer.append("!")
 
+        case .syntax(let node):
+            // The parse-backed path has to serialise the node into the buffer,
+            // so it is re-parsed as part of the fragment. `Renderer.renderLeaf`
+            // short-circuits the common case where the node *is* the whole
+            // template and hands it back untouched.
+            buffer.append(node.description)
+
         case .cast(let inner, let type, let kind):
             emit(inner, parenthesizedInside: .casting, on: .left, into: &buffer)
             buffer.append(" ")

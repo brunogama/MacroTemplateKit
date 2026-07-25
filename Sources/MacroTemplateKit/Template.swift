@@ -1,3 +1,4 @@
+import SwiftSyntax
 /// The flavour of a type-cast expression.
 ///
 /// Spelled as its own type rather than three `Template` cases so that callers
@@ -251,6 +252,20 @@ public indirect enum Template<A> {
   /// SwiftSyntax equivalent: `ForceUnwrapExprSyntax`
   case forceUnwrap(Template<A>)
 
+  // MARK: - Interop
+
+  /// An already-built SwiftSyntax expression, spliced in as-is.
+  ///
+  /// A macro receives expressions from the compiler as nodes, not as text.
+  /// Without this case the only way to reuse one is to pass its
+  /// `trimmedDescription` through `.variable`, which serialises a tree just to
+  /// have the renderer parse it back — the round trip this kit exists to avoid.
+  ///
+  /// The node survives untouched on the structural path. The parse-backed path
+  /// has to serialise it into the source buffer, so interop is cheapest when
+  /// the node is the whole template rather than nested inside one.
+  case syntax(ExprSyntax)
+
   // MARK: - Casting
 
   /// Type-cast expression (`expr as Type`, `expr as? Type`, `expr as! Type`).
@@ -430,6 +445,8 @@ public indirect enum Template<A> {
       return .forceUnwrap(inner.map(transform))
     case .cast(let inner, let type, let kind):
       return .cast(inner.map(transform), type: type, kind: kind)
+    case .syntax(let node):
+      return .syntax(node)
     case .stringInterpolation(let segments):
       return .stringInterpolation(
         segments.map { segment -> StringInterpolationSegment<B> in
