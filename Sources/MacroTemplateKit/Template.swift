@@ -1,3 +1,27 @@
+/// The flavour of a type-cast expression.
+///
+/// Spelled as its own type rather than three `Template` cases so that callers
+/// can choose the flavour dynamically — a macro deciding between `as?` and
+/// `as!` based on whether a property is optional shouldn't have to branch to
+/// pick a case.
+public enum CastKind: Sendable, Hashable {
+  /// A coercion that always succeeds (`expr as Type`).
+  case coerce
+  /// An optional cast (`expr as? Type`).
+  case conditional
+  /// A trapping cast (`expr as! Type`).
+  case forced
+
+  /// The operator text, including the trailing `?`/`!` where present.
+  var operatorText: String {
+    switch self {
+    case .coerce: "as"
+    case .conditional: "as?"
+    case .forced: "as!"
+    }
+  }
+}
+
 /// A segment in a string interpolation expression.
 ///
 /// Used by `Template.stringInterpolation` to represent either a literal text
@@ -227,6 +251,17 @@ public indirect enum Template<A> {
   /// SwiftSyntax equivalent: `ForceUnwrapExprSyntax`
   case forceUnwrap(Template<A>)
 
+  // MARK: - Casting
+
+  /// Type-cast expression (`expr as Type`, `expr as? Type`, `expr as! Type`).
+  ///
+  /// The target type is source text rather than a `Template`, matching how the
+  /// rest of the kit models types: a macro reads type names out of the syntax
+  /// tree it was handed, so they arrive as strings.
+  ///
+  /// SwiftSyntax equivalent: `AsExprSyntax`
+  case cast(Template<A>, type: String, kind: CastKind)
+
   // MARK: - String Interpolation
 
   /// String interpolation literal (`"text\(expr)text"`).
@@ -393,6 +428,8 @@ public indirect enum Template<A> {
       )
     case .forceUnwrap(let inner):
       return .forceUnwrap(inner.map(transform))
+    case .cast(let inner, let type, let kind):
+      return .cast(inner.map(transform), type: type, kind: kind)
     case .stringInterpolation(let segments):
       return .stringInterpolation(
         segments.map { segment -> StringInterpolationSegment<B> in

@@ -355,6 +355,27 @@ public struct Renderer {
             return Renderer.renderSubscriptCall(base, arguments)
         case .forceUnwrap(let expr):
             return ExprSyntax(ForceUnwrapExprSyntax(expression: legacyRender(expr)))
+        case .cast(let expr, let type, let kind):
+            // Trivia is explicit here: the `?`/`!` binds tight to `as`, and the
+            // space before the type hangs off whichever token comes last.
+            let mark: TokenSyntax? =
+                switch kind {
+                case .coerce: nil
+                case .conditional: .postfixQuestionMarkToken(trailingTrivia: .space)
+                case .forced: .exclamationMarkToken(trailingTrivia: .space)
+                }
+            return ExprSyntax(
+                AsExprSyntax(
+                    expression: legacyRender(expr),
+                    asKeyword: .keyword(
+                        .as,
+                        leadingTrivia: .space,
+                        trailingTrivia: mark == nil ? .space : []
+                    ),
+                    questionOrExclamationMark: mark,
+                    type: TypeSyntax(stringLiteral: type)
+                )
+            )
         case .stringInterpolation(let segments):
             return renderStringInterpolation(segments)
         case .closure(let sig):

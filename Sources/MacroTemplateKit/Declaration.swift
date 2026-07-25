@@ -299,13 +299,17 @@ public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
 
 /// Setter signature with parameter name and body.
 public struct SetterSignature<A>: Sendable where A: Sendable {
-    /// Setter parameter name (default: "newValue").
-    public let parameterName: String
+    /// Explicit setter parameter name, as in `set(rawValue) { ... }`.
+    ///
+    /// `nil` — the default — emits a bare `set { ... }`, which is the common
+    /// form and lets the body refer to the implicit `newValue`. Supply a name
+    /// only when the setter needs to bind the incoming value to something else.
+    public let parameterName: String?
 
     /// Setter body statements.
     public let body: [Statement<A>]
 
-    public init(parameterName: String = "newValue", body: [Statement<A>]) {
+    public init(parameterName: String? = nil, body: [Statement<A>]) {
         self.parameterName = parameterName
         self.body = body
     }

@@ -25,7 +25,7 @@ extension SourceEmitter {
             emit(attributes: signature.attributes, into: &buffer)
             emit(modifiers: signature.accessLevel, isStatic: signature.isStatic, isMutating: signature.isMutating, into: &buffer)
             buffer.append("func ")
-            buffer.append(signature.name)
+            buffer.append(escapeIdentifier(signature.name))
             emit(genericParameters: signature.genericParameters, into: &buffer)
             buffer.append("(")
             emit(parameters: signature.parameters, into: &buffer)
@@ -48,7 +48,7 @@ extension SourceEmitter {
             emit(attributes: signature.attributes, into: &buffer)
             emit(modifiers: signature.accessLevel, isStatic: signature.isStatic, into: &buffer)
             buffer.append(signature.isLet ? "let " : "var ")
-            buffer.append(signature.name)
+            buffer.append(escapeIdentifier(signature.name))
             if let type = signature.type {
                 buffer.append(": ")
                 buffer.append(type)
@@ -71,7 +71,7 @@ extension SourceEmitter {
             emit(attributes: signature.attributes, into: &buffer)
             emit(modifiers: signature.accessLevel, isStatic: signature.isStatic, into: &buffer)
             buffer.append("var ")
-            buffer.append(signature.name)
+            buffer.append(escapeIdentifier(signature.name))
             buffer.append(": ")
             buffer.append(signature.type)
             buffer.append(" {\n")
@@ -79,9 +79,14 @@ extension SourceEmitter {
             emitStatements(signature.getter, into: &buffer)
             buffer.append("}\n")
             if let setter = signature.setter {
-                buffer.append("set(")
-                buffer.append(setter.parameterName)
-                buffer.append(") {\n")
+                if let parameterName = setter.parameterName {
+                    buffer.append("set(")
+                    buffer.append(escapeIdentifier(parameterName))
+                    buffer.append(")")
+                } else {
+                    buffer.append("set")
+                }
+                buffer.append(" {\n")
                 emitStatements(setter.body, into: &buffer)
                 buffer.append("}\n")
             }
@@ -109,7 +114,7 @@ extension SourceEmitter {
             emit(attributes: signature.attributes, into: &buffer)
             emit(modifiers: signature.accessLevel, into: &buffer)
             buffer.append("struct ")
-            buffer.append(signature.name)
+            buffer.append(escapeIdentifier(signature.name))
             emit(genericParameters: signature.genericParameters, into: &buffer)
             emit(conformances: signature.conformances, into: &buffer)
             emit(whereRequirements: signature.whereRequirements, into: &buffer)
@@ -130,7 +135,7 @@ extension SourceEmitter {
             emit(attributes: signature.attributes, into: &buffer)
             emit(modifiers: signature.accessLevel, into: &buffer)
             buffer.append("enum ")
-            buffer.append(signature.name)
+            buffer.append(escapeIdentifier(signature.name))
             emit(genericParameters: signature.genericParameters, into: &buffer)
             emit(conformances: signature.conformances, into: &buffer)
             emit(whereRequirements: signature.whereRequirements, into: &buffer)
@@ -153,7 +158,7 @@ extension SourceEmitter {
             emit(attributes: signature.attributes, into: &buffer)
             emit(modifiers: signature.accessLevel, into: &buffer)
             buffer.append("typealias ")
-            buffer.append(signature.name)
+            buffer.append(escapeIdentifier(signature.name))
             emit(genericParameters: signature.genericParameters, into: &buffer)
             buffer.append(" = ")
             buffer.append(signature.existingType)
@@ -245,7 +250,7 @@ extension SourceEmitter {
             if parameter.isParameterPack {
                 buffer.append("each ")
             }
-            buffer.append(parameter.name)
+            buffer.append(escapeIdentifier(parameter.name))
             if let constraint = parameter.constraint {
                 buffer.append(": ")
                 buffer.append(constraint)
@@ -294,11 +299,17 @@ extension SourceEmitter {
     private static func emit(parameters: [ParameterSignature], into buffer: inout String) {
         for (index, parameter) in parameters.enumerated() {
             if let label = parameter.label {
+                // The external label is *not* escaped: Swift accepts keywords
+                // bare in label position (`foo(default: 1)`), so backticking it
+                // would be needless noise. The internal name is a binding and
+                // does need escaping.
                 buffer.append(label)
                 buffer.append(" ")
-                buffer.append(parameter.name)
+                buffer.append(escapeIdentifier(parameter.name))
             } else {
-                buffer.append(parameter.name)
+                // `name` serves as both label and binding here, so it must be
+                // escaped for the binding to be referenceable in the body.
+                buffer.append(escapeIdentifier(parameter.name))
             }
             buffer.append(": ")
             if !parameter.attributes.isEmpty {
@@ -325,7 +336,7 @@ extension SourceEmitter {
     /// not "fixed".
     private static func emit(_ enumCase: EnumCaseSignature, into buffer: inout String) {
         buffer.append("case ")
-        buffer.append(enumCase.name)
+        buffer.append(escapeIdentifier(enumCase.name))
         if !enumCase.associatedTypes.isEmpty {
             buffer.append("(")
             buffer.append(enumCase.associatedTypes.joined(separator: ", "))

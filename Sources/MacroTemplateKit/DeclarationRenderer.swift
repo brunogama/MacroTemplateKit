@@ -162,9 +162,9 @@ extension Renderer {
             let setterBody = CodeBlockSyntax(statements: legacyRenderStatements(setterSig.body))
             let setter = AccessorDeclSyntax(
                 accessorSpecifier: .keyword(.set),
-                parameters: AccessorParametersSyntax(
-                    name: .identifier(setterSig.parameterName)
-                ),
+                parameters: setterSig.parameterName.map {
+                    AccessorParametersSyntax(name: .identifier($0))
+                },
                 body: setterBody
             )
             accessors = AccessorDeclListSyntax([getter, setter])

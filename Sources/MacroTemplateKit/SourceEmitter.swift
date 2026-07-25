@@ -11,7 +11,7 @@ enum SourceEmitter {
             emit(value, into: &buffer)
 
         case .variable(let name, _):
-            buffer.append(name)
+            buffer.append(escapeIdentifier(name))
 
         case .conditional(let condition, let thenBranch, let elseBranch):
             // Legacy builds TernaryExprSyntax: condition ? thenBranch : elseBranch
@@ -132,6 +132,15 @@ enum SourceEmitter {
         case .forceUnwrap(let inner):
             emit(inner, into: &buffer)
             buffer.append("!")
+
+        case .cast(let inner, let type, let kind):
+            // No parens around `inner`: matches AsExprSyntax construction,
+            // which likewise leaves precedence to the caller.
+            emit(inner, into: &buffer)
+            buffer.append(" ")
+            buffer.append(kind.operatorText)
+            buffer.append(" ")
+            buffer.append(type)
 
         case .stringInterpolation(let segments):
             buffer.append("\"")
@@ -260,6 +269,51 @@ enum SourceEmitter {
             buffer.append("\"")
             buffer.append(pounds)
         }
+    }
+
+    /// Swift keywords that are reserved everywhere and therefore need backtick
+    /// escaping when used as an identifier.
+    ///
+    /// Deliberately excludes two groups:
+    ///
+    /// - *Contextual* keywords (`open`, `some`, `any`, `get`, `set`, `willSet`,
+    ///   `didSet`, `convenience`, `final`, `lazy`, `weak`, `unowned`, `mutating`,
+    ///   `nonmutating`, `optional`, `override`, `required`, `indirect`,
+    ///   `dynamic`, `infix`, `prefix`, `postfix`, `associativity`, ...). These
+    ///   are legal identifiers bare; escaping them would add noise and break
+    ///   token parity with the legacy renderer.
+    /// - Keywords that are legal *expressions* (`self`, `Self`, `super`, `nil`,
+    ///   `true`, `false`, `Any`) and the wildcard `_`. A `.variable("self")`
+    ///   means the `self` expression, not an identifier named "self", so
+    ///   escaping it would change meaning rather than preserve it.
+    static let reservedKeywords: Set<String> = [
+        // Declarations
+        "associatedtype", "class", "deinit", "enum", "extension", "fileprivate",
+        "func", "import", "init", "inout", "internal", "let", "operator",
+        "precedencegroup", "private", "protocol", "public", "static", "struct",
+        "subscript", "typealias", "var",
+        // Statements
+        "break", "case", "continue", "default", "defer", "do", "else",
+        "fallthrough", "for", "guard", "if", "in", "repeat", "return", "throw",
+        "switch", "where", "while",
+        // Expressions and types
+        "as", "catch", "is", "rethrows", "throws", "try",
+    ]
+
+    /// Wraps `name` in backticks when it is a reserved keyword, so it is legal
+    /// in identifier position.
+    ///
+    /// Apply this at *binding* sites — declaration names, enum case names,
+    /// generic parameter names, a parameter's internal name, and variable
+    /// references. Do **not** apply it to argument labels or to members after a
+    /// `.`: Swift accepts keywords bare in both positions, so escaping there
+    /// would emit needless backticks and diverge from the legacy renderer.
+    ///
+    /// Names that are already backticked are returned unchanged, so callers can
+    /// pass through identifiers a user escaped by hand.
+    static func escapeIdentifier(_ name: String) -> String {
+        guard reservedKeywords.contains(name) else { return name }
+        return "`\(name)`"
     }
 
     /// Escapes content for a Swift string literal, matching the token text

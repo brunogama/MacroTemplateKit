@@ -1,5 +1,8 @@
 extension SetterSignature {
-    public func withParameterName(_ parameterName: String) -> Self {
+    /// Sets an explicit setter parameter name (`set(rawValue) { ... }`).
+    ///
+    /// Pass `nil` to drop back to the bare `set { ... }` form.
+    public func withParameterName(_ parameterName: String?) -> Self {
         SetterSignature(parameterName: parameterName, body: body)
     }
 

@@ -28,9 +28,16 @@ final class SignatureMapTests: XCTestCase {
     }
 
     func testSetterSignature_mapIsPublic() {
+        // No parameter name by default — the bare `set { ... }` form.
         let sig = SetterSignature<Int>(body: [])
         let mapped: SetterSignature<String> = sig.map { "\($0)" }
-        XCTAssertEqual(mapped.parameterName, "newValue")
+        XCTAssertNil(mapped.parameterName)
+    }
+
+    func testSetterSignature_mapPreservesExplicitParameterName() {
+        let sig = SetterSignature<Int>(parameterName: "rawValue", body: [])
+        let mapped: SetterSignature<String> = sig.map { "\($0)" }
+        XCTAssertEqual(mapped.parameterName, "rawValue")
     }
 
     func testExtensionSignature_mapIsPublic() {

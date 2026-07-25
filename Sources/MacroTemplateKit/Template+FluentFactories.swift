@@ -252,6 +252,22 @@ extension Template {
     .forceUnwrap(self)
   }
 
+  // MARK: - Casting
+
+  /// Creates a cast template (`expr as Type` / `as? Type` / `as! Type`).
+  public static func cast(
+    _ expr: Template<A>,
+    to type: String,
+    kind: CastKind = .forced
+  ) -> Template<A> {
+    .cast(expr, type: type, kind: kind)
+  }
+
+  /// Creates a chained cast template (`expr as Type` / `as? Type` / `as! Type`).
+  public func cast(to type: String, kind: CastKind = .forced) -> Template<A> {
+    .cast(self, type: type, kind: kind)
+  }
+
   // MARK: - String Interpolation
 
   /// Creates a string interpolation template from segments.

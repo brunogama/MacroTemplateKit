@@ -221,6 +221,8 @@ extension Template: Equatable where A: Equatable {
       return lhsBase == rhsBase && equalMethodArgs(lhsArgs, rhsArgs)
     case (.forceUnwrap(let l), .forceUnwrap(let r)):
       return l == r
+    case (.cast(let l, let lType, let lKind), .cast(let r, let rType, let rKind)):
+      return l == r && lType == rType && lKind == rKind
     case (.stringInterpolation(let l), .stringInterpolation(let r)):
       return l == r
     case (.closure(let l), .closure(let r)):
@@ -393,6 +395,12 @@ extension Template: Hashable where A: Hashable {
     case .forceUnwrap(let inner):
       hasher.combine(15)
       hasher.combine(inner)
+      return true
+    case .cast(let inner, let type, let kind):
+      hasher.combine(22)
+      hasher.combine(inner)
+      hasher.combine(type)
+      hasher.combine(kind)
       return true
     case .stringInterpolation(let segments):
       hasher.combine(16)
