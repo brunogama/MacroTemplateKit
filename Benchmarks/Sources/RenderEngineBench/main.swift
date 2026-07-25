@@ -230,4 +230,56 @@ if options.workloads.contains("case-factory") {
     )
 }
 
+// Opt-in: not part of the default workload set, because it answers a
+// different question than the timing tables. Those ask "what does one
+// expansion cost"; this asks "does that cost compound across a build".
+if options.workloads.contains("accumulate") {
+    print("## Workload: accumulate — does per-expansion memory compound across a build?")
+
+    let selected = options.pipelineNames.compactMap { requested in
+        allPipelines.first { type(of: $0).name == requested }
+    }
+    guard !selected.isEmpty else {
+        FileHandle.standardError.write(Data("no matching pipelines; use --list\n".utf8))
+        exit(64)
+    }
+
+    let fixture = Fixtures.structDecl(propertyCount: 16)
+    let properties = extractStoredProperties(from: fixture)
+    print("Pipelines: \(selected.map { type(of: $0).name }.joined(separator: ", "))")
+    print("Fixture: 16 stored properties. Settle: \(options.warmup) expansions per cell.\n")
+
+    var samples: [AccumulationSample] = []
+    for pipeline in selected {
+        let name = type(of: pipeline).name
+        // `dropped` sweeps a 64× range: flat malloc Δ/expansion across it
+        // means arenas die with each expansion and nothing compounds.
+        for expansions in [64, 1024, 16384, 131072] {
+            samples.append(
+                measureAccumulation(
+                    pipeline: pipeline,
+                    name: name,
+                    lifetime: .dropped,
+                    expansions: expansions,
+                    settleIterations: options.warmup,
+                    expand: { $0.expand(properties: properties) }
+                ))
+        }
+        // `retained` is the model the headline KB/run figure assumes. Capped
+        // lower so the control does not page the machine.
+        for expansions in [64, 256, 1024] {
+            samples.append(
+                measureAccumulation(
+                    pipeline: pipeline,
+                    name: name,
+                    lifetime: .retained,
+                    expansions: expansions,
+                    settleIterations: options.warmup,
+                    expand: { $0.expand(properties: properties) }
+                ))
+        }
+    }
+    printAccumulationTable(samples)
+}
+
 print("iterations=\(options.iterations) warmup=\(options.warmup) swift-syntax=\(swiftSyntaxVersion) (sink=\(sink))")

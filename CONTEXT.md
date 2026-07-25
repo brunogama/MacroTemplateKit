@@ -64,6 +64,15 @@ workload** (DictionaryStorage-style expansion — all output is new syntax) and 
 workload** (one small change to an existing, arbitrarily large tree). Techniques rank
 differently on each, so results from one workload must not be quoted for the other.
 
+**Output Lifetime**:
+What happens to a rendered tree once the expansion that produced it ends. **Retained** holds
+every output alive at once — the model `measureLoop` uses, and the only one that makes
+"retained KB/run" meaningful. **Dropped** serializes to source and releases the tree, which
+is what a macro plugin does. Memory figures must always name which one they measured: the
+0.56x per-expansion ratio is real under retained and invisible under dropped, because peak
+memory there is one expansion's worth however many expansions a build performs (ADR 0003).
+_Avoid_: "memory usage" unqualified
+
 **Round Trip**:
 Serializing an existing syntax tree to a source string and re-parsing the whole string to
 make a small change. Measured by the edit workload's (since removed) negative control and

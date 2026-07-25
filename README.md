@@ -656,10 +656,10 @@ Each file shows a real macro rewritten to use the template API, which makes them
 
 Rendering goes through a source-text emitter and a single parse per fragment rather than per-node structural construction. Measured against hand-written SwiftSyntax initializers producing token-identical output, on two macro shapes and input sizes of 4/16/64/256:
 
-| workload | shape | time | retained memory |
-|---|---|---|---|
-| generate | accessor pairs over stored properties | 0.59--0.64x | ~0.57x |
-| case-factory | static factories over enum cases | 0.59--0.62x | ~0.53x |
+| workload | shape | time |
+|---|---|---|
+| generate | accessor pairs over stored properties | 0.59--0.64x |
+| case-factory | static factories over enum cases | 0.59--0.62x |
 
 The point is not the percentage. It is that **using the library is no longer a performance tax**: before this work MacroTemplateKit ran at 0.98--0.99x versus assembling nodes by hand, so it cost nothing and bought nothing. The ergonomic choice is now also the faster one.
 
@@ -667,6 +667,7 @@ Two caveats, stated plainly:
 
 - These are per-expansion figures in the microsecond range. Across a large project they are worth tens of milliseconds of build time, which nobody will notice. Choose this library for what it lets you express, not to speed up your builds.
 - The baselines are hand-written implementations maintained in this repository. A SwiftSyntax expert writing the same output by hand may well do better than they do, which would narrow these ratios.
+- **There is no memory claim here, deliberately.** The benchmark does report a ~0.56x figure for bytes retained per expansion, and earlier versions of this table printed it. It does not reach you. A plugin serialises each expansion to source and drops the tree, so peak memory is one expansion's worth no matter how many expansions a build performs -- measured flat across a 2048x sweep, from 64 to 131072 expansions. The difference between pipelines is real per live tree and is then multiplied by a count that is always 1. See [ADR 0003](docs/adr/0003-memory-win-does-not-accumulate.md). Time is the claim, because time is the thing that adds up.
 
 Reproduce with `swift build -c release --package-path Benchmarks && Benchmarks/.build/release/RenderEngineBench`. Every pipeline is gated on producing token-identical output, so the comparison is like for like.
 

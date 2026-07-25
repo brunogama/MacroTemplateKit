@@ -57,6 +57,12 @@ expressions in a loop will see a regression on upgrade.
   `mtk` number and it reflects supported usage.
 - Any future change that raises per-expansion render counts will show up as a memory
   regression against the ≥35% floor.
+- **Superseded in part by [ADR 0003](0003-memory-win-does-not-accumulate.md).** The ≥35%
+  memory criterion was measured under a model that holds every rendered tree alive at once.
+  A plugin does not, and the difference is now measured to be invisible to users. The
+  criterion is still useful as a *regression detector* — it is a sensitive proxy for
+  per-expansion render count, which is the thing the granularity cliff punishes — but it must
+  not be read as a user-facing benefit, and it should not appear in the README.
 - Speed remains the weaker axis. If a future optimisation reaches 25% at all sizes, tighten
   this back rather than leaving the relaxed number in place.
 - Not addressed here: the renderer still has no verbatim/raw-expression case, so splicing an
