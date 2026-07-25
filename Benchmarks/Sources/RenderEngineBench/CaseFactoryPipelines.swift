@@ -31,9 +31,9 @@ struct StructuralCaseFactoryPipeline: CaseFactoryPipeline {
     func expand(cases: [EnumCaseInfo], enumName: String) -> [DeclSyntax] {
         cases.map { enumCase in
             let parameter = FunctionParameterSyntax(
-                firstName: .wildcardToken(),
+                firstName: .wildcardToken(trailingTrivia: .space),
                 secondName: .identifier("value"),
-                colon: .colonToken(),
+                colon: .colonToken(trailingTrivia: .space),
                 type: enumCase.payloadType
             )
             let call = FunctionCallExprSyntax(
@@ -51,20 +51,28 @@ struct StructuralCaseFactoryPipeline: CaseFactoryPipeline {
                 rightParen: .rightParenToken()
             )
             let function = FunctionDeclSyntax(
-                modifiers: DeclModifierListSyntax([DeclModifierSyntax(name: .keyword(.static))]),
+                modifiers: DeclModifierListSyntax([
+                    DeclModifierSyntax(name: .keyword(.static, trailingTrivia: .space))
+                ]),
+                funcKeyword: .keyword(.func, trailingTrivia: .space),
                 name: .identifier("make\(enumCase.name.capitalizedFirst)"),
                 signature: FunctionSignatureSyntax(
                     parameterClause: FunctionParameterClauseSyntax(
-                        parameters: FunctionParameterListSyntax([parameter])
+                        parameters: FunctionParameterListSyntax([parameter]),
+                        trailingTrivia: .space
                     ),
                     returnClause: ReturnClauseSyntax(
-                        type: TypeSyntax(IdentifierTypeSyntax(name: .identifier(enumName)))
+                        arrow: .arrowToken(trailingTrivia: .space),
+                        type: TypeSyntax(IdentifierTypeSyntax(name: .identifier(enumName))),
+                        trailingTrivia: .space
                     )
                 ),
                 body: CodeBlockSyntax(
+                    leftBrace: .leftBraceToken(trailingTrivia: .newline),
                     statements: CodeBlockItemListSyntax([
                         CodeBlockItemSyntax(item: .expr(ExprSyntax(call)))
-                    ])
+                    ]),
+                    rightBrace: .rightBraceToken(leadingTrivia: .newline)
                 )
             )
             return DeclSyntax(function)
@@ -89,11 +97,92 @@ struct InternedStructuralCaseFactoryPipeline: CaseFactoryPipeline {
 
     private enum Interned {
         static let staticModifier = DeclModifierListSyntax([
+            DeclModifierSyntax(name: .keyword(.static, trailingTrivia: .space))
+        ])
+        static let funcKeyword = TokenSyntax.keyword(.func, trailingTrivia: .space)
+        static let wildcard = TokenSyntax.wildcardToken(trailingTrivia: .space)
+        static let valueName = TokenSyntax.identifier("value")
+        static let colon = TokenSyntax.colonToken(trailingTrivia: .space)
+        static let leftBrace = TokenSyntax.leftBraceToken(trailingTrivia: .newline)
+        static let rightBrace = TokenSyntax.rightBraceToken(leadingTrivia: .newline)
+        static let leftParen = TokenSyntax.leftParenToken()
+        static let rightParen = TokenSyntax.rightParenToken()
+        /// The call's argument list is `(value)` for every case.
+        static let arguments = LabeledExprListSyntax([
+            LabeledExprSyntax(expression: DeclReferenceExprSyntax(baseName: .identifier("value")))
+        ])
+    }
+
+    func expand(cases: [EnumCaseInfo], enumName: String) -> [DeclSyntax] {
+        // Invariant across cases but not across calls, so hoisted to here
+        // rather than into `Interned`.
+        let enumRef = DeclReferenceExprSyntax(baseName: .identifier(enumName))
+        let returnClause = ReturnClauseSyntax(
+            arrow: .arrowToken(trailingTrivia: .space),
+            type: TypeSyntax(IdentifierTypeSyntax(name: .identifier(enumName))),
+            trailingTrivia: .space
+        )
+
+        return cases.map { enumCase in
+            let parameter = FunctionParameterSyntax(
+                firstName: Interned.wildcard,
+                secondName: Interned.valueName,
+                colon: Interned.colon,
+                type: enumCase.payloadType
+            )
+            let call = FunctionCallExprSyntax(
+                calledExpression: ExprSyntax(
+                    MemberAccessExprSyntax(base: enumRef, name: .identifier(enumCase.name))
+                ),
+                leftParen: Interned.leftParen,
+                arguments: Interned.arguments,
+                rightParen: Interned.rightParen
+            )
+            let function = FunctionDeclSyntax(
+                modifiers: Interned.staticModifier,
+                funcKeyword: Interned.funcKeyword,
+                name: .identifier("make\(enumCase.name.capitalizedFirst)"),
+                signature: FunctionSignatureSyntax(
+                    parameterClause: FunctionParameterClauseSyntax(
+                        parameters: FunctionParameterListSyntax([parameter]),
+                        trailingTrivia: .space
+                    ),
+                    returnClause: returnClause
+                ),
+                body: CodeBlockSyntax(
+                    leftBrace: Interned.leftBrace,
+                    statements: CodeBlockItemListSyntax([
+                        CodeBlockItemSyntax(item: .expr(ExprSyntax(call)))
+                    ]),
+                    rightBrace: Interned.rightBrace
+                )
+            )
+            return DeclSyntax(function)
+        }
+    }
+}
+
+/// Control for the trivia experiment: identical to the hoisted baseline
+/// except that no trivia is attached, i.e. what the baseline looked like
+/// before ADR 0004's known bias was corrected. Present so the two can be
+/// measured in the same process — cross-session absolutes drift by ~10% on
+/// this hardware, which is more than the effect being measured.
+struct NoTriviaInternedCaseFactoryPipeline: CaseFactoryPipeline {
+    static let name = "interned-notrivia"
+    static let summary = "Control: the hoisted baseline with no trivia attached"
+
+    init() {}
+
+    private enum Interned {
+        static let staticModifier = DeclModifierListSyntax([
             DeclModifierSyntax(name: .keyword(.static))
         ])
+        static let funcKeyword = TokenSyntax.keyword(.func)
         static let wildcard = TokenSyntax.wildcardToken()
         static let valueName = TokenSyntax.identifier("value")
         static let colon = TokenSyntax.colonToken()
+        static let leftBrace = TokenSyntax.leftBraceToken()
+        static let rightBrace = TokenSyntax.rightBraceToken()
         static let leftParen = TokenSyntax.leftParenToken()
         static let rightParen = TokenSyntax.rightParenToken()
         /// The call's argument list is `(value)` for every case.
@@ -127,6 +216,7 @@ struct InternedStructuralCaseFactoryPipeline: CaseFactoryPipeline {
             )
             let function = FunctionDeclSyntax(
                 modifiers: Interned.staticModifier,
+                funcKeyword: Interned.funcKeyword,
                 name: .identifier("make\(enumCase.name.capitalizedFirst)"),
                 signature: FunctionSignatureSyntax(
                     parameterClause: FunctionParameterClauseSyntax(
@@ -135,9 +225,11 @@ struct InternedStructuralCaseFactoryPipeline: CaseFactoryPipeline {
                     returnClause: returnClause
                 ),
                 body: CodeBlockSyntax(
+                    leftBrace: Interned.leftBrace,
                     statements: CodeBlockItemListSyntax([
                         CodeBlockItemSyntax(item: .expr(ExprSyntax(call)))
-                    ])
+                    ]),
+                    rightBrace: Interned.rightBrace
                 )
             )
             return DeclSyntax(function)

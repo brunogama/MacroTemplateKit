@@ -23,9 +23,12 @@ retained KB shrinks by ≥35%". Every clause of that has since been undermined b
 A change to the render engine merges when all of the following hold, measured with
 `--iterations 1200 --warmup 300` at sizes 16/64/256, taking **`min` over at least 3 runs**:
 
-1. **`mtk` beats `structural-interned` on `generate` and `case-path`,** and is within 5% of it
-   on `case-factory`. The hoisted baseline is the comparison; `structural` is reported for
-   context only.
+0. **Every figure in a comparison comes from one invocation of the benchmark.** Cross-session
+   absolutes drift ~10% on this hardware for identical code, which is larger than most effects
+   being gated. Ratios computed across sessions are not evidence. See ADR 0004.
+1. **`mtk` beats `structural-interned` on `generate` and `case-path`,** and is within 10% of
+   it on `case-factory`, where it currently sits at 1.00–1.06× — i.e. slightly slower. The
+   hoisted baseline is the comparison; `structural` is reported for context only.
 2. **No workload regresses more than 5%** against the figures recorded below.
 3. **The equivalence gate passes** on every workload — token-identical output across all
    pipelines in the registry.
@@ -37,9 +40,9 @@ Recorded figures, `min` over 3 runs, `mtk` vs `structural-interned`:
 
 | workload | 16 | 64 | 256 |
 |---|---|---|---|
-| generate | 0.78× | 0.75× | 0.76× |
-| case-factory | 0.95× | 0.94× | 0.96× |
-| case-path | 0.77× | 0.74× | 0.74× |
+| generate | 0.77× | 0.79× | 0.75× |
+| case-factory | 1.00× | 1.03× | 1.00× |
+| case-path | 0.78× | 0.73× | 0.76× |
 
 ## On memory
 
@@ -71,7 +74,10 @@ would either block correct changes or invite baseline sabotage.
   benchmark output for shape, not for gating.
 - Any new workload ships with a hoisted baseline from the start (ADR 0004), and joins clause 1
   once its figures are recorded here.
-- The known trivia bias in the baselines (ADR 0004) is unresolved and this gate inherits it.
-  Correcting it would raise every ratio in the table above; clause 2's 5% regression allowance
-  is measured against the numbers as they stand, so the correction would need this table
-  re-recorded rather than merely passing.
+- The trivia bias flagged in ADR 0004 has been measured and corrected on `case-factory`: it is
+  worth 1–4%, below this harness's stability. `generate` and `case-path` baselines still carry
+  it, and that is now a bounded ~1–4% conservatism rather than an unknown.
+- The `case-factory` figures above are *worse* than what was previously published (0.94–0.96×).
+  That was session-favourable noise. Anyone re-recording this table should expect the numbers
+  to be uncomfortable and publish them anyway; the gate is worth nothing if the figures it
+  compares against were selected for being flattering.

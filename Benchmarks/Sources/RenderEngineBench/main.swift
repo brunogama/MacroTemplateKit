@@ -17,6 +17,7 @@ let allPipelines: [ASTGeneratorPipeline] = [
 let allCaseFactoryPipelines: [CaseFactoryPipeline] = [
     StructuralCaseFactoryPipeline(),
     InternedStructuralCaseFactoryPipeline(),
+    NoTriviaInternedCaseFactoryPipeline(),
     MTKCaseFactoryPipeline(),
 ]
 

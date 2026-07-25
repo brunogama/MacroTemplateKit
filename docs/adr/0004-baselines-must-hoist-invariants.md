@@ -66,7 +66,58 @@ Two things hid it:
   the entire effect being measured (structural at 256 properties: 7948 µs → 12946 µs between
   two runs), while `min` held to within 2%.
 
-## Known remaining bias, uncorrected
+## Resolved: the trivia bias was real, small, and hid a worse problem
+
+The section below was written when the trivia gap was unmeasured. It has since been measured,
+and both of its claims were wrong.
+
+`StructuralCaseFactoryPipeline` and its hoisted variant now attach trivia matching `mtk` byte
+for byte. A control pipeline, `interned-notrivia`, keeps the old no-trivia construction so
+both can be measured **in the same process** — which turned out to matter more than the
+correction itself. At sizes 16/64/256, `min` over 3 runs:
+
+| | 16 | 64 | 256 |
+|---|---|---|---|
+| `interned-notrivia` | 139.2 | 538.6 | 2166 |
+| `structural-interned` (trivia) | 140.6 | 546.3 | 2249 |
+| cost of trivia | +1.0% | +1.4% | +3.8% |
+
+**Trivia costs 1–4%, not enough to move any conclusion.** The prediction below — that a
+trivia-matched baseline "would be slower and would widen the margin" — was right in direction
+and wrong in magnitude. The deferral was justified on the grounds that correcting it would
+flatter our own numbers; the correction was worth less than the measurement noise.
+
+**The measurement noise is the real finding.** Running the correction surfaced that
+`case-factory` absolutes drift ~10% between sessions for *identical* code: `mtk` at size 16
+read 125.9 µs in one session and 140.8 µs in another with no change to its source. Within a
+session the ordering is stable — across 5 consecutive runs at size 64, `interned-notrivia` <
+`structural-interned` < `mtk` held in 4 of 5 — but across sessions it is not.
+
+Re-measured with everything in one process, `case-factory` is:
+
+| | vs `structural-interned` |
+|---|---|
+| previously published | 0.94–0.96× |
+| **measured in-session** | **1.00–1.06×** |
+
+**MacroTemplateKit is slightly *slower* than a hoisted hand-rolled baseline on this workload.**
+The earlier figure was session-favourable noise, published because it was collected in a
+session that happened to favour it and never re-run in the same process as its baseline.
+
+`generate` (0.75–0.79×) and `case-path` (0.73–0.78×) reproduce their published figures in the
+same session, so the effect is specific to `case-factory` — the workload with the smallest
+per-item work, where a 10% drift swamps the difference being measured.
+
+### Methodology consequences
+
+- **Never compare across sessions.** Only ratios computed from pipelines measured in the same
+  process are meaningful. Every table must be produced by one invocation.
+- **Do not claim a difference smaller than ~5%** on `case-factory`-shaped workloads. It is
+  below this harness's demonstrated stability.
+- Keep `interned-notrivia` in the registry. It is the control that makes the trivia claim
+  falsifiable rather than asserted.
+
+## Original text: known remaining bias, uncorrected
 
 The structural baselines attach no trivia: they produce
 `staticfuncmakeCase0(_value:String)->Fixture2{...}`. The equivalence gate compares token

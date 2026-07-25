@@ -80,15 +80,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   | workload | shape | ratio |
   |---|---|---|
-  | case-path | `@CasePathable`-style property per case | 0.74--0.77x |
-  | generate | accessor pairs over stored properties | 0.75--0.78x |
-  | case-factory | static factories over enum cases | 0.94--0.96x (parity) |
+  | case-path | `@CasePathable`-style property per case | 0.73--0.78x |
+  | generate | accessor pairs over stored properties | 0.75--0.79x |
+  | case-factory | static factories over enum cases | 1.00--1.06x (parity) |
 
   Depth decides: structural construction pays per node, the emitter appends text
   and parses once per declaration, so the deeper the generated declaration the
   further ahead the library gets. Previously the kit ran at 0.98--0.99x, so it
-  cost nothing and bought nothing; it now ranges from parity to a comfortable
-  win depending on shape. Absolute figures are microseconds per expansion ---
+  cost nothing and bought nothing; it now ranges from parity on flat
+  declarations to a comfortable win on deeply nested ones. Absolute figures are microseconds per expansion ---
   this is not a build-time story.
 
   Two earlier claims in this section were wrong and are withdrawn:
@@ -101,8 +101,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     See `docs/adr/0003-memory-win-does-not-accumulate.md`.
   - **`0.59--0.64x` compared against a baseline that rebuilt expansion-invariant
     nodes inside its per-item loop.** Hoisting them alone makes that baseline up
-    to 1.60x faster. The ratios above use the hoisted baseline.
+    to 1.75x faster. The ratios above use the hoisted baseline.
     See `docs/adr/0004-baselines-must-hoist-invariants.md`.
+  - **A third correction, made after those two.** `case-factory` was restated
+    here as 0.94--0.96x, and is now 1.00--1.06x --- at parity, marginally
+    slower. Nothing changed in the library. The earlier figure compared numbers
+    collected in different benchmark sessions, and absolutes drift ~10% between
+    sessions on this hardware for identical code. Every ratio published now
+    comes from a single invocation. Sub-5% claims about this workload are not
+    supportable in either direction.
 
   See also `docs/adr/0002-relax-render-engine-merge-gate.md`.
 

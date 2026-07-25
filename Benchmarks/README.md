@@ -92,11 +92,19 @@ history to resurrect it against a future swift-syntax release.
   as a memory saving. See
   [ADR 0003](../docs/adr/0003-memory-win-does-not-accumulate.md), and
   `--workloads accumulate` to reproduce.
-- **The equivalence gate compares token streams, which strips trivia.** The
-  structural baselines attach none, emitting `staticfuncmakeCase0(_value:String)`
-  where `mtk` emits spaced source, so they are measured doing slightly less work.
-  The bias runs *against* `mtk`, which is why it went unnoticed; the ratios below
-  are conservative by an unmeasured margin. `--workloads trivia` shows it.
+- **The equivalence gate compares token streams, which strips trivia**, so it is
+  blind to a baseline that attaches none. The `case-factory` baselines now match
+  `mtk` byte for byte, with `interned-notrivia` retained as the control: measured
+  in one process, trivia is worth +1.0% at 16 cases and +3.8% at 256. The
+  `generate` and `case-path` baselines still omit it, so those rows are
+  conservative by a bounded ~1–4%. `--workloads trivia` shows the raw output.
+- **Never compare figures across sessions.** Absolutes drift ~10% between runs of
+  the same binary on this hardware — `mtk` on `case-factory` at 16 cases read
+  125.9 µs in one session and 140.8 µs in another with no source change. Within a
+  session the ordering is stable. Every ratio quoted must come from a single
+  invocation; a favourable number collected in a different session is not
+  evidence, and publishing one is how `case-factory` came to be advertised at
+  0.94× when it is at parity.
 - The generate workload’s `reparse` variant serializes only the *small spliced
   nodes* (a type and a default-value expression); the research’s worst case —
   reparsing a large existing declaration to make a small edit — is measured by
@@ -109,27 +117,33 @@ history to resurrect it against a future swift-syntax release.
 
 | workload | props | structural | structural-interned | mtk | vs interned |
 |---|---|---|---|---|---|
-| generate | 16 | 345.9 | 282.1 | 219.0 | **0.78×** |
-| generate | 64 | 1348 | 1165 | 876.6 | **0.75×** |
-| generate | 256 | 5690 | 4811 | 3680 | **0.76×** |
-| case-factory | 16 | 212.2 | 132.9 | 125.9 | **0.95×** |
-| case-factory | 64 | 870.9 | 527.0 | 496.2 | **0.94×** |
-| case-factory | 256 | 3718 | 2319 | 2218 | **0.96×** |
-| case-path | 16 | 648.8 | 408.2 | 312.8 | **0.77×** |
-| case-path | 64 | 2628 | 1658 | 1224 | **0.74×** |
-| case-path | 256 | 10772 | 6721 | 4958 | **0.74×** |
+| generate | 16 | 355.9 | 291.9 | 226.1 | **0.77×** |
+| generate | 64 | 1414 | 1183 | 929.9 | **0.79×** |
+| generate | 256 | 5618 | 4831 | 3610 | **0.75×** |
+| case-factory | 16 | 247.5 | 140.6 | 140.8 | **1.00×** |
+| case-factory | 64 | 969 | 546.3 | 554.8 | **1.02×** |
+| case-factory | 256 | 3924 | 2249 | 2253 | **1.00×** |
+| case-path | 16 | 663.6 | 409.7 | 319.2 | **0.78×** |
+| case-path | 64 | 2695 | 1696 | 1240 | **0.73×** |
+| case-path | 256 | 10788 | 6767 | 5122 | **0.76×** |
 
 **Depth decides.** The three workloads are ordered by how deep the generated
-declaration is, and the ratio tracks it: flat static factories land at parity,
-accessor pairs at ~0.76×, and a `AnyCasePath` property — closures inside labeled
-arguments inside a generic getter, ~70 nodes — at ~0.74×. Structural construction
+declaration is, and the ratio tracks it: flat static factories land at parity or
+a shade worse, accessor pairs at ~0.77×, and an `AnyCasePath` property — closures
+inside labeled arguments inside a generic getter, ~70 nodes — at ~0.76×. Structural construction
 pays per node; the emitter appends text and parses once per declaration. Hoisting
 cannot close that gap, because the tree varies per case at its leaves and must
 still be assembled per case.
 
 Note how much of the apparent advantage was baseline error: on `case-factory`,
-`structural`→`structural-interned` is a 1.60× speedup from hoisting alone, which
-is nearly the whole 0.57× that column would otherwise report.
+`structural`→`structural-interned` is a 1.75× speedup from hoisting alone, which
+is the entire 0.57× that column would otherwise report — and then some, since the
+honest figure lands slightly *above* 1.0.
+
+`case-factory` was published at 0.94–0.96× until every pipeline was re-measured
+in a single process. It is at parity. Cross-session drift on this workload
+exceeds the effect, so no sub-5% claim about it is supportable in either
+direction.
 
 The prior snapshot (2026-07-13) recorded `mtk` at 0.99–1.00× vs `structural` —
 the pre-cutover renderer, where the library cost nothing and bought nothing.
