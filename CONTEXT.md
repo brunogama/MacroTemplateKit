@@ -22,6 +22,12 @@ values to SwiftSyntax nodes. One concept, whatever files it spans. Does not incl
 extraction.
 _Avoid_: generator, emitter, "the renderers" (there is one)
 
+**Parse Gate**:
+The check that source text produced for a fragment parses cleanly before the render engine
+hands it back. Syntactic only — it catches malformed output, not output that parses but
+means the wrong thing.
+_Avoid_: validation (too broad — nothing here checks meaning)
+
 **Extractor**:
 The reverse direction: reads parsed SwiftSyntax declarations into typed signatures. Not part
 of the render engine.
