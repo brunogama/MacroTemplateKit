@@ -617,7 +617,34 @@ git commit -m "refactor: delete legacy structural rendering path"
 
 ---
 
-### Task 8: Benchmark merge gate and documentation
+### Task 8: Benchmark merge gate and documentation — DONE
+
+> **Completed differently from as written, on purpose.** The steps below were
+> authored before three measurements invalidated their premises, and are kept
+> as written rather than back-edited:
+>
+> - **Step 1's gate is superseded** by [ADR 0005](../../adr/0005-render-engine-merge-gate-v2.md).
+>   It gated `p50` against `structural` on `generate` alone. `p50` proved
+>   noise-dominated on this hardware, `structural` proved beatable by up to
+>   1.60× (ADR 0004), and one workload proved unrepresentative — `case-factory`
+>   sits at parity, which a `generate`-only gate would never have reported. The
+>   live gate uses `min` over 3 runs against `structural-interned` across three
+>   workloads.
+> - **Step 2's prescribed CHANGELOG wording — "~40% faster and ~40% less
+>   memory" — is wrong on both halves.** The memory claim only holds while every
+>   rendered tree is kept alive, which no plugin does (ADR 0003); the speed
+>   figure was measured against the unhoisted baseline. The entry that shipped
+>   states 0.74–0.96× depending on workload shape, and withdraws both original
+>   claims in place.
+> - `mtk-micro` is now `structural-interned` and is a *baseline*, not a spike.
+>   It was originally evaluated as an implementation strategy and rejected for
+>   being under the adoption bar — the same margin that made it a poor thing to
+>   build made it the right thing to measure against, and nobody turned the
+>   question around for weeks.
+>
+> Delivered: `Benchmarks/README.md` snapshot refreshed with all three workloads
+> and both baselines; ADR 0005; CHANGELOG rewritten. Two workloads (`accumulate`,
+> `trivia`) were added that this task did not anticipate.
 
 **Files:**
 - Modify: `Benchmarks/README.md`, `CHANGELOG.md`

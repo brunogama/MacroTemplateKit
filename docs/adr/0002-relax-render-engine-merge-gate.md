@@ -1,6 +1,12 @@
 # The render-engine merge gate trades speed for memory
 
-**Status:** accepted
+**Status:** superseded by [ADR 0005](0005-render-engine-merge-gate-v2.md)
+
+The gate defined here is no longer in force. Its statistic (`p50`), its baseline
+(`structural`), its single workload (`generate`), and its memory criterion have each been
+shown to measure the wrong thing — see ADRs 0003, 0004 and 0005. The document is kept because
+the reasoning about goalpost-moving in it still applies, and because ADR 0005 is only legible
+next to what it replaced.
 
 The parse-backed renderer plan set the merge gate at "`mtk` pipeline p50 improves ≥25% at
 sizes 4/16/64/256 on the generate workload, retained KB does not grow." That number came from
@@ -65,6 +71,10 @@ expressions in a loop will see a regression on upgrade.
   not be read as a user-facing benefit, and it should not appear in the README.
 - Speed remains the weaker axis. If a future optimisation reaches 25% at all sizes, tighten
   this back rather than leaving the relaxed number in place.
-- Not addressed here: the renderer still has no verbatim/raw-expression case, so splicing an
+- ~~Not addressed here: the renderer still has no verbatim/raw-expression case, so splicing an
   existing `ExprSyntax` into a template requires passing its `trimmedDescription` through
-  `.variable`. The benchmark does exactly that, with a comment.
+  `.variable`.~~ Resolved afterwards by `Template.syntax(ExprSyntax)`. Worth recording what
+  the fix actually bought: splicing a node turned out to be performance-neutral on the parse
+  path, exactly as predicted. The measured win came from no longer calling
+  `trimmedDescription`, which builds a detached trivia-stripped tree before serialising — not
+  from avoiding the round trip.
