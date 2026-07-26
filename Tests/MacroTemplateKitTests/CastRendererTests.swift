@@ -18,7 +18,8 @@ final class CastRendererTests: XCTestCase {
 
   func testForcedCast_emitsAsBang() throws {
     var buffer = ""
-    SourceEmitter.emit(Template<Void>.cast(expr("value"), type: "String", kind: .forced), into: &buffer)
+    SourceEmitter.emit(
+      Template<Void>.cast(expr("value"), type: "String", kind: .forced), into: &buffer)
 
     XCTAssertEqual(buffer, "value as! String")
   }
@@ -33,7 +34,8 @@ final class CastRendererTests: XCTestCase {
 
   func testCoercion_emitsPlainAs() throws {
     var buffer = ""
-    SourceEmitter.emit(Template<Void>.cast(expr("value"), type: "Any", kind: .coerce), into: &buffer)
+    SourceEmitter.emit(
+      Template<Void>.cast(expr("value"), type: "Any", kind: .coerce), into: &buffer)
 
     XCTAssertEqual(buffer, "value as Any")
   }
@@ -86,7 +88,8 @@ final class CastRendererTests: XCTestCase {
   // MARK: - Functor law
 
   func testMapPreservesCastStructure() throws {
-    let template = Template<Int>.cast(.variable("v", payload: 1), type: "String", kind: .conditional)
+    let template = Template<Int>.cast(
+      .variable("v", payload: 1), type: "String", kind: .conditional)
 
     let mapped: Template<String> = template.map { String($0) }
 

@@ -7,7 +7,7 @@ aggregator that fails if any check fails, and a merge gate ([ADR 0005](0005-rend
 whose clause 3 requires the benchmark equivalence check to pass. None of it had
 run since 2026-07-14.
 
-```
+```console
 $ gh api repos/brunogama/MacroTemplateKit/actions/permissions
 {"enabled":false,"sha_pinning_required":false}
 ```
@@ -59,14 +59,14 @@ each layer's silence was indistinguishable from success.
   `Package@swift-6.0.swift` and ignores `Package.swift` on any Swift 6
   toolchain, so the two had already drifted.
 
-## Not fixed here
+## Subsequent resolution
 
-`swift-format lint --strict` reports **4196 violations on `main`**, so the
-`format-check` job in `pr-validation.yml` fails today and would have failed on
-any PR opened in the last year. Reformatting the tree is a large mechanical
-diff that does not belong in the same change as the CI repair, and it should
-land on its own so the diff is reviewable as pure formatting. Until then, the
-PR gate cannot go green.
+The CI repair deliberately left the formatter failure visible: at that point,
+`swift-format lint --strict` reported **4196 violations on `main`**. The tree has
+since been formatted separately with swift-format's default two-space style,
+and the unchanged `format-check` command now passes across `Sources/` and
+`Tests/`.
 
-Stating it rather than quietly dropping the job: a check that is known-red is
-information, a check deleted to make the board green is not.
+Keeping the check red until the code earned it back preserved the useful signal:
+a known-red check is information, while a check deleted to make the board green
+is not.

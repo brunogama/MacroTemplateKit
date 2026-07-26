@@ -165,7 +165,8 @@ final class MatchPatternTests: XCTestCase {
   // MARK: - Functor laws
 
   func testMapPreservesIdentity() {
-    let pattern = MatchPattern<Int>.enumCase("point", [.bind("x"), .value(.variable("y", payload: 1))])
+    let pattern = MatchPattern<Int>.enumCase(
+      "point", [.bind("x"), .value(.variable("y", payload: 1))])
     XCTAssertEqual(pattern.map { $0 }, pattern)
   }
 

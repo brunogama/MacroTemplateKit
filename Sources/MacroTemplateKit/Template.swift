@@ -1,4 +1,5 @@
 import SwiftSyntax
+
 /// The flavour of a type-cast expression.
 ///
 /// Spelled as its own type rather than three `Template` cases so that callers

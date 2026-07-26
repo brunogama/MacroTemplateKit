@@ -43,14 +43,18 @@ final class PrecedenceTests: XCTestCase {
   func testLooserChildOnLeftIsParenthesized() throws {
     // (a + b) * c — without parens this silently becomes a + b * c
     try assertRenders(
-      .binaryOperation(left: .binaryOperation(left: v("a"), operator: "+", right: v("b")), operator: "*", right: v("c")),
+      .binaryOperation(
+        left: .binaryOperation(left: v("a"), operator: "+", right: v("b")), operator: "*",
+        right: v("c")),
       equals: "(a + b) * c"
     )
   }
 
   func testLooserChildOnRightIsParenthesized() throws {
     try assertRenders(
-      .binaryOperation(left: v("a"), operator: "*", right: .binaryOperation(left: v("b"), operator: "+", right: v("c"))),
+      .binaryOperation(
+        left: v("a"), operator: "*",
+        right: .binaryOperation(left: v("b"), operator: "+", right: v("c"))),
       equals: "a * (b + c)"
     )
   }
@@ -58,7 +62,9 @@ final class PrecedenceTests: XCTestCase {
   func testLogicalOperatorsNestByPrecedence() throws {
     // (a || b) && c
     try assertRenders(
-      .binaryOperation(left: .binaryOperation(left: v("a"), operator: "||", right: v("b")), operator: "&&", right: v("c")),
+      .binaryOperation(
+        left: .binaryOperation(left: v("a"), operator: "||", right: v("b")), operator: "&&",
+        right: v("c")),
       equals: "(a || b) && c"
     )
   }
@@ -68,7 +74,9 @@ final class PrecedenceTests: XCTestCase {
   func testTighterChildIsNotParenthesized() throws {
     // a + b * c — the nesting already means what it says
     try assertRenders(
-      .binaryOperation(left: v("a"), operator: "+", right: .binaryOperation(left: v("b"), operator: "*", right: v("c"))),
+      .binaryOperation(
+        left: v("a"), operator: "+",
+        right: .binaryOperation(left: v("b"), operator: "*", right: v("c"))),
       equals: "a + b * c"
     )
   }
@@ -76,14 +84,17 @@ final class PrecedenceTests: XCTestCase {
   func testLeftAssociativeChainIsNotParenthesized() throws {
     // a - b - c, not (a - b) - c
     try assertRenders(
-      .binaryOperation(left: .binaryOperation(left: v("a"), operator: "-", right: v("b")), operator: "-", right: v("c")),
+      .binaryOperation(
+        left: .binaryOperation(left: v("a"), operator: "-", right: v("b")), operator: "-",
+        right: v("c")),
       equals: "a - b - c"
     )
   }
 
   func testAtomicOperandsAreNeverParenthesized() throws {
     try assertRenders(
-      .binaryOperation(left: .functionCall(function: "f", arguments: []), operator: "+", right: v("b")),
+      .binaryOperation(
+        left: .functionCall(function: "f", arguments: []), operator: "+", right: v("b")),
       equals: "f() + b"
     )
   }
@@ -93,7 +104,9 @@ final class PrecedenceTests: XCTestCase {
   func testLeftAssociativeOperatorParenthesizesItsRightOperand() throws {
     // a - (b - c) must keep its parentheses, or it means (a - b) - c
     try assertRenders(
-      .binaryOperation(left: v("a"), operator: "-", right: .binaryOperation(left: v("b"), operator: "-", right: v("c"))),
+      .binaryOperation(
+        left: v("a"), operator: "-",
+        right: .binaryOperation(left: v("b"), operator: "-", right: v("c"))),
       equals: "a - (b - c)"
     )
   }
@@ -101,7 +114,9 @@ final class PrecedenceTests: XCTestCase {
   func testRightAssociativeOperatorParenthesizesItsLeftOperand() throws {
     // (a ?? b) ?? c — `??` is right-associative
     try assertRenders(
-      .binaryOperation(left: .binaryOperation(left: v("a"), operator: "??", right: v("b")), operator: "??", right: v("c")),
+      .binaryOperation(
+        left: .binaryOperation(left: v("a"), operator: "??", right: v("b")), operator: "??",
+        right: v("c")),
       equals: "(a ?? b) ?? c"
     )
   }
@@ -109,7 +124,9 @@ final class PrecedenceTests: XCTestCase {
   func testNonAssociativeOperatorParenthesizesBothSides() throws {
     // `a < b < c` is not valid Swift, so the nesting must be made explicit
     try assertRenders(
-      .binaryOperation(left: .binaryOperation(left: v("a"), operator: "<", right: v("b")), operator: "<", right: v("c")),
+      .binaryOperation(
+        left: .binaryOperation(left: v("a"), operator: "<", right: v("b")), operator: "<",
+        right: v("c")),
       equals: "(a < b) < c"
     )
   }
@@ -120,7 +137,8 @@ final class PrecedenceTests: XCTestCase {
     // AdditionPrecedence is higher than CastingPrecedence, so `a + b as! Int`
     // already groups as `(a + b) as! Int`. Adding parentheses would be noise.
     try assertRenders(
-      .cast(.binaryOperation(left: v("a"), operator: "+", right: v("b")), type: "Int", kind: .forced),
+      .cast(
+        .binaryOperation(left: v("a"), operator: "+", right: v("b")), type: "Int", kind: .forced),
       equals: "a + b as! Int"
     )
   }
@@ -129,7 +147,8 @@ final class PrecedenceTests: XCTestCase {
     // ComparisonPrecedence is lower than CastingPrecedence: without parens
     // `a == b as! Bool` would cast `b`, not the comparison.
     try assertRenders(
-      .cast(.binaryOperation(left: v("a"), operator: "==", right: v("b")), type: "Bool", kind: .forced),
+      .cast(
+        .binaryOperation(left: v("a"), operator: "==", right: v("b")), type: "Bool", kind: .forced),
       equals: "(a == b) as! Bool"
     )
   }
@@ -139,7 +158,8 @@ final class PrecedenceTests: XCTestCase {
   }
 
   func testTernaryParenthesizesNestedTernaryCondition() throws {
-    let inner = Template<Void>.conditional(condition: v("a"), thenBranch: v("b"), elseBranch: v("c"))
+    let inner = Template<Void>.conditional(
+      condition: v("a"), thenBranch: v("b"), elseBranch: v("c"))
     try assertRenders(
       .conditional(condition: inner, thenBranch: v("d"), elseBranch: v("e")),
       equals: "(a ? b : c) ? d : e"
@@ -190,7 +210,9 @@ final class PrecedenceTests: XCTestCase {
     // renderer biases toward redundant parens rather than a silent meaning
     // change.
     try assertRenders(
-      .binaryOperation(left: .binaryOperation(left: v("a"), operator: "|>", right: v("b")), operator: "*", right: v("c")),
+      .binaryOperation(
+        left: .binaryOperation(left: v("a"), operator: "|>", right: v("b")), operator: "*",
+        right: v("c")),
       equals: "(a |> b) * c"
     )
   }

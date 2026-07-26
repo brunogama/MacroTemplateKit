@@ -174,22 +174,11 @@ extension Statement {
     case .varBinding(let name, let type, let initializer):
       return .varBinding(name: name, type: type, initializer: initializer.map(transform))
     case .guardStatement(let condition, let elseBody):
-      return .guardStatement(
-        condition: condition.map(transform),
-        elseBody: elseBody.map { $0.map(transform) }
-      )
+      return mapGuardStatement(condition, elseBody, using: transform)
     case .ifStatement(let condition, let thenBody, let elseBody):
-      return .ifStatement(
-        condition: condition.map(transform),
-        thenBody: thenBody.map { $0.map(transform) },
-        elseBody: elseBody?.map { $0.map(transform) }
-      )
+      return mapIfStatement(condition, thenBody, elseBody, using: transform)
     case .forInStatement(let variable, let collection, let body):
-      return .forInStatement(
-        variable: variable,
-        collection: collection.map(transform),
-        body: body.map { $0.map(transform) }
-      )
+      return mapForInStatement(variable, collection, body, using: transform)
     case .ifLetBinding(let name, let type, let initializer, let thenBody, let elseBody):
       return .ifLetBinding(
         name: name,
@@ -204,43 +193,117 @@ extension Statement {
       return .throwStatement(expression.map(transform))
     case .deferStatement(let body):
       return .deferStatement(body.map { $0.map(transform) })
-    case .expression(let expr):
-      return .expression(expr.map(transform))
+    case .expression(let expression):
+      return .expression(expression.map(transform))
     case .guardLetBinding(let name, let type, let initializer, let elseBody):
-      return .guardLetBinding(
-        name: name,
-        type: type,
-        initializer: initializer.map(transform),
-        elseBody: elseBody.map { $0.map(transform) }
-      )
+      return mapGuardLetBinding(name, type, initializer, elseBody, using: transform)
     case .switchStatement(let subject, let cases):
-      return .switchStatement(
-        subject: subject.map(transform),
-        cases: cases.map { switchCase in
-          SwitchCase<B>(
-            pattern: mapSwitchCasePattern(switchCase.pattern, transform),
-            body: switchCase.body.map { $0.map(transform) }
-          )
-        }
-      )
+      return mapSwitchStatement(subject, cases, using: transform)
     case .assignmentStatement(let lhs, let rhs):
       return .assignmentStatement(lhs: lhs.map(transform), rhs: rhs.map(transform))
     case .guardCase(let pattern, let value, let elseBody):
-      return .guardCase(
-        pattern: pattern.map(transform),
-        value: value.map(transform),
-        elseBody: elseBody.map { $0.map(transform) }
-      )
+      return mapGuardCase(pattern, value, elseBody, using: transform)
     case .ifCase(let pattern, let value, let thenBody, let elseBody):
-      return .ifCase(
-        pattern: pattern.map(transform),
-        value: value.map(transform),
-        thenBody: thenBody.map { $0.map(transform) },
-        elseBody: elseBody?.map { $0.map(transform) }
-      )
+      return mapIfCase(pattern, value, thenBody, elseBody, using: transform)
     case .breakStatement:
       return .breakStatement
     }
+  }
+
+  private func mapGuardStatement<B>(
+    _ condition: Template<A>,
+    _ elseBody: [Statement<A>],
+    using transform: (A) -> B
+  ) -> Statement<B> {
+    .guardStatement(
+      condition: condition.map(transform),
+      elseBody: elseBody.map { $0.map(transform) }
+    )
+  }
+
+  private func mapIfStatement<B>(
+    _ condition: Template<A>,
+    _ thenBody: [Statement<A>],
+    _ elseBody: [Statement<A>]?,
+    using transform: (A) -> B
+  ) -> Statement<B> {
+    .ifStatement(
+      condition: condition.map(transform),
+      thenBody: thenBody.map { $0.map(transform) },
+      elseBody: elseBody?.map { $0.map(transform) }
+    )
+  }
+
+  private func mapForInStatement<B>(
+    _ variable: String,
+    _ collection: Template<A>,
+    _ body: [Statement<A>],
+    using transform: (A) -> B
+  ) -> Statement<B> {
+    .forInStatement(
+      variable: variable,
+      collection: collection.map(transform),
+      body: body.map { $0.map(transform) }
+    )
+  }
+
+  private func mapGuardLetBinding<B>(
+    _ name: String,
+    _ type: String?,
+    _ initializer: Template<A>,
+    _ elseBody: [Statement<A>],
+    using transform: (A) -> B
+  ) -> Statement<B> {
+    .guardLetBinding(
+      name: name,
+      type: type,
+      initializer: initializer.map(transform),
+      elseBody: elseBody.map { $0.map(transform) }
+    )
+  }
+
+  private func mapSwitchStatement<B>(
+    _ subject: Template<A>,
+    _ cases: [SwitchCase<A>],
+    using transform: (A) -> B
+  ) -> Statement<B> {
+    .switchStatement(
+      subject: subject.map(transform),
+      cases: cases.map { switchCase in
+        SwitchCase<B>(
+          pattern: mapSwitchCasePattern(switchCase.pattern, transform),
+          body: switchCase.body.map { $0.map(transform) }
+        )
+      }
+    )
+  }
+
+  private func mapGuardCase<B>(
+    _ pattern: MatchPattern<A>,
+    _ value: Template<A>,
+    _ elseBody: [Statement<A>],
+    using transform: (A) -> B
+  ) -> Statement<B> {
+    .guardCase(
+      pattern: pattern.map(transform),
+      value: value.map(transform),
+      elseBody: elseBody.map { $0.map(transform) }
+    )
+  }
+
+  private func mapIfCase<B>(
+    _ pattern: MatchPattern<A>,
+    _ value: Template<A>,
+    _ thenBody: [Statement<A>],
+    _ elseBody: [Statement<A>]?,
+    using transform: (A) -> B
+  ) -> Statement<B> {
+    .ifCase(
+      pattern: pattern.map(transform),
+      value: value.map(transform),
+      thenBody: thenBody.map { $0.map(transform) },
+      elseBody: elseBody?.map { $0.map(transform) }
+    )
   }
 
   private func mapSwitchCasePattern<B>(
