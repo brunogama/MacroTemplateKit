@@ -32,6 +32,9 @@ enum SourceEmitter {
       emitBinaryOperation(left, op, right, into: &buffer)
     case .propertyAccess(let base, let property):
       emitPropertyAccess(base, property, into: &buffer)
+    case .implicitMember(let name):
+      buffer.append(".")
+      buffer.append(escapeIdentifier(name))
     case .variableDeclaration(_, _, let initializer):
       // Legacy limitation (Renderer.renderDeclarations): only the
       // initializer expression is rendered; name/type produce no
@@ -42,6 +45,8 @@ enum SourceEmitter {
       emitPrefixed("try ", inner, into: &buffer)
     case .awaitExpression(let inner):
       emitPrefixed("await ", inner, into: &buffer)
+    case .inOut(let inner):
+      emitPrefixed("&", inner, into: &buffer)
     case .genericCall(let function, let typeArguments, let arguments):
       emitGenericCall(function, typeArguments, arguments, into: &buffer)
     case .arrayLiteral(let elements):
@@ -76,6 +81,7 @@ enum SourceEmitter {
   }
 
   // MARK: - Per-case emission
+
   //
   // One helper per `Template` case whose emission is more than a single
   // append. Split out of `emit(_:into:)` so that function stays under the
@@ -203,7 +209,9 @@ enum SourceEmitter {
     buffer.append(open)
     for (index, element) in elements.enumerated() {
       emit(element, into: &buffer)
-      if index != elements.count - 1 { buffer.append(", ") }
+      if index != elements.count - 1 {
+        buffer.append(", ")
+      }
     }
     buffer.append(close)
   }
@@ -222,7 +230,9 @@ enum SourceEmitter {
       emit(entry.key, into: &buffer)
       buffer.append(": ")
       emit(entry.value, into: &buffer)
-      if index != entries.count - 1 { buffer.append(", ") }
+      if index != entries.count - 1 {
+        buffer.append(", ")
+      }
     }
     buffer.append("]")
   }
@@ -341,7 +351,9 @@ enum SourceEmitter {
         buffer.append(": ")
       }
       emit(argument.value, into: &buffer)
-      if index != arguments.count - 1 { buffer.append(", ") }
+      if index != arguments.count - 1 {
+        buffer.append(", ")
+      }
     }
   }
 
@@ -372,7 +384,9 @@ enum SourceEmitter {
         buffer.append(": ")
         buffer.append(type)
       }
-      if index != sig.parameters.count - 1 { buffer.append(", ") }
+      if index != sig.parameters.count - 1 {
+        buffer.append(", ")
+      }
     }
     buffer.append(")")
     if let returnType = sig.returnType {

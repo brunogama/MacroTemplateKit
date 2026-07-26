@@ -36,6 +36,11 @@ extension Template {
     .propertyAccess(base: base, property: name)
   }
 
+  /// Creates a contextual member expression such as `.get` so callers can preserve type inference.
+  public static func member(_ name: String) -> Template<A> {
+    .implicitMember(name)
+  }
+
   /// Creates a chained property access template (`base.property`).
   public func property(_ name: String) -> Template<A> {
     .propertyAccess(base: self, property: name)
@@ -145,6 +150,11 @@ extension Template {
   /// Wraps this expression in `try await`.
   public func tryAwait() -> Template<A> {
     .tryExpression(.awaitExpression(self))
+  }
+
+  /// Wraps this expression as `&request` so invocation-side ownership stays structural.
+  public func passedInOut() -> Template<A> {
+    .inOut(self)
   }
 
   // MARK: - Generic Calls

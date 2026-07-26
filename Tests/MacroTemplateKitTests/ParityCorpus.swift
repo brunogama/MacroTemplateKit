@@ -28,9 +28,11 @@ enum ParityCorpus {
     case methodCall
     case binaryOperation
     case propertyAccess
+    case implicitMember
     case variableDeclaration
     case tryExpression
     case awaitExpression
+    case inOut
     case genericCall
     case arrayLiteral
     case tupleLiteral
@@ -75,9 +77,11 @@ enum ParityCorpus {
     case .methodCall: .methodCall
     case .binaryOperation: .binaryOperation
     case .propertyAccess: .propertyAccess
+    case .implicitMember: .implicitMember
     case .variableDeclaration: .variableDeclaration
     case .tryExpression: .tryExpression
     case .awaitExpression: .awaitExpression
+    case .inOut: .inOut
     case .genericCall: .genericCall
     case .arrayLiteral: .arrayLiteral
     case .tupleLiteral: .tupleLiteral
@@ -239,6 +243,8 @@ enum ParityCorpus {
 
     .syntax(ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier("embedded")))),
     .cast(.variable("value"), type: "String", kind: .conditional),
+    .implicitMember("get"),
+    .inOut(.variable("request")),
   ]
 
   /// Cover every Statement case. The exhaustive classifier above makes additions

@@ -9,7 +9,6 @@ import XCTest
 /// into valid SwiftSyntax declaration nodes with proper signatures, modifiers,
 /// and member structures.
 final class DeclarationRendererTests: XCTestCase {
-
   // MARK: - Function Declaration Tests
 
   func testRenderFunction_simple() throws {
@@ -26,7 +25,9 @@ final class DeclarationRendererTests: XCTestCase {
               function: "print",
               arguments: [
                 (label: nil, value: .literal(.string("Hello")))
-              ]))
+              ]
+            )
+          )
         ]
       )
     )
@@ -87,7 +88,8 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("func greet"), "Should contain function name")
     XCTAssertTrue(description.contains("name userName: String"), "Should contain labeled parameter")
     XCTAssertTrue(
-      description.contains("times count: Int"), "Should contain second labeled parameter")
+      description.contains("times count: Int"), "Should contain second labeled parameter"
+    )
   }
 
   func testRenderFunction_async() throws {
@@ -365,7 +367,8 @@ final class DeclarationRendererTests: XCTestCase {
             .propertyAccess(
               base: .variable("storage", payload: 1),
               property: "count"
-            ))
+            )
+          )
         ],
         setter: SetterSignature(
           parameterName: "newValue",
@@ -375,7 +378,9 @@ final class DeclarationRendererTests: XCTestCase {
                 function: "updateStorage",
                 arguments: [
                   (label: "count", value: .variable("newValue", payload: 2))
-                ]))
+                ]
+              )
+            )
           ]
         )
       )
@@ -490,7 +495,8 @@ final class DeclarationRendererTests: XCTestCase {
               isStatic: false,
               isLet: false,
               initializer: .literal(.string("MyType instance"))
-            )),
+            )
+          ),
           .function(
             FunctionSignature(
               name: "greet",
@@ -501,9 +507,12 @@ final class DeclarationRendererTests: XCTestCase {
                     function: "print",
                     arguments: [
                       (label: nil, value: .literal(.string("Hello")))
-                    ]))
+                    ]
+                  )
+                )
               ]
-            )),
+            )
+          ),
         ]
       )
     )
@@ -602,7 +611,8 @@ final class DeclarationRendererTests: XCTestCase {
               isStatic: false,
               isLet: true,
               initializer: nil
-            )),
+            )
+          ),
           .property(
             PropertySignature(
               name: "y",
@@ -610,7 +620,8 @@ final class DeclarationRendererTests: XCTestCase {
               isStatic: false,
               isLet: true,
               initializer: nil
-            )),
+            )
+          ),
           .function(
             FunctionSignature(
               name: "distance",
@@ -621,7 +632,8 @@ final class DeclarationRendererTests: XCTestCase {
               body: [
                 .returnStatement(.literal(.double(0.0)))
               ]
-            )),
+            )
+          ),
         ]
       )
     )
@@ -690,9 +702,11 @@ final class DeclarationRendererTests: XCTestCase {
                     isStatic: false,
                     isLet: true,
                     initializer: .literal(.integer(0))
-                  ))
+                  )
+                )
               ]
-            ))
+            )
+          )
         ]
       )
     )
@@ -715,7 +729,8 @@ final class DeclarationRendererTests: XCTestCase {
               typeName: "NestedType",
               conformances: ["Codable"],
               members: []
-            ))
+            )
+          )
         ]
       )
     )
@@ -746,7 +761,8 @@ final class DeclarationRendererTests: XCTestCase {
           EnumCaseSignature(name: "east"),
           EnumCaseSignature(name: "west"),
         ]
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("case north"))
@@ -764,7 +780,8 @@ final class DeclarationRendererTests: XCTestCase {
           EnumCaseSignature(name: "active", rawValue: "active"),
           EnumCaseSignature(name: "inactive", rawValue: "inactive"),
         ]
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("enum Status"))
@@ -780,7 +797,8 @@ final class DeclarationRendererTests: XCTestCase {
           EnumCaseSignature(name: "success", associatedTypes: ["String"]),
           EnumCaseSignature(name: "failure", associatedTypes: ["Error"]),
         ]
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("case success(String)"))
@@ -802,9 +820,11 @@ final class DeclarationRendererTests: XCTestCase {
               name: "label",
               type: "String",
               getter: [.returnStatement(.literal(.string("color")))]
-            ))
+            )
+          )
         ]
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("public enum Color"))
@@ -843,7 +863,8 @@ final class DeclarationRendererTests: XCTestCase {
       TypeAliasSignature(
         name: "RawValue",
         existingType: "UInt8"
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
     let text = result.description
     XCTAssertTrue(text.contains("typealias RawValue"))
@@ -856,7 +877,8 @@ final class DeclarationRendererTests: XCTestCase {
         accessLevel: .public,
         name: "Identifier",
         existingType: "String"
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
     let text = result.description
     XCTAssertTrue(text.contains("public typealias Identifier"))
@@ -868,7 +890,8 @@ final class DeclarationRendererTests: XCTestCase {
       TypeAliasSignature(
         name: "StringArray",
         existingType: "Array<String>"
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
     let text = result.description
     XCTAssertTrue(text.contains("typealias StringArray"))
@@ -890,7 +913,8 @@ final class DeclarationRendererTests: XCTestCase {
         whereRequirements: [
           .conformance("each Input", "Sendable")
         ]
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
     let text = result.formatted().description
     XCTAssertTrue(text.contains("@available"))
@@ -901,12 +925,13 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(text.contains("where each Input: Sendable"))
   }
 
-  func testRenderTypeAlias_mapPreservesStructure() throws {
+  func testRenderTypeAlias_mapPreservesStructure() {
     let decl: Declaration<Int> = .typeAlias(
       TypeAliasSignature(
         name: "Foo",
         existingType: "Bar"
-      ))
+      )
+    )
     let mapped = decl.map { $0 * 2 }
     if case .typeAlias(let sig) = mapped {
       XCTAssertEqual(sig.name, "Foo")
@@ -937,7 +962,8 @@ final class DeclarationRendererTests: XCTestCase {
           .conformance("each Value", "Sendable")
         ],
         body: []
-      ))
+      )
+    )
     let result = try Renderer.render(decl)
 
     let description = result.formatted().description
@@ -956,5 +982,106 @@ final class DeclarationRendererTests: XCTestCase {
       description.contains("where each Value: Sendable"),
       "Should contain generic where clause"
     )
+  }
+
+  func testRenderFunction_inoutParameterNormalizesDefaultValue() throws {
+    let parameter = ParameterSignature<Void>(
+      name: "value",
+      type: "Int",
+      specifiers: ["inout"],
+      defaultValue: .literal(.integer(0))
+    )
+
+    XCTAssertTrue(parameter.isInout)
+    XCTAssertTrue(parameter.specifiers.isEmpty)
+    XCTAssertNil(parameter.defaultValue)
+
+    let declaration = Declaration<Void>.function(
+      FunctionSignature(
+        name: "update",
+        parameters: [parameter],
+        body: []
+      )
+    )
+
+    let description = try Renderer.render(declaration).formatted().description
+    XCTAssertTrue(description.contains("func update(value: inout Int)"))
+    XCTAssertFalse(description.contains("inout Int ="))
+  }
+
+  func testRenderFunction_preservesParameterTypeComponentOrder() throws {
+    let declaration = Declaration<Void>.function(
+      FunctionSignature(
+        name: "register",
+        parameters: [
+          ParameterSignature(
+            name: "handler",
+            type: "() -> Void",
+            specifiers: ["borrowing"],
+            attributes: [.sendable]
+          ),
+          ParameterSignature(
+            name: "callback",
+            type: "(Int32) -> Void",
+            attributes: [
+              AttributeSignature(name: "convention", arguments: .raw("c"))
+            ]
+          ),
+        ],
+        body: []
+      )
+    )
+
+    let description = try Renderer.render(declaration).formatted().description
+
+    XCTAssertTrue(description.contains("handler: borrowing @Sendable () -> Void"))
+    XCTAssertTrue(description.contains("callback: @convention(c) (Int32) -> Void"))
+  }
+
+  func testRenderInitializerWithStructuredDefaultExpression() throws {
+    let declaration = Declaration<Void>.initDecl(
+      InitializerSignature(
+        accessLevel: .public,
+        parameters: [
+          ParameterSignature(
+            name: "client",
+            type: "any HTTPClient",
+            defaultValue: .functionCall(function: "NetworkClient", arguments: [])
+          )
+        ],
+        body: []
+      )
+    )
+
+    XCTAssertTrue(
+      try Renderer.render(declaration).formatted().description.contains(
+        "public init(client: any HTTPClient = NetworkClient())"
+      )
+    )
+  }
+
+  func testParameterDefaultsParticipateInDeclarationMap() {
+    let declaration = Declaration<Int>.function(
+      FunctionSignature(
+        name: "load",
+        parameters: [
+          ParameterSignature(
+            name: "value",
+            type: "Int",
+            defaultValue: .variable("defaultValue", payload: 4)
+          )
+        ]
+      )
+    )
+
+    let mapped = declaration.map(String.init)
+
+    guard case .function(let signature) = mapped,
+      case .variable(_, let payload)? = signature.parameters.first?.defaultValue
+    else {
+      return XCTFail("Expected a mapped structured default")
+    }
+
+    XCTAssertEqual(payload, "4")
   }
 }

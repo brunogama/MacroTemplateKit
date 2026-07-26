@@ -133,8 +133,23 @@ public indirect enum Declaration<A> {
 
 // MARK: - Supporting Types
 
+/// The throwing contract carried by a function declaration.
+///
+/// Modeling the complete effect as one value prevents invalid combinations while preserving
+/// typed throws and `rethrows` across extraction, transformation, and rendering.
+public enum ThrowingEffect: Equatable, Hashable, Sendable {
+  /// The function has no throwing clause.
+  case none
+
+  /// The function uses `throws`, optionally constrained to the source's error type spelling.
+  case `throws`(errorType: String? = nil)
+
+  /// The function uses `rethrows` because its effect depends on a function argument.
+  case `rethrows`
+}
+
 /// Function signature with all declaration components.
-public struct FunctionSignature<A>: Sendable where A: Sendable {
+public struct FunctionSignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
@@ -153,14 +168,22 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Generic parameter clause (e.g. `<T, each Element>`).
   public let genericParameters: [GenericParameterSignature]
 
-  /// Parameter list with labels, names, and types.
-  public let parameters: [ParameterSignature]
+  /// Parameter list whose defaults participate in the declaration's payload transformations.
+  public let parameters: [ParameterSignature<A>]
 
   /// Whether function is async.
   public let isAsync: Bool
 
-  /// Whether function can throw.
-  public let canThrow: Bool
+  /// The function's complete throwing contract.
+  public let throwingEffect: ThrowingEffect
+
+  /// Whether the signature contains either `throws` or `rethrows`.
+  ///
+  /// This compatibility projection lets Boolean callers inspect throwing behavior without
+  /// discarding the richer contract held by ``throwingEffect``.
+  public var canThrow: Bool {
+    throwingEffect != .none
+  }
 
   /// Return type (nil for Void).
   public let returnType: String?
@@ -171,6 +194,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Function body statements.
   public let body: [Statement<A>]
 
+  @inlinable
   public init(
     accessLevel: AccessLevel = .internal,
     attributes: [AttributeSignature] = [],
@@ -178,9 +202,44 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
     isMutating: Bool = false,
     name: String,
     genericParameters: [GenericParameterSignature] = [],
-    parameters: [ParameterSignature] = [],
+    parameters: [ParameterSignature<A>] = [],
     isAsync: Bool = false,
     canThrow: Bool = false,
+    returnType: String? = nil,
+    whereRequirements: [WhereRequirement] = [],
+    body: [Statement<A>] = []
+  ) {
+    self.init(
+      accessLevel: accessLevel,
+      attributes: attributes,
+      isStatic: isStatic,
+      isMutating: isMutating,
+      name: name,
+      genericParameters: genericParameters,
+      parameters: parameters,
+      isAsync: isAsync,
+      throwingEffect: canThrow ? .throws() : .none,
+      returnType: returnType,
+      whereRequirements: whereRequirements,
+      body: body
+    )
+  }
+
+  /// Creates a function signature with an explicit throwing contract.
+  ///
+  /// Keeping this initializer separate from the legacy Boolean initializer prevents ordinary
+  /// call sites from becoming ambiguous while allowing lossless typed-throws and `rethrows` models.
+  @inlinable
+  public init(
+    accessLevel: AccessLevel = .internal,
+    attributes: [AttributeSignature] = [],
+    isStatic: Bool = false,
+    isMutating: Bool = false,
+    name: String,
+    genericParameters: [GenericParameterSignature] = [],
+    parameters: [ParameterSignature<A>] = [],
+    isAsync: Bool = false,
+    throwingEffect: ThrowingEffect,
     returnType: String? = nil,
     whereRequirements: [WhereRequirement] = [],
     body: [Statement<A>] = []
@@ -193,52 +252,125 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
     self.genericParameters = genericParameters
     self.parameters = parameters
     self.isAsync = isAsync
-    self.canThrow = canThrow
+    self.throwingEffect = throwingEffect
     self.returnType = returnType
     self.whereRequirements = whereRequirements
     self.body = body
   }
 }
 
-/// Parameter signature for function parameters.
-public struct ParameterSignature: Equatable, Hashable, Sendable {
-  /// External label (nil for no label, "_" for explicit no label).
+/// A function parameter whose default expression shares the declaration's metadata payload.
+///
+/// Keeping defaults inside `Template` ensures declaration transformations cannot lose or
+/// bypass expression structure.
+public struct ParameterSignature<A: Sendable>: Sendable {
+  /// The external label, kept separate from the local name so rendering preserves call syntax.
   public let label: String?
 
-  /// Internal parameter name.
+  /// The local name used by the generated implementation.
   public let name: String
 
-  /// Parameter type.
+  /// The declared Swift type, retained as type syntax rather than executable expression syntax.
   public let type: String
 
-  /// Parameter attributes that prefix the type (e.g. `@escaping`).
+  /// Type specifiers that must precede attributes, such as `borrowing` or `isolated`.
+  ///
+  /// `inout` remains a dedicated semantic flag because it also controls whether a default value
+  /// is valid. Passing `"inout"` here is accepted and normalized into ``isInout``.
+  public let specifiers: [String]
+
+  /// Attributes that qualify the parameter type, such as `@escaping`.
   public let attributes: [AttributeSignature]
 
-  /// Whether parameter is inout.
+  /// Type specifiers that follow attributes on toolchains whose syntax distinguishes that order.
+  ///
+  /// Keeping these separate prevents a cross-version extraction from moving a specifier across
+  /// an attribute and changing, or invalidating, the rendered type.
+  public let lateSpecifiers: [String]
+
+  /// Whether the declaration transfers the argument with `inout` ownership.
   public let isInout: Bool
 
-  /// Default value expression as raw string (e.g., ".shared", "nil", "42").
-  public let defaultValue: String?
+  /// The structural default expression, carrying the same metadata payload as the declaration.
+  ///
+  /// This is always `nil` when `isInout` is `true` because Swift does not permit default
+  /// values on `inout` parameters.
+  public let defaultValue: Template<A>?
 
+  /// Creates a parameter signature whose optional default remains part of the template algebra.
+  ///
+  /// - Parameters:
+  ///   - label: The external call-site label, or `nil` to reuse `name`.
+  ///   - name: The local name visible inside the generated implementation.
+  ///   - type: The declared Swift parameter type.
+  ///   - specifiers: Type specifiers that appear before attributes. `inout` is normalized into
+  ///     `isInout` so the default-value invariant remains centralized.
+  ///   - attributes: Attributes that qualify the parameter type.
+  ///   - lateSpecifiers: Type specifiers that appear after attributes on supporting toolchains.
+  ///   - isInout: Whether the declaration uses `inout` ownership.
+  ///   - defaultValue: A structural default expression that shares payload transformations.
+  ///     The initializer discards this value when `isInout` is `true` so the signature cannot
+  ///     represent syntax that Swift rejects.
+  @inlinable
   public init(
     label: String? = nil,
     name: String,
     type: String,
+    specifiers: [String] = [],
     attributes: [AttributeSignature] = [],
+    lateSpecifiers: [String] = [],
     isInout: Bool = false,
-    defaultValue: String? = nil
+    defaultValue: Template<A>? = nil
   ) {
+    let normalizedSpecifiers: [String]
+    let normalizedIsInout: Bool
+    if specifiers.isEmpty {
+      normalizedSpecifiers = specifiers
+      normalizedIsInout = isInout
+    } else if specifiers.contains("inout") {
+      normalizedSpecifiers = specifiers.filter { $0 != "inout" }
+      normalizedIsInout = true
+    } else {
+      normalizedSpecifiers = specifiers
+      normalizedIsInout = isInout
+    }
+
     self.label = label
     self.name = name
     self.type = type
+    self.specifiers = normalizedSpecifiers
     self.attributes = attributes
-    self.isInout = isInout
-    self.defaultValue = defaultValue
+    self.lateSpecifiers = lateSpecifiers
+    self.isInout = normalizedIsInout
+    self.defaultValue = normalizedIsInout ? nil : defaultValue
+  }
+
+  /// Transforms metadata in the default expression while preserving the parameter signature.
+  ///
+  /// This keeps parameter defaults in the same functor transformation as declaration bodies.
+  ///
+  /// - Parameter transform: Function applied to each payload in the default expression.
+  /// - Returns: A parameter with identical signature structure and transformed default metadata.
+  public func map<B: Sendable>(_ transform: (A) -> B) -> ParameterSignature<B> {
+    ParameterSignature<B>(
+      label: label,
+      name: name,
+      type: type,
+      specifiers: specifiers,
+      attributes: attributes,
+      lateSpecifiers: lateSpecifiers,
+      isInout: isInout,
+      defaultValue: defaultValue?.map(transform)
+    )
   }
 }
 
+extension ParameterSignature: Equatable where A: Equatable {}
+
+extension ParameterSignature: Hashable where A: Hashable {}
+
 /// Property signature for stored properties.
-public struct PropertySignature<A>: Sendable where A: Sendable {
+public struct PropertySignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
   public let attributes: [AttributeSignature]
@@ -268,7 +400,7 @@ public struct PropertySignature<A>: Sendable where A: Sendable {
 }
 
 /// Computed property signature with accessors.
-public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
+public struct ComputedPropertySignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
   public let attributes: [AttributeSignature]
@@ -297,13 +429,9 @@ public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
   }
 }
 
-/// Setter signature with parameter name and body.
-public struct SetterSignature<A>: Sendable where A: Sendable {
-  /// Explicit setter parameter name, as in `set(rawValue) { ... }`.
-  ///
-  /// `nil` — the default — emits a bare `set { ... }`, which is the common
-  /// form and lets the body refer to the implicit `newValue`. Supply a name
-  /// only when the setter needs to bind the incoming value to something else.
+/// Setter signature with an optional explicit parameter name and body.
+public struct SetterSignature<A: Sendable>: Sendable {
+  /// Explicit setter parameter name, or `nil` for Swift's implicit `newValue`.
   public let parameterName: String?
 
   /// Setter body statements.
@@ -316,7 +444,7 @@ public struct SetterSignature<A>: Sendable where A: Sendable {
 }
 
 /// Extension signature with type name, conformances, where clause, and members.
-public struct ExtensionSignature<A>: Sendable where A: Sendable {
+public struct ExtensionSignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
   public let typeName: String
@@ -340,7 +468,7 @@ public struct ExtensionSignature<A>: Sendable where A: Sendable {
 }
 
 /// Struct signature with name and members.
-public struct StructSignature<A>: Sendable where A: Sendable {
+public struct StructSignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
   public let attributes: [AttributeSignature]
@@ -370,7 +498,7 @@ public struct StructSignature<A>: Sendable where A: Sendable {
 }
 
 /// Initializer signature for init declarations.
-public struct InitializerSignature<A>: Sendable where A: Sendable {
+public struct InitializerSignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
@@ -383,8 +511,8 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
   /// Generic parameter clause (e.g. `<T, each Element>`).
   public let genericParameters: [GenericParameterSignature]
 
-  /// Parameter list with labels, names, types, and default values.
-  public let parameters: [ParameterSignature]
+  /// Parameter list whose defaults participate in the declaration's payload transformations.
+  public let parameters: [ParameterSignature<A>]
 
   /// Whether initializer can throw.
   public let canThrow: Bool
@@ -400,7 +528,7 @@ public struct InitializerSignature<A>: Sendable where A: Sendable {
     attributes: [AttributeSignature] = [],
     isFailable: Bool = false,
     genericParameters: [GenericParameterSignature] = [],
-    parameters: [ParameterSignature] = [],
+    parameters: [ParameterSignature<A>] = [],
     canThrow: Bool = false,
     whereRequirements: [WhereRequirement] = [],
     body: [Statement<A>] = []
@@ -429,8 +557,8 @@ extension Declaration {
   ///
   /// - Parameter transform: Function applied to each template payload
   /// - Returns: New declaration with transformed payloads and identical structure
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> Declaration<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> Declaration<B>
+  where A: Sendable {
     switch self {
     case .function(let signature):
       return .function(signature.map(transform))
@@ -453,8 +581,8 @@ extension Declaration {
 }
 
 extension FunctionSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> FunctionSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> FunctionSignature<B>
+  where A: Sendable {
     FunctionSignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
@@ -462,9 +590,9 @@ extension FunctionSignature {
       isMutating: isMutating,
       name: name,
       genericParameters: genericParameters,
-      parameters: parameters,
+      parameters: parameters.map { $0.map(transform) },
       isAsync: isAsync,
-      canThrow: canThrow,
+      throwingEffect: throwingEffect,
       returnType: returnType,
       whereRequirements: whereRequirements,
       body: body.map { $0.map(transform) }
@@ -473,8 +601,8 @@ extension FunctionSignature {
 }
 
 extension PropertySignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> PropertySignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> PropertySignature<B>
+  where A: Sendable {
     PropertySignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
@@ -488,8 +616,9 @@ extension PropertySignature {
 }
 
 extension ComputedPropertySignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> ComputedPropertySignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B)
+    -> ComputedPropertySignature<B>
+  where A: Sendable {
     ComputedPropertySignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
@@ -503,8 +632,8 @@ extension ComputedPropertySignature {
 }
 
 extension SetterSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> SetterSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> SetterSignature<B>
+  where A: Sendable {
     SetterSignature<B>(
       parameterName: parameterName,
       body: body.map { $0.map(transform) }
@@ -513,8 +642,8 @@ extension SetterSignature {
 }
 
 extension ExtensionSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> ExtensionSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> ExtensionSignature<B>
+  where A: Sendable {
     ExtensionSignature<B>(
       accessLevel: accessLevel,
       typeName: typeName,
@@ -526,8 +655,8 @@ extension ExtensionSignature {
 }
 
 extension StructSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> StructSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> StructSignature<B>
+  where A: Sendable {
     StructSignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
@@ -541,14 +670,14 @@ extension StructSignature {
 }
 
 extension InitializerSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> InitializerSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> InitializerSignature<B>
+  where A: Sendable {
     InitializerSignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
       isFailable: isFailable,
       genericParameters: genericParameters,
-      parameters: parameters,
+      parameters: parameters.map { $0.map(transform) },
       canThrow: canThrow,
       whereRequirements: whereRequirements,
       body: body.map { $0.map(transform) }

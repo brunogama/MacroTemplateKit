@@ -93,7 +93,7 @@ public enum SwitchCasePattern<A> {
 /// The type parameter `A` represents metadata attached to variable references,
 /// allowing compile-time tracking of variable usage without affecting rendering.
 ///
-/// The 9 cases cover all common code generation patterns needed for Swift macro expansion.
+/// The cases cover common code generation patterns needed for Swift macro expansion.
 public indirect enum Template<A> {
   // MARK: - Literals
 
@@ -176,6 +176,12 @@ public indirect enum Template<A> {
     property: String
   )
 
+  /// Member access without an explicit base, such as `.get` or `.shared`.
+  ///
+  /// This is distinct from `propertyAccess` because manufacturing a fake base changes
+  /// the generated program and prevents contextual type inference.
+  case implicitMember(String)
+
   // MARK: - Declarations
 
   /// Variable declaration with optional type annotation and initializer.
@@ -201,6 +207,12 @@ public indirect enum Template<A> {
   ///
   /// SwiftSyntax equivalent: `AwaitExprSyntax`
   case awaitExpression(Template<A>)
+
+  /// An inout argument expression such as `&request`.
+  ///
+  /// Invocation-site ownership is expression structure, so it must not be encoded by
+  /// prefixing an identifier string with `&`.
+  case inOut(Template<A>)
 
   // MARK: - Generic Calls
 
@@ -470,6 +482,10 @@ public indirect enum Template<A> {
       return .assignment(lhs: lhs.map(transform), rhs: rhs.map(transform))
     case .selfAccess(let typeName):
       return .selfAccess(typeName)
+    case .implicitMember(let name):
+      return .implicitMember(name)
+    case .inOut(let expression):
+      return .inOut(expression.map(transform))
     default:
       return nil
     }

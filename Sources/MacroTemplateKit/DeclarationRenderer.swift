@@ -57,7 +57,6 @@ extension Renderer {
   // MARK: - Modifier Helpers
 
   // MARK: - Parameter Helpers
-
 }
 
 extension Renderer {
@@ -76,6 +75,7 @@ extension Renderer {
   /// internal name so the token-parity suite can call it directly
   static func renderParsed<A: Sendable>(_ declaration: Declaration<A>) throws -> DeclSyntax {
     var buffer = ""
+    buffer.reserveCapacity(128)
     SourceEmitter.emit(declaration, into: &buffer)
     let decl: DeclSyntax = "\(raw: buffer)"
     guard !decl.hasError else {

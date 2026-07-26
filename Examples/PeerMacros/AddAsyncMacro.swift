@@ -33,9 +33,9 @@
 //       }
 //   }
 
+import MacroTemplateKit
 import SwiftSyntax
 import SwiftSyntaxMacros
-import MacroTemplateKit
 
 // MARK: - Error Type
 
@@ -67,9 +67,9 @@ private enum CompletionHandlerShape {
 /// overload that bridges to `withCheckedContinuation` / `withCheckedThrowingContinuation`.
 public struct AddAsyncMacro: PeerMacro {
     public static func expansion(
-        of node: AttributeSyntax,
+        of _: AttributeSyntax,
         providingPeersOf declaration: some DeclSyntaxProtocol,
-        in context: some MacroExpansionContext
+        in _: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
         guard let funcDecl = declaration.as(FunctionDeclSyntax.self) else {
             throw AddAsyncError.notAFunction
@@ -124,7 +124,7 @@ public struct AddAsyncMacro: PeerMacro {
             )
         )
 
-        return [try Renderer.render(peerFunction)]
+        return try [Renderer.render(peerFunction)]
     }
 }
 
@@ -134,7 +134,7 @@ public struct AddAsyncMacro: PeerMacro {
 private struct AsyncSignatureDescription {
     let accessLevel: AccessLevel
     let name: String
-    let parameters: [ParameterSignature]
+    let parameters: [ParameterSignature<Void>]
     let canThrow: Bool
     let returnType: String?
 }
@@ -142,11 +142,11 @@ private struct AsyncSignatureDescription {
 private func buildAsyncSignature(
     name: String,
     accessLevel: AccessLevel,
-    parameters: [ParameterSignature],
+    parameters: [ParameterSignature<Void>],
     handlerShape: CompletionHandlerShape
 ) -> AsyncSignatureDescription {
     switch handlerShape {
-    case .resultType(let successType):
+    case let .resultType(successType):
         return AsyncSignatureDescription(
             accessLevel: accessLevel,
             name: name,
@@ -154,7 +154,7 @@ private func buildAsyncSignature(
             canThrow: true,
             returnType: successType
         )
-    case .plainType(let payloadType):
+    case let .plainType(payloadType):
         return AsyncSignatureDescription(
             accessLevel: accessLevel,
             name: name,
@@ -171,9 +171,9 @@ private func buildAsyncBody(
     handlerShape: CompletionHandlerShape
 ) -> [Statement<Void>] {
     switch handlerShape {
-    case .resultType(let successType):
+    case let .resultType(successType):
         return buildResultBody(functionName: functionName, callArguments: callArguments, successType: successType)
-    case .plainType(let payloadType):
+    case let .plainType(payloadType):
         return buildPlainBody(functionName: functionName, callArguments: callArguments, hasPayload: payloadType != nil)
     }
 }
@@ -183,7 +183,7 @@ private func buildAsyncBody(
 private func buildResultBody(
     functionName: String,
     callArguments: [(label: String?, argName: String)],
-    successType: String
+    successType _: String
 ) -> [Statement<Void>] {
     // Build: continuation.resume(returning: value)
     let resumeReturning: Template<Void> = .methodCall(
@@ -236,7 +236,7 @@ private func buildResultBody(
                             body: [.expression(syncCall)]
                         )
                     )
-                )
+                ),
             ]
         )
     )
@@ -289,7 +289,7 @@ private func buildPlainBody(
                             body: [.expression(syncCall)]
                         )
                     )
-                )
+                ),
             ]
         )
     )
@@ -342,15 +342,28 @@ private func resolveHandlerShape(from handlerType: FunctionTypeSyntax) -> Comple
         return .plainType(payloadType: typeText)
     }
     guard let identType = firstParam.type.as(IdentifierTypeSyntax.self),
-          let firstArg = identType.genericArgumentClause?.arguments.first,
-          case .type(let successType) = firstArg.argument
+          let successType = firstGenericArgumentType(in: identType)
     else {
         return .plainType(payloadType: typeText)
     }
     return .resultType(successType: successType.description.trimmingCharacters(in: .whitespaces))
 }
 
-private func dropLastParameter(from funcDecl: FunctionDeclSyntax) -> [ParameterSignature] {
+private func firstGenericArgumentType(in type: IdentifierTypeSyntax) -> TypeSyntax? {
+    guard let argument = type.genericArgumentClause?.arguments.first else {
+        return nil
+    }
+    #if canImport(SwiftSyntax603)
+        guard case let .type(result) = argument.argument else {
+            return nil
+        }
+        return result
+    #else
+        return argument.argument
+    #endif
+}
+
+private func dropLastParameter(from funcDecl: FunctionDeclSyntax) -> [ParameterSignature<Void>] {
     let params = funcDecl.signature.parameterClause.parameters
     guard params.count > 1 else {
         return []
@@ -372,7 +385,7 @@ private func dropLastParameter(from funcDecl: FunctionDeclSyntax) -> [ParameterS
 }
 
 private func buildCallArguments(
-    from parameters: [ParameterSignature]
+    from parameters: [ParameterSignature<Void>]
 ) -> [(label: String?, argName: String)] {
     parameters.map { param in
         (label: param.label, argName: param.name)
@@ -381,13 +394,20 @@ private func buildCallArguments(
 
 private func extractAccessLevel(from funcDecl: FunctionDeclSyntax) -> AccessLevel {
     let modifierNames = funcDecl.modifiers.map { $0.name.text }
-    if modifierNames.contains("public") { return .public }
-    if modifierNames.contains("fileprivate") { return .fileprivate }
-    if modifierNames.contains("private") { return .private }
+    if modifierNames.contains("public") {
+        return .public
+    }
+    if modifierNames.contains("fileprivate") {
+        return .fileprivate
+    }
+    if modifierNames.contains("private") {
+        return .private
+    }
     return .internal
 }
 
 // MARK: - Before/After Comparison Notes
+
 //
 // BEFORE: raw string interpolation (from swift-syntax/Examples)
 //

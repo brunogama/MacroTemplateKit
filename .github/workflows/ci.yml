@@ -6,13 +6,16 @@ on:
     # release cycle because this said `branches: [main]` -- pushes to
     # perf/render-engine triggered nothing at all, so nothing was checked until
     # a PR was opened.
-    branches: ['**']
+    branches: ["**"]
   pull_request:
     branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   manifests:
@@ -42,7 +45,7 @@ jobs:
         run: Scripts/build.sh
 
       - name: Run Tests
-        run: swift test --parallel
+        run: Scripts/swift-package.sh test --parallel
 
   build-release:
     name: Build Release
@@ -78,7 +81,7 @@ jobs:
 
       # Not a timing run -- absolutes on a shared runner are meaningless, and
       # ADR 0005 clause 0 forbids comparing them across invocations anyway.
-      # This exists to enforce clause 3: the pipelines must stay token-identical.
+      # This enforces clause 3: the pipelines must stay token-identical.
       # Smallest size and iteration count that still exercises every workload.
       #
       # `--workloads` is listed explicitly because `case-path` is not in the
@@ -117,12 +120,13 @@ jobs:
         run: Scripts/select-xcode.sh
 
       - name: Generate Coverage
-        run: swift test --enable-code-coverage
+        run: Scripts/swift-package.sh test --enable-code-coverage
 
       - name: Export Coverage
         run: |
-          xcrun llvm-cov export \
-            .build/debug/MacroTemplateKitPackageTests.xctest/Contents/MacOS/MacroTemplateKitPackageTests \
+          test_binary=".build/debug/MacroTemplateKitPackageTests.xctest"
+          test_binary="$test_binary/Contents/MacOS/MacroTemplateKitPackageTests"
+          xcrun llvm-cov export "$test_binary" \
             -instr-profile .build/debug/codecov/default.profdata \
             -format lcov \
             -ignore-filename-regex Tests/ \

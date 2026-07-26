@@ -1,9 +1,9 @@
 // swift-tools-version: 5.10
-// KEEP IN SYNC WITH Package.swift. Everything below line 1 of the two manifests
-// must be byte-identical; `Scripts/check-manifests.sh` enforces it in CI. They
-// have drifted before -- MacroExamples was added to one and not the other, and
-// because a Swift 6 toolchain resolves this file and ignores Package.swift, the
-// gap was invisible until someone built on an older toolchain.
+// KEEP THE COMMON MANIFEST IN SYNC WITH THE VERSION-SPECIFIC MANIFESTS.
+// Package@swift-6.0.swift is byte-identical below line 1. Package@swift-6.2.swift
+// appends only target-scoped warning controls. `Scripts/check-manifests.sh`
+// enforces both relationships because SwiftPM selects one manifest and ignores
+// the others, which previously let the MacroExamples target drift unnoticed.
 import PackageDescription
 
 let package = Package(
@@ -21,7 +21,7 @@ let package = Package(
     )
   ],
   dependencies: [
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", "510.0.0"..<"700.0.0")
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.1"..<"700.0.0")
   ],
   targets: [
     .target(

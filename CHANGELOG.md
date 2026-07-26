@@ -125,8 +125,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   See also `docs/adr/0002-relax-render-engine-merge-gate.md`.
 
+## [0.0.7] - 2026-07-13
+
+### Breaking Changes
+
+- `ParameterSignature` now carries the declaration payload and accepts a `Template` default expression. This keeps parameter defaults inside the same structural transformation as the enclosing declaration.
+
 ### Bug Fixes
 
+- Preserve parameter type-specifier order and argument-bearing attributes across extraction and
+  rendering on SwiftSyntax 600 and 603.
+- Normalize defaults away from `inout` parameters so rendered declarations remain valid Swift.
 - Address second round of PR #20 review feedback
 - Address PR #20 review feedback
 - Document single-binding limitation, add @available extraction tests
@@ -149,6 +158,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
+- Preserve ordinary throws, typed throws, and rethrows through the function declaration model.
+- Expose parameter-clause extraction so macro adapters can attach structured defaults without
+  duplicating Swift's parameter grammar.
+- Add contextual member expressions for code such as `.get` and `.shared`.
+- Add invocation-side inout expressions for code such as `&request`.
 - Raw attribute args, extension access level, strict concurrency
 - Extract all variable bindings, add extractAll public API
 - Add Extractor API, wither methods, and convenience combinators
@@ -218,7 +232,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - **quick-10**: Add trailing commas to InheritedTypeListSyntax elements
-- Update Package@swift-6.0.swift swift-syntax range to 510..<700
+- Update <Package@swift-6.0.swift> swift-syntax range to 510..<700
 - **lint**: Remove array_init rule and disable tags from tests
 - **ci**: Use direct git-cliff installation instead of docker action
 - **ci**: Use Xcode-bundled Swift instead of standalone toolchain
@@ -258,7 +272,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/brunogama/MacroTemplateKit/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.7...v0.1.0
+[0.0.7]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.6...v0.0.7
 [0.0.5]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/brunogama/MacroTemplateKit/compare/v.0.0.3...v0.0.4
 [.0.0.3]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.1...v.0.0.3
-

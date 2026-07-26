@@ -3,19 +3,18 @@ import SwiftSyntax
 import XCTest
 
 final class PublicExamplesTests: XCTestCase {
-
   private func normalized(_ string: String) -> String {
     string.filter { !$0.isWhitespace && !$0.isNewline }
   }
 
-  func testVoidVariableConvenienceMatchesExplicitPayload() throws {
+  func testVoidVariableConvenienceMatchesExplicitPayload() {
     let template = Template<Void>.variable("name")
     guard case .variable("name", _) = template else {
       return XCTFail("Expected variable convenience to create a variable template")
     }
   }
 
-  func testVoidPropertyConvenienceMatchesExplicitPayload() throws {
+  func testVoidPropertyConvenienceMatchesExplicitPayload() {
     let template = Template<Void>.property("count", on: "storage")
     guard case .propertyAccess(let base, "count") = template,
       case .variable("storage", _) = base
@@ -184,6 +183,37 @@ final class PublicExamplesTests: XCTestCase {
         }
         """
       )
+    )
+  }
+
+  func testStructuredParameterDefaultsRenderExpectedCode() throws {
+    let declaration: DeclSyntax = try Renderer.render(
+      Declaration<Void>.initDecl(
+        InitializerSignature(
+          parameters: [
+            ParameterSignature<Void>(
+              name: "client",
+              type: "any HTTPClient",
+              defaultValue: .functionCall(function: "NetworkClient", arguments: [])
+            ),
+            ParameterSignature<Void>(
+              name: "policy",
+              type: "Policy",
+              defaultValue: .implicitMember("standard")
+            ),
+          ],
+          body: []
+        )
+      )
+    )
+
+    XCTAssertTrue(
+      normalized(declaration.formatted().description)
+        .contains(
+          normalized(
+            "init(client: any HTTPClient = NetworkClient(), policy: Policy = .standard)"
+          )
+        )
     )
   }
 }

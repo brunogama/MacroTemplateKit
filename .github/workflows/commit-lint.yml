@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   commitlint:
     name: Validate Commits
@@ -24,21 +27,33 @@ jobs:
 
       - name: Install commitlint
         run: |
-          npm install --save-dev @commitlint/cli @commitlint/config-conventional
+          npm install --no-save --package-lock=false @commitlint/cli @commitlint/config-conventional
 
       - name: Validate PR commits
         if: github.event_name == 'pull_request'
         run: |
-          echo "Validating commits from ${{ github.event.pull_request.base.sha }} to ${{ github.event.pull_request.head.sha }}"
-          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          echo "Validating first-parent commits from $base to $head"
+          while IFS= read -r commit; do
+            echo "Validating $commit"
+            git show --quiet --format=%B "$commit" | npx commitlint --verbose
+          done < <(git rev-list --first-parent --reverse "$base..$head")
 
       - name: Validate push commits
         if: github.event_name == 'push'
         run: |
-          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+          set -euo pipefail
+          base="${{ github.event.before }}"
+          head="${{ github.sha }}"
+          if [ "$base" = "0000000000000000000000000000000000000000" ]; then
             echo "New branch detected, validating HEAD commit only"
-            npx commitlint --from HEAD~1 --to HEAD --verbose
+            git show --quiet --format=%B "$head" | npx commitlint --verbose
           else
-            echo "Validating commits from ${{ github.event.before }} to ${{ github.sha }}"
-            npx commitlint --from ${{ github.event.before }} --to ${{ github.sha }} --verbose
+            echo "Validating first-parent commits from $base to $head"
+            while IFS= read -r commit; do
+              echo "Validating $commit"
+              git show --quiet --format=%B "$commit" | npx commitlint --verbose
+            done < <(git rev-list --first-parent --reverse "$base..$head")
           fi

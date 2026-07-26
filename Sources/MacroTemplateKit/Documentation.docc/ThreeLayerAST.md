@@ -21,7 +21,7 @@ Template<A>             ───>  ExprSyntax
 ``Template`` represents expression-level constructs: literals, variable references, function calls, property access, binary operations, closures, and more. Every ``Template`` renders to an `ExprSyntax`.
 
 ```swift
-let call: ExprSyntax = Renderer.render(
+let call: ExprSyntax = try Renderer.render(
     Template<Void>.call(
         "fetchUser",
         arguments: [
@@ -38,7 +38,7 @@ let call: ExprSyntax = Renderer.render(
 Statements contain templates:
 
 ```swift
-let binding: CodeBlockItemSyntax = Renderer.render(
+let binding: CodeBlockItemSyntax = try Renderer.render(
     Statement<Void>.letBinding(
         name: "data",
         type: nil,
@@ -60,7 +60,7 @@ Use ``EnumSignature`` and ``EnumCaseSignature`` to build enum declarations, and 
 Declarations contain statements, which contain templates:
 
 ```swift
-let fn: DeclSyntax = Renderer.render(
+let fn: DeclSyntax = try Renderer.render(
     Declaration.function(FunctionSignature(
         accessLevel: .public,
         name: "loadUser",

@@ -50,15 +50,18 @@ extension SourceEmitter {
       modifiers: signature.accessLevel,
       isStatic: signature.isStatic,
       isMutating: signature.isMutating,
-      into: &buffer)
+      into: &buffer
+    )
     buffer.append("func ")
     buffer.append(escapeIdentifier(signature.name))
     emit(genericParameters: signature.genericParameters, into: &buffer)
     buffer.append("(")
     emit(parameters: signature.parameters, into: &buffer)
     buffer.append(")")
-    if signature.isAsync { buffer.append(" async") }
-    if signature.canThrow { buffer.append(" throws") }
+    if signature.isAsync {
+      buffer.append(" async")
+    }
+    emit(throwingEffect: signature.throwingEffect, into: &buffer)
     if let returnType = signature.returnType {
       buffer.append(" -> ")
       buffer.append(returnType)
@@ -194,12 +197,16 @@ extension SourceEmitter {
     emit(attributes: signature.attributes, into: &buffer)
     emit(modifiers: signature.accessLevel, into: &buffer)
     buffer.append("init")
-    if signature.isFailable { buffer.append("?") }
+    if signature.isFailable {
+      buffer.append("?")
+    }
     emit(genericParameters: signature.genericParameters, into: &buffer)
     buffer.append("(")
     emit(parameters: signature.parameters, into: &buffer)
     buffer.append(")")
-    if signature.canThrow { buffer.append(" throws") }
+    if signature.canThrow {
+      buffer.append(" throws")
+    }
     emit(whereRequirements: signature.whereRequirements, into: &buffer)
     buffer.append(" {\n")
     emitStatements(signature.body, into: &buffer)
@@ -251,8 +258,12 @@ extension SourceEmitter {
     case .private: buffer.append("private ")
     case .fileprivate: buffer.append("fileprivate ")
     }
-    if isStatic { buffer.append("static ") }
-    if isMutating { buffer.append("mutating ") }
+    if isStatic {
+      buffer.append("static ")
+    }
+    if isMutating {
+      buffer.append("mutating ")
+    }
   }
 
   /// Text-emission counterpart to `Renderer.renderGenericParameterClause`:
@@ -275,7 +286,9 @@ extension SourceEmitter {
         buffer.append(": ")
         buffer.append(constraint)
       }
-      if index != genericParameters.count - 1 { buffer.append(", ") }
+      if index != genericParameters.count - 1 {
+        buffer.append(", ")
+      }
     }
     buffer.append(">")
   }
@@ -298,7 +311,9 @@ extension SourceEmitter {
       case .sameType: buffer.append(" == ")
       }
       buffer.append(requirement.rightType)
-      if index != whereRequirements.count - 1 { buffer.append(", ") }
+      if index != whereRequirements.count - 1 {
+        buffer.append(", ")
+      }
     }
   }
 
@@ -310,42 +325,70 @@ extension SourceEmitter {
     buffer.append(conformances.joined(separator: ", "))
   }
 
-  /// Text-emission counterpart to `Renderer.renderParameterList`: emits
-  /// `[label ]name: [attrs ][inout ]Type[ = default][, ...]` per parameter,
-  /// unparenthesized — callers wrap the result in `(...)`. Mirrors the
-  /// legacy helper's `firstName`/`secondName` logic exactly: when `label`
-  /// is present it becomes the first (external) name and `name` becomes
-  /// the second (internal) name; when absent, `name` alone is both.
-  private static func emit(parameters: [ParameterSignature], into buffer: inout String) {
+  /// Emits an unparenthesized function parameter list while preserving the
+  /// source ordering of ownership specifiers, attributes, and type syntax.
+  private static func emit<A: Sendable>(
+    parameters: [ParameterSignature<A>],
+    into buffer: inout String
+  ) {
     for (index, parameter) in parameters.enumerated() {
       if let label = parameter.label {
-        // The external label is *not* escaped: Swift accepts keywords
-        // bare in label position (`foo(default: 1)`), so backticking it
-        // would be needless noise. The internal name is a binding and
-        // does need escaping.
         buffer.append(label)
         buffer.append(" ")
         buffer.append(escapeIdentifier(parameter.name))
       } else {
-        // `name` serves as both label and binding here, so it must be
-        // escaped for the binding to be referenceable in the body.
         buffer.append(escapeIdentifier(parameter.name))
       }
       buffer.append(": ")
-      if !parameter.attributes.isEmpty {
-        buffer.append(
-          parameter.attributes.map(Renderer.renderAttributeSource).joined(separator: " "))
-        buffer.append(" ")
-      }
-      if parameter.isInout {
-        buffer.append("inout ")
+
+      let hasTypeQualifiers =
+        parameter.isInout || !parameter.specifiers.isEmpty || !parameter.attributes.isEmpty
+        || !parameter.lateSpecifiers.isEmpty
+      if hasTypeQualifiers {
+        if parameter.isInout {
+          buffer.append("inout ")
+        }
+        for specifier in parameter.specifiers {
+          buffer.append(specifier)
+          buffer.append(" ")
+        }
+        for attribute in parameter.attributes {
+          buffer.append(Renderer.renderAttributeSource(attribute))
+          buffer.append(" ")
+        }
+        for specifier in parameter.lateSpecifiers {
+          buffer.append(specifier)
+          buffer.append(" ")
+        }
       }
       buffer.append(parameter.type)
+
       if let defaultValue = parameter.defaultValue {
         buffer.append(" = ")
-        buffer.append(defaultValue)
+        emit(defaultValue, into: &buffer)
       }
-      if index != parameters.count - 1 { buffer.append(", ") }
+      if index != parameters.count - 1 {
+        buffer.append(", ")
+      }
+    }
+  }
+
+  private static func emit(
+    throwingEffect: ThrowingEffect,
+    into buffer: inout String
+  ) {
+    switch throwingEffect {
+    case .none:
+      break
+    case .throws(let errorType):
+      buffer.append(" throws")
+      if let errorType {
+        buffer.append("(")
+        buffer.append(errorType)
+        buffer.append(")")
+      }
+    case .rethrows:
+      buffer.append(" rethrows")
     }
   }
 

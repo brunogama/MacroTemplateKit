@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.2
 // KEEP THE COMMON MANIFEST IN SYNC WITH THE VERSION-SPECIFIC MANIFESTS.
 // Package@swift-6.0.swift is byte-identical below line 1. Package@swift-6.2.swift
 // appends only target-scoped warning controls. `Scripts/check-manifests.sh`
@@ -70,3 +70,10 @@ let package = Package(
     ),
   ]
 )
+// Swift 6.2 scopes warning controls to this package's targets, avoiding
+// `-Xswiftc` propagation into swift-syntax and the deprecated native build system.
+for target in package.targets {
+  var settings = target.swiftSettings ?? []
+  settings.append(.treatAllWarnings(as: .error))
+  target.swiftSettings = settings
+}

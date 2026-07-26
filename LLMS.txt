@@ -16,7 +16,7 @@ MacroTemplateKit provides a parametric algebraic data type (ADT) that separates 
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.6")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0")
 ]
 ```
 
@@ -31,7 +31,7 @@ dependencies: [
 ## Signature Types
 
 - `FunctionSignature<A>` — Components of a function declaration.
-- `ParameterSignature` — A single function parameter (external label, internal name, type).
+- `ParameterSignature<A>` — A function parameter whose structural default expression carries the declaration payload.
 - `PropertySignature<A>` — Stored property components.
 - `ComputedPropertySignature<A>` — Computed property with get/set accessors.
 - `SetterSignature<A>` — Property setter definition.
@@ -64,9 +64,9 @@ All three types implement `map` and satisfy:
 
 `Renderer` provides stateless, side-effect-free functions:
 ```swift
-let expr: ExprSyntax           = Renderer.render(template)
-let stmt: CodeBlockItemSyntax  = Renderer.render(statement)
-let decl: DeclSyntax           = Renderer.render(declaration)
+let expr: ExprSyntax           = try Renderer.render(template)
+let stmt: CodeBlockItemSyntax  = try Renderer.render(statement)
+let decl: DeclSyntax           = try Renderer.render(declaration)
 ```
 
 ## Quick Example
@@ -94,7 +94,7 @@ let fn: Declaration<Void> = .function(FunctionSignature(
     ]
 ))
 
-let syntax: DeclSyntax = Renderer.render(fn)
+let syntax: DeclSyntax = try Renderer.render(fn)
 ```
 
 ## Documentation
