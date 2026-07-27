@@ -94,7 +94,7 @@ public enum FontLiteralMacro: ExpressionMacro {
       arguments: templateArguments
     )
 
-    return Renderer.render(template)
+    return try Renderer.render(template)
   }
 
   // MARK: - Private Helpers

@@ -3,7 +3,6 @@ import XCTest
 @testable import MacroTemplateKit
 
 final class WitherTests: XCTestCase {
-
   // MARK: - FunctionSignature
 
   func testFunctionSignature_withName() {

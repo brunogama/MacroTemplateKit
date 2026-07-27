@@ -8,12 +8,11 @@ import XCTest
 /// Verifies Renderer renders: dictionary literals, subscript access, force-unwrap,
 /// string interpolation, closures, guard-let bindings, switch statements, and assignments.
 final class NewCasesRendererTests: XCTestCase {
-
   // MARK: - Dictionary Literal
 
-  func testRenderDictionaryLiteral_empty() {
+  func testRenderDictionaryLiteral_empty() throws {
     let template: Template<Void> = .dictionaryLiteral([])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(DictionaryExprSyntax.self), "Should render as DictionaryExprSyntax")
     let description = result.trimmedDescription
@@ -22,12 +21,12 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains(":"), "Empty dictionary should render as [:]")
   }
 
-  func testRenderDictionaryLiteral_nonEmpty() {
+  func testRenderDictionaryLiteral_nonEmpty() throws {
     let template: Template<Void> = .dictionaryLiteral([
       (key: .literal(.string("id")), value: .literal(.integer(1))),
       (key: .literal(.string("name")), value: .literal(.string("Alice"))),
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(DictionaryExprSyntax.self), "Should render as DictionaryExprSyntax")
     let description = result.trimmedDescription
@@ -37,11 +36,11 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("Alice"), "Should contain second value")
   }
 
-  func testRenderDictionaryLiteral_singleEntry() {
+  func testRenderDictionaryLiteral_singleEntry() throws {
     let template: Template<Void> = .dictionaryLiteral([
       (key: .literal(.string("key")), value: .literal(.boolean(true)))
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(DictionaryExprSyntax.self), "Should render as DictionaryExprSyntax")
     let description = result.trimmedDescription
@@ -49,27 +48,29 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("true"), "Should contain value")
   }
 
-  func testFluentFactory_dictionary() {
+  func testFluentFactory_dictionary() throws {
     let template: Template<Void> = .dictionary([
       (key: .literal(.string("x")), value: .literal(.integer(42)))
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(
-      result.is(DictionaryExprSyntax.self), "Fluent factory should produce DictionaryExprSyntax")
+      result.is(DictionaryExprSyntax.self), "Fluent factory should produce DictionaryExprSyntax"
+    )
   }
 
   // MARK: - Subscript Access
 
-  func testRenderSubscriptAccess_stringKey() {
+  func testRenderSubscriptAccess_stringKey() throws {
     // row["id"]
     let template: Template<Void> = .subscriptAccess(
       base: .variable("row", payload: ()),
       index: .literal(.string("id"))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
-      result.is(SubscriptCallExprSyntax.self), "Should render as SubscriptCallExprSyntax")
+      result.is(SubscriptCallExprSyntax.self), "Should render as SubscriptCallExprSyntax"
+    )
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("row"), "Should contain base")
     XCTAssertTrue(description.contains("["), "Should contain opening subscript bracket")
@@ -77,38 +78,40 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("]"), "Should contain closing subscript bracket")
   }
 
-  func testRenderSubscriptAccess_integerIndex() {
+  func testRenderSubscriptAccess_integerIndex() throws {
     // array[0]
     let template: Template<Void> = .subscriptAccess(
       base: .variable("array", payload: ()),
       index: .literal(.integer(0))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
-      result.is(SubscriptCallExprSyntax.self), "Should render as SubscriptCallExprSyntax")
+      result.is(SubscriptCallExprSyntax.self), "Should render as SubscriptCallExprSyntax"
+    )
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("array"), "Should contain base name")
     XCTAssertTrue(description.contains("0"), "Should contain integer index")
   }
 
-  func testFluentFactory_subscript() {
+  func testFluentFactory_subscript() throws {
     let template = Template<Void>.subscript(
       .variable("dict", payload: ()),
       index: .literal(.string("key"))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(
       result.is(SubscriptCallExprSyntax.self),
-      "Fluent factory should produce SubscriptCallExprSyntax")
+      "Fluent factory should produce SubscriptCallExprSyntax"
+    )
   }
 
   // MARK: - Force Unwrap
 
-  func testRenderForceUnwrap_variable() {
+  func testRenderForceUnwrap_variable() throws {
     // value!
     let template: Template<Void> = .forceUnwrap(.variable("value", payload: ()))
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ForceUnwrapExprSyntax.self), "Should render as ForceUnwrapExprSyntax")
     let description = result.trimmedDescription
@@ -116,12 +119,12 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("!"), "Should contain force-unwrap operator")
   }
 
-  func testRenderForceUnwrap_functionCall() {
+  func testRenderForceUnwrap_functionCall() throws {
     // getOptional()!
     let template: Template<Void> = .forceUnwrap(
       .functionCall(function: "getOptional", arguments: [])
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ForceUnwrapExprSyntax.self), "Should render as ForceUnwrapExprSyntax")
     let description = result.trimmedDescription
@@ -129,77 +132,83 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("!"), "Should contain force-unwrap operator")
   }
 
-  func testFluentFactory_unwrapped() {
+  func testFluentFactory_unwrapped() throws {
     let template: Template<Void> = .unwrapped(.variable("optional", payload: ()))
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(
-      result.is(ForceUnwrapExprSyntax.self), "Fluent factory should produce ForceUnwrapExprSyntax")
+      result.is(ForceUnwrapExprSyntax.self), "Fluent factory should produce ForceUnwrapExprSyntax"
+    )
   }
 
   // MARK: - String Interpolation
 
-  func testRenderStringInterpolation_textOnly() {
+  func testRenderStringInterpolation_textOnly() throws {
     let template: Template<Void> = .stringInterpolation([.text("hello")])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
-      result.is(StringLiteralExprSyntax.self), "Should render as StringLiteralExprSyntax")
+      result.is(StringLiteralExprSyntax.self), "Should render as StringLiteralExprSyntax"
+    )
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("hello"), "Should contain text segment")
   }
 
-  func testRenderStringInterpolation_withExpression() {
+  func testRenderStringInterpolation_withExpression() throws {
     // "prefix_\(name)_suffix"
     let template: Template<Void> = .stringInterpolation([
       .text("prefix_"),
       .expression(.variable("name", payload: ())),
       .text("_suffix"),
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
-      result.is(StringLiteralExprSyntax.self), "Should render as StringLiteralExprSyntax")
+      result.is(StringLiteralExprSyntax.self), "Should render as StringLiteralExprSyntax"
+    )
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("prefix_"), "Should contain text prefix")
     XCTAssertTrue(description.contains("name"), "Should contain interpolated expression")
     XCTAssertTrue(description.contains("_suffix"), "Should contain text suffix")
   }
 
-  func testRenderStringInterpolation_expressionOnly() {
+  func testRenderStringInterpolation_expressionOnly() throws {
     // "\(value)"
     let template: Template<Void> = .stringInterpolation([
       .expression(.variable("value", payload: ()))
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(
-      result.is(StringLiteralExprSyntax.self), "Should render as StringLiteralExprSyntax")
+      result.is(StringLiteralExprSyntax.self), "Should render as StringLiteralExprSyntax"
+    )
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("value"), "Should contain interpolated expression")
   }
 
-  func testFluentFactory_interpolated() {
+  func testFluentFactory_interpolated() throws {
     let template: Template<Void> = .interpolated([
       .text("Hello, "),
       .expression(.variable("name", payload: ())),
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(
       result.is(StringLiteralExprSyntax.self),
-      "Fluent factory should produce StringLiteralExprSyntax")
+      "Fluent factory should produce StringLiteralExprSyntax"
+    )
   }
 
   // MARK: - Closure
 
-  func testRenderClosure_noSignature() {
+  func testRenderClosure_noSignature() throws {
     // { body }
     let template: Template<Void> = .closure(
       ClosureSignature<Void>(
         parameters: [],
         returnType: nil,
         body: [.returnStatement(.literal(.integer(42)))]
-      ))
-    let result = Renderer.render(template)
+      )
+    )
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ClosureExprSyntax.self), "Should render as ClosureExprSyntax")
     let description = result.trimmedDescription
@@ -209,7 +218,7 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertFalse(description.contains("in"), "No-signature closure should not have 'in' keyword")
   }
 
-  func testRenderClosure_withParametersAndReturnType() {
+  func testRenderClosure_withParametersAndReturnType() throws {
     // { (row: Row) -> Void in ... }
     let template: Template<Void> = .closure(
       ClosureSignature<Void>(
@@ -221,10 +230,13 @@ final class NewCasesRendererTests: XCTestCase {
               function: "process",
               arguments: [
                 (label: nil, value: .variable("row", payload: ()))
-              ]))
+              ]
+            )
+          )
         ]
-      ))
-    let result = Renderer.render(template)
+      )
+    )
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ClosureExprSyntax.self), "Should render as ClosureExprSyntax")
     let description = result.trimmedDescription
@@ -235,7 +247,7 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("process"), "Should contain body")
   }
 
-  func testRenderClosure_multipleParameters() {
+  func testRenderClosure_multipleParameters() throws {
     // { (a: Int, b: String) -> Bool in ... }
     let template: Template<Void> = .closure(
       ClosureSignature<Void>(
@@ -245,8 +257,9 @@ final class NewCasesRendererTests: XCTestCase {
         ],
         returnType: "Bool",
         body: [.returnStatement(.literal(.boolean(true)))]
-      ))
-    let result = Renderer.render(template)
+      )
+    )
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ClosureExprSyntax.self), "Should render as ClosureExprSyntax")
     let description = result.trimmedDescription
@@ -255,7 +268,7 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("Bool"), "Should contain return type")
   }
 
-  func testRenderClosure_withAttributes() {
+  func testRenderClosure_withAttributes() throws {
     let template: Template<Void> = .closure(
       ClosureSignature<Void>(
         attributes: [.sendable],
@@ -271,8 +284,9 @@ final class NewCasesRendererTests: XCTestCase {
             )
           )
         ]
-      ))
-    let result = Renderer.render(template)
+      )
+    )
+    let result = try Renderer.render(template)
 
     XCTAssertTrue(result.is(ClosureExprSyntax.self), "Should render as ClosureExprSyntax")
     let description = result.trimmedDescription
@@ -283,29 +297,38 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("handle(value)"), "Should contain body call")
   }
 
-  func testFluentFactory_closure() {
+  func testFluentFactory_closure() throws {
     let template: Template<Void> = .closure(
       params: [(name: "x", type: "Int")],
       returnType: "String",
       body: [.returnStatement(.literal(.string("value")))]
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(
-      result.is(ClosureExprSyntax.self), "Fluent factory should produce ClosureExprSyntax")
+      result.is(ClosureExprSyntax.self), "Fluent factory should produce ClosureExprSyntax"
+    )
   }
 
   // MARK: - Template Assignment Expression
 
-  func testRenderAssignmentExpression() {
+  func testRenderAssignmentExpression() throws {
     // self.name = name (as expression)
     let template: Template<Void> = .assignment(
       lhs: .propertyAccess(base: .variable("self", payload: ()), property: "name"),
       rhs: .variable("name", payload: ())
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
+    // The parse-backed renderer yields an unfolded `SequenceExprSyntax` for
+    // `=` until `SwiftOperators.OperatorTable.foldAll` folds it into
+    // `InfixOperatorExprSyntax` (a fold this renderer deliberately doesn't
+    // perform, since only token content — not tree shape — is guaranteed);
+    // the legacy structural renderer builds `InfixOperatorExprSyntax`
+    // directly. Both are token-equivalent.
     XCTAssertTrue(
-      result.is(InfixOperatorExprSyntax.self), "Should render as InfixOperatorExprSyntax")
+      result.is(InfixOperatorExprSyntax.self) || result.is(SequenceExprSyntax.self),
+      "Should render as InfixOperatorExprSyntax or (pre-fold) SequenceExprSyntax"
+    )
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("self"), "Should contain lhs base")
     XCTAssertTrue(description.contains("name"), "Should contain property and rhs")
@@ -314,7 +337,7 @@ final class NewCasesRendererTests: XCTestCase {
 
   // MARK: - Guard Let Binding (Statement)
 
-  func testRenderGuardLetBinding_withoutType() {
+  func testRenderGuardLetBinding_withoutType() throws {
     // guard let value = expr else { throw error }
     let statement: Statement<Void> = .guardLetBinding(
       name: "value",
@@ -322,7 +345,7 @@ final class NewCasesRendererTests: XCTestCase {
       initializer: .functionCall(function: "getValue", arguments: []),
       elseBody: [.throwStatement(.variable("SomeError", payload: ()))]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("guard"), "Should contain guard keyword")
@@ -334,7 +357,7 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertFalse(description.contains(": "), "Without type, should not have type annotation")
   }
 
-  func testRenderGuardLetBinding_withType() {
+  func testRenderGuardLetBinding_withType() throws {
     // guard let id: Int = row["id"] else { return }
     let statement: Statement<Void> = .guardLetBinding(
       name: "id",
@@ -345,7 +368,7 @@ final class NewCasesRendererTests: XCTestCase {
       ),
       elseBody: [.returnStatement(nil)]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("guard"), "Should contain guard keyword")
@@ -357,7 +380,7 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("return"), "Should contain return in else body")
   }
 
-  func testRenderGuardLetBinding_distinguishedFromBooleanGuard() {
+  func testRenderGuardLetBinding_distinguishedFromBooleanGuard() throws {
     // Verify this produces OptionalBindingConditionSyntax (guard let), not boolean guard
     let statement: Statement<Void> = .guardLetBinding(
       name: "x",
@@ -365,17 +388,18 @@ final class NewCasesRendererTests: XCTestCase {
       initializer: .functionCall(function: "optional", arguments: []),
       elseBody: [.returnStatement(nil)]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
     let description = result.formatted().description
 
     // guard let x = optional() else { return }
     XCTAssertTrue(
-      description.contains("guard let x"), "Should use guard let syntax, not boolean guard")
+      description.contains("guard let x"), "Should use guard let syntax, not boolean guard"
+    )
   }
 
   // MARK: - Switch Statement
 
-  func testRenderSwitchStatement_expressionAndDefault() {
+  func testRenderSwitchStatement_expressionAndDefault() throws {
     // switch value { case "a": ...; default: ... }
     let statement: Statement<Void> = .switchStatement(
       subject: .variable("value", payload: ()),
@@ -390,7 +414,7 @@ final class NewCasesRendererTests: XCTestCase {
         ),
       ]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("switch"), "Should contain switch keyword")
@@ -401,14 +425,15 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("return"), "Should contain return statements")
   }
 
-  func testRenderSwitchStatement_expressionPattern() {
+  func testRenderSwitchStatement_expressionPattern() throws {
     // switch myEnum { case .someCase: ... }
     let statement: Statement<Void> = .switchStatement(
       subject: .variable("myEnum", payload: ()),
       cases: [
         SwitchCase(
           pattern: .expression(
-            .propertyAccess(base: .variable("MyEnum", payload: ()), property: "someCase")),
+            .propertyAccess(base: .variable("MyEnum", payload: ()), property: "someCase")
+          ),
           body: [.expression(.functionCall(function: "handle", arguments: []))]
         ),
         SwitchCase(
@@ -417,7 +442,7 @@ final class NewCasesRendererTests: XCTestCase {
         ),
       ]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("switch"), "Should contain switch keyword")
@@ -427,20 +452,23 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("default"), "Should contain default case")
   }
 
-  func testRenderSwitchStatement_multipleStringLiteralCases() {
+  func testRenderSwitchStatement_multipleStringLiteralCases() throws {
     let statement: Statement<Void> = .switchStatement(
       subject: .variable("kind", payload: ()),
       cases: [
         SwitchCase(
-          pattern: .stringLiteral("insert"), body: [.returnStatement(.literal(.integer(1)))]),
+          pattern: .stringLiteral("insert"), body: [.returnStatement(.literal(.integer(1)))]
+        ),
         SwitchCase(
-          pattern: .stringLiteral("update"), body: [.returnStatement(.literal(.integer(2)))]),
+          pattern: .stringLiteral("update"), body: [.returnStatement(.literal(.integer(2)))]
+        ),
         SwitchCase(
-          pattern: .stringLiteral("delete"), body: [.returnStatement(.literal(.integer(3)))]),
+          pattern: .stringLiteral("delete"), body: [.returnStatement(.literal(.integer(3)))]
+        ),
         SwitchCase(pattern: .defaultCase, body: [.returnStatement(.literal(.integer(0)))]),
       ]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("switch kind"), "Should contain switch with subject")
@@ -452,13 +480,13 @@ final class NewCasesRendererTests: XCTestCase {
 
   // MARK: - Assignment Statement
 
-  func testRenderAssignmentStatement() {
+  func testRenderAssignmentStatement() throws {
     // self.name = name (as statement)
     let statement: Statement<Void> = .assignmentStatement(
       lhs: .propertyAccess(base: .variable("self", payload: ()), property: "name"),
       rhs: .variable("name", payload: ())
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("self"), "Should contain lhs base")
@@ -466,13 +494,13 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("="), "Should contain assignment operator")
   }
 
-  func testRenderAssignmentStatement_variableToVariable() {
+  func testRenderAssignmentStatement_variableToVariable() throws {
     // x = y
     let statement: Statement<Void> = .assignmentStatement(
       lhs: .variable("x", payload: ()),
       rhs: .variable("y", payload: ())
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("x"), "Should contain lhs variable")
@@ -540,7 +568,8 @@ final class NewCasesRendererTests: XCTestCase {
         parameters: [(name: "x", type: "Int")],
         returnType: "Void",
         body: [.expression(.variable("x", payload: 7))]
-      ))
+      )
+    )
     let mapped: Template<String> = template.map { "\($0)" }
 
     if case .closure(let sig) = mapped {
@@ -588,33 +617,34 @@ final class NewCasesRendererTests: XCTestCase {
       body: [.returnStatement(nil)]
     )
     XCTAssertEqual(
-      case1.hashValue, case2.hashValue, "Equal switch cases should have equal hash values")
+      case1.hashValue, case2.hashValue, "Equal switch cases should have equal hash values"
+    )
   }
 
   // MARK: - Self Access (Template.selfAccess)
 
-  func testRenderSelfAccess_simpleType() {
+  func testRenderSelfAccess_simpleType() throws {
     // String.self
     let template: Template<Void> = .selfAccess("String")
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("String"), "Should contain type name")
     XCTAssertTrue(description.contains(".self"), "Should contain .self access")
   }
 
-  func testRenderSelfAccess_customType() {
+  func testRenderSelfAccess_customType() throws {
     // MyStruct.self
     let template: Template<Void> = .selfAccess("MyStruct")
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     let description = result.trimmedDescription
     XCTAssertEqual(description, "MyStruct.self", "Should render as TypeName.self")
   }
 
-  func testFluentFactory_selfType() {
+  func testFluentFactory_selfType() throws {
     let template: Template<Void> = .selfType("Int")
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
 
     XCTAssertEqual(result.trimmedDescription, "Int.self", "Fluent factory should render Type.self")
   }
@@ -641,15 +671,16 @@ final class NewCasesRendererTests: XCTestCase {
 
   // MARK: - Failable Initializer (InitializerSignature.isFailable)
 
-  func testRenderFailableInitializer() {
+  func testRenderFailableInitializer() throws {
     // init?(rawValue: String) { ... }
     let decl: Declaration<Void> = .initDecl(
       InitializerSignature<Void>(
         isFailable: true,
         parameters: [ParameterSignature(name: "rawValue", type: "String")],
         body: [.returnStatement(.literal(.nil))]
-      ))
-    let result = Renderer.render(decl)
+      )
+    )
+    let result = try Renderer.render(decl)
 
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("init?"), "Should render as failable init?")
@@ -657,14 +688,15 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("String"), "Should contain parameter type")
   }
 
-  func testRenderNonFailableInitializer() {
+  func testRenderNonFailableInitializer() throws {
     // init(value: Int) { ... }
     let decl: Declaration<Void> = .initDecl(
       InitializerSignature<Void>(
         parameters: [ParameterSignature(name: "value", type: "Int")],
         body: []
-      ))
-    let result = Renderer.render(decl)
+      )
+    )
+    let result = try Renderer.render(decl)
 
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("init"), "Should contain init")
@@ -673,7 +705,7 @@ final class NewCasesRendererTests: XCTestCase {
 
   // MARK: - Mutating Function (FunctionSignature.isMutating)
 
-  func testRenderMutatingFunction() {
+  func testRenderMutatingFunction() throws {
     // mutating func update(value: Int) { ... }
     let decl: Declaration<Void> = .function(
       FunctionSignature<Void>(
@@ -681,30 +713,33 @@ final class NewCasesRendererTests: XCTestCase {
         name: "update",
         parameters: [ParameterSignature(name: "value", type: "Int")],
         body: []
-      ))
-    let result = Renderer.render(decl)
+      )
+    )
+    let result = try Renderer.render(decl)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("mutating"), "Should contain mutating modifier")
     XCTAssertTrue(description.contains("update"), "Should contain func name")
   }
 
-  func testRenderNonMutatingFunction() {
+  func testRenderNonMutatingFunction() throws {
     // func read() { ... }
     let decl: Declaration<Void> = .function(
       FunctionSignature<Void>(
         name: "read",
         body: []
-      ))
-    let result = Renderer.render(decl)
+      )
+    )
+    let result = try Renderer.render(decl)
 
     let description = result.formatted().description
     XCTAssertFalse(
-      description.contains("mutating"), "Non-mutating func should not have mutating modifier")
+      description.contains("mutating"), "Non-mutating func should not have mutating modifier"
+    )
     XCTAssertTrue(description.contains("read"), "Should contain func name")
   }
 
-  func testRenderStaticMutatingNotCombined() {
+  func testRenderStaticMutatingNotCombined() throws {
     // static func (isMutating should not apply alongside static in practice,
     // but test that both modifiers appear if set)
     let decl: Declaration<Void> = .function(
@@ -712,8 +747,9 @@ final class NewCasesRendererTests: XCTestCase {
         isStatic: true,
         isMutating: true,
         name: "reset"
-      ))
-    let result = Renderer.render(decl)
+      )
+    )
+    let result = try Renderer.render(decl)
 
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("static"), "Should contain static modifier")
@@ -722,15 +758,15 @@ final class NewCasesRendererTests: XCTestCase {
 
   // MARK: - Break Statement
 
-  func testRenderBreakStatement() {
+  func testRenderBreakStatement() throws {
     let statement: Statement<Void> = .breakStatement
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("break"), "Should render break statement")
   }
 
-  func testBreakStatementInSwitchDefault() {
+  func testBreakStatementInSwitchDefault() throws {
     // switch x { case "a": ...; default: break }
     let statement: Statement<Void> = .switchStatement(
       subject: .variable("x", payload: ()),
@@ -745,7 +781,7 @@ final class NewCasesRendererTests: XCTestCase {
         ),
       ]
     )
-    let result = Renderer.render(statement)
+    let result = try Renderer.render(statement)
 
     let description = result.formatted().description
     XCTAssertTrue(description.contains("switch"), "Should contain switch")
@@ -766,12 +802,12 @@ final class NewCasesRendererTests: XCTestCase {
 
   // MARK: - Tuple Literal
 
-  func testRenderTupleLiteral_twoElements() {
+  func testRenderTupleLiteral_twoElements() throws {
     let template: Template<Void> = .tupleLiteral([
       .variable("x", payload: ()),
       .literal(.string("hello")),
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(result.is(TupleExprSyntax.self), "Should render as TupleExprSyntax")
     let description = result.trimmedDescription
     XCTAssertTrue(description.hasPrefix("("), "Should start with opening paren")
@@ -781,11 +817,11 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains(","), "Should contain comma separator")
   }
 
-  func testRenderTupleLiteral_singleElement() {
+  func testRenderTupleLiteral_singleElement() throws {
     let template: Template<Void> = .tupleLiteral([
       .literal(.integer(42))
     ])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(result.is(TupleExprSyntax.self), "Should render as TupleExprSyntax")
     let description = result.trimmedDescription
     XCTAssertTrue(description.hasPrefix("("), "Should start with opening paren")
@@ -793,19 +829,19 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertTrue(description.contains("42"), "Should contain the element")
   }
 
-  func testRenderTupleLiteral_empty() {
+  func testRenderTupleLiteral_empty() throws {
     let template: Template<Void> = .tupleLiteral([])
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(result.is(TupleExprSyntax.self), "Should render as TupleExprSyntax")
     XCTAssertEqual(result.trimmedDescription, "()", "Empty tuple should render as ()")
   }
 
-  func testFluentFactory_tuple() {
+  func testFluentFactory_tuple() throws {
     let template: Template<Void> = .tuple(
       .literal(.integer(1)),
       .literal(.string("two"))
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertTrue(result.is(TupleExprSyntax.self), "Fluent factory should produce TupleExprSyntax")
     let description = result.trimmedDescription
     XCTAssertTrue(description.contains("1"), "Should contain first element")
@@ -846,7 +882,7 @@ final class NewCasesRendererTests: XCTestCase {
 
   // MARK: - SubscriptCall Tests
 
-  func testRenderSubscriptCall_withDefault() {
+  func testRenderSubscriptCall_withDefault() throws {
     let template: Template<Void> = .subscriptCall(
       base: .variable("dict", payload: ()),
       arguments: [
@@ -854,11 +890,11 @@ final class NewCasesRendererTests: XCTestCase {
         (label: "default", value: .literal(.string("fallback"))),
       ]
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertEqual(result.description, #"dict["key", default: "fallback"]"#)
   }
 
-  func testRenderSubscriptCall_multipleLabeled() {
+  func testRenderSubscriptCall_multipleLabeled() throws {
     let template: Template<Void> = .subscriptCall(
       base: .variable("grid", payload: ()),
       arguments: [
@@ -866,7 +902,7 @@ final class NewCasesRendererTests: XCTestCase {
         (label: "col", value: .literal(.integer(2))),
       ]
     )
-    let result = Renderer.render(template)
+    let result = try Renderer.render(template)
     XCTAssertEqual(result.description, "grid[row: 1, col: 2]")
   }
 
@@ -957,15 +993,15 @@ final class NewCasesRendererTests: XCTestCase {
     XCTAssertEqual(initPayload, 10, "Initializer payload should be transformed")
   }
 
-  func testRenderImplicitMember() {
+  func testRenderImplicitMember() throws {
     let template: Template<Void> = .implicitMember("get")
 
-    XCTAssertEqual(Renderer.render(template).description, ".get")
+    XCTAssertEqual(try Renderer.render(template).description, ".get")
   }
 
-  func testRenderInOutExpression() {
+  func testRenderInOutExpression() throws {
     let template: Template<Void> = .inOut(.variable("request", payload: ()))
 
-    XCTAssertEqual(Renderer.render(template).description, "&request")
+    XCTAssertEqual(try Renderer.render(template).description, "&request")
   }
 }

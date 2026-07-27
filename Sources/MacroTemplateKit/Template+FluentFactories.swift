@@ -97,9 +97,13 @@ extension Template {
   // MARK: - Binary Operations
 
   /// Creates a binary operation template.
+  ///
+  /// The operator accepts a string literal for the standard operators; pass an
+  /// `Operator` with an explicit precedence for a custom one, or its operands
+  /// will be parenthesised defensively at every nesting.
   public static func operation(
     _ left: Template<A>,
-    _ op: String,
+    _ op: Operator,
     _ right: Template<A>
   ) -> Template<A> {
     .binaryOperation(left: left, operator: op, right: right)
@@ -260,6 +264,22 @@ extension Template {
   /// Creates a chained force-unwrap template (`expr!`).
   public func unwrapped() -> Template<A> {
     .forceUnwrap(self)
+  }
+
+  // MARK: - Casting
+
+  /// Creates a cast template (`expr as Type` / `as? Type` / `as! Type`).
+  public static func cast(
+    _ expr: Template<A>,
+    to type: String,
+    kind: CastKind = .forced
+  ) -> Template<A> {
+    .cast(expr, type: type, kind: kind)
+  }
+
+  /// Creates a chained cast template (`expr as Type` / `as? Type` / `as! Type`).
+  public func cast(to type: String, kind: CastKind = .forced) -> Template<A> {
+    .cast(self, type: type, kind: kind)
   }
 
   // MARK: - String Interpolation

@@ -77,7 +77,7 @@ public enum WarningMacro: ExpressionMacro {
 
     // Template<Void>: () — the Void expression result
     let voidTemplate: Template<Void> = .functionCall(function: "", arguments: [])
-    return Renderer.render(voidTemplate)
+    return try Renderer.render(voidTemplate)
   }
 
   // MARK: - Private Helpers

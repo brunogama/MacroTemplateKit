@@ -102,7 +102,7 @@ Use `Renderer.renderStatements(_:)` to build the `CodeBlockItemListSyntax` body 
 let getterStatements: [Statement<Void>] = [.returnStatement(.variable("backing"))]
 let getter = AccessorDeclSyntax(
     accessorSpecifier: .keyword(.get),
-    body: CodeBlockSyntax(statements: Renderer.renderStatements(getterStatements))
+    body: CodeBlockSyntax(statements: try Renderer.renderStatements(getterStatements))
 )
 ```
 
@@ -118,5 +118,5 @@ let declaration: Declaration<Void> = .computedProperty(
         setter: SetterSignature(body: [.assignmentStatement(lhs: ..., rhs: ...)])
     )
 )
-let declSyntax: DeclSyntax = Renderer.render(declaration)
+let declSyntax: DeclSyntax = try Renderer.render(declaration)
 ```

@@ -1,3 +1,29 @@
+import SwiftSyntax
+
+/// The flavour of a type-cast expression.
+///
+/// Spelled as its own type rather than three `Template` cases so that callers
+/// can choose the flavour dynamically — a macro deciding between `as?` and
+/// `as!` based on whether a property is optional shouldn't have to branch to
+/// pick a case.
+public enum CastKind: Sendable, Hashable {
+  /// A coercion that always succeeds (`expr as Type`).
+  case coerce
+  /// An optional cast (`expr as? Type`).
+  case conditional
+  /// A trapping cast (`expr as! Type`).
+  case forced
+
+  /// The operator text, including the trailing `?`/`!` where present.
+  var operatorText: String {
+    switch self {
+    case .coerce: "as"
+    case .conditional: "as?"
+    case .forced: "as!"
+    }
+  }
+}
+
 /// A segment in a string interpolation expression.
 ///
 /// Used by `Template.stringInterpolation` to represent either a literal text
@@ -138,7 +164,7 @@ public indirect enum Template<A> {
   /// SwiftSyntax equivalent: `InfixOperatorExprSyntax` with `BinaryOperatorExprSyntax`
   case binaryOperation(
     left: Template<A>,
-    `operator`: String,
+    `operator`: Operator,
     right: Template<A>
   )
 
@@ -238,6 +264,31 @@ public indirect enum Template<A> {
   ///
   /// SwiftSyntax equivalent: `ForceUnwrapExprSyntax`
   case forceUnwrap(Template<A>)
+
+  // MARK: - Interop
+
+  /// An already-built SwiftSyntax expression, spliced in as-is.
+  ///
+  /// A macro receives expressions from the compiler as nodes, not as text.
+  /// Without this case the only way to reuse one is to pass its
+  /// `trimmedDescription` through `.variable`, which serialises a tree just to
+  /// have the renderer parse it back — the round trip this kit exists to avoid.
+  ///
+  /// The node survives untouched on the structural path. The parse-backed path
+  /// has to serialise it into the source buffer, so interop is cheapest when
+  /// the node is the whole template rather than nested inside one.
+  case syntax(ExprSyntax)
+
+  // MARK: - Casting
+
+  /// Type-cast expression (`expr as Type`, `expr as? Type`, `expr as! Type`).
+  ///
+  /// The target type is source text rather than a `Template`, matching how the
+  /// rest of the kit models types: a macro reads type names out of the syntax
+  /// tree it was handed, so they arrive as strings.
+  ///
+  /// SwiftSyntax equivalent: `AsExprSyntax`
+  case cast(Template<A>, type: String, kind: CastKind)
 
   // MARK: - String Interpolation
 
@@ -405,6 +456,10 @@ public indirect enum Template<A> {
       )
     case .forceUnwrap(let inner):
       return .forceUnwrap(inner.map(transform))
+    case .cast(let inner, let type, let kind):
+      return .cast(inner.map(transform), type: type, kind: kind)
+    case .syntax(let node):
+      return .syntax(node)
     case .stringInterpolation(let segments):
       return .stringInterpolation(
         segments.map { segment -> StringInterpolationSegment<B> in

@@ -76,7 +76,7 @@ public struct EnvironmentValueMacro: AccessorMacro {
     in context: some MacroExpansionContext
   ) throws -> [AccessorDeclSyntax] {
     let keyExpressionText = try extractKeyExpressionText(from: node)
-    return buildAccessorDeclarations(keyExpressionText: keyExpressionText)
+    return try buildAccessorDeclarations(keyExpressionText: keyExpressionText)
   }
 
   // MARK: - Private Helpers
@@ -95,7 +95,7 @@ public struct EnvironmentValueMacro: AccessorMacro {
 
   private static func buildAccessorDeclarations(
     keyExpressionText: String
-  ) -> [AccessorDeclSyntax] {
+  ) throws -> [AccessorDeclSyntax] {
     // Model self[KeyType.self] as a subscript access expression.
     // The key expression text is preserved verbatim from the attribute argument.
     let selfVariable: Template<Void> = .variable("self")
@@ -118,11 +118,11 @@ public struct EnvironmentValueMacro: AccessorMacro {
 
     let getter = AccessorDeclSyntax(
       accessorSpecifier: .keyword(.get),
-      body: CodeBlockSyntax(statements: Renderer.renderStatements(getterStatements))
+      body: CodeBlockSyntax(statements: try Renderer.renderStatements(getterStatements))
     )
     let setter = AccessorDeclSyntax(
       accessorSpecifier: .keyword(.set),
-      body: CodeBlockSyntax(statements: Renderer.renderStatements(setterStatements))
+      body: CodeBlockSyntax(statements: try Renderer.renderStatements(setterStatements))
     )
 
     return [getter, setter]

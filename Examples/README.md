@@ -87,8 +87,8 @@ Declaration.function(FunctionSignature(name:parameters:isAsync:canThrow:returnTy
 Declaration.property(PropertySignature(name:type:isLet:initializer:))
 
 // Rendering
-Renderer.render(_: Template<A>) -> ExprSyntax
-Renderer.render(_: Statement<A>) -> CodeBlockItemSyntax
-Renderer.renderStatements(_: [Statement<A>]) -> CodeBlockItemListSyntax
-Renderer.render(_: Declaration<A>) -> DeclSyntax
+try Renderer.render(_: Template<A>) -> ExprSyntax
+try Renderer.render(_: Statement<A>) -> CodeBlockItemSyntax
+try Renderer.renderStatements(_: [Statement<A>]) -> CodeBlockItemListSyntax
+try Renderer.render(_: Declaration<A>) -> DeclSyntax
 ```

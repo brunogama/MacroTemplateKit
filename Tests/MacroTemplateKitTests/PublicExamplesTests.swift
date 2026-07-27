@@ -3,7 +3,6 @@ import SwiftSyntax
 import XCTest
 
 final class PublicExamplesTests: XCTestCase {
-
   private func normalized(_ string: String) -> String {
     string.filter { !$0.isWhitespace && !$0.isNewline }
   }
@@ -24,8 +23,8 @@ final class PublicExamplesTests: XCTestCase {
     }
   }
 
-  func testReadmeExpressionExampleRendersExpectedCode() {
-    let expression: ExprSyntax = Renderer.render(
+  func testReadmeExpressionExampleRendersExpectedCode() throws {
+    let expression: ExprSyntax = try Renderer.render(
       Template<Void>.variable("api")
         .method("fetch") {
           TemplateArgument<Void>.unlabeled(.variable("request"))
@@ -36,8 +35,8 @@ final class PublicExamplesTests: XCTestCase {
     XCTAssertEqual(normalized(expression.description), normalized("try await api.fetch(request)"))
   }
 
-  func testDoccStatementExampleRendersExpectedCode() {
-    let statement: CodeBlockItemSyntax = Renderer.render(
+  func testDoccStatementExampleRendersExpectedCode() throws {
+    let statement: CodeBlockItemSyntax = try Renderer.render(
       Statement<Void>.letBinding(
         name: "result",
         type: nil,
@@ -51,8 +50,8 @@ final class PublicExamplesTests: XCTestCase {
     XCTAssertEqual(normalized(statement.description), normalized("let result = api.fetch(request)"))
   }
 
-  func testReadmeGenericDeclarationExampleRendersExpectedCode() {
-    let declaration: DeclSyntax = Renderer.render(
+  func testReadmeGenericDeclarationExampleRendersExpectedCode() throws {
+    let declaration: DeclSyntax = try Renderer.render(
       Declaration<Void>.function(
         FunctionSignature(
           accessLevel: .public,
@@ -91,8 +90,8 @@ final class PublicExamplesTests: XCTestCase {
     )
   }
 
-  func testDoccClosureAttributeExampleRendersExpectedCode() {
-    let expression: ExprSyntax = Renderer.render(
+  func testDoccClosureAttributeExampleRendersExpectedCode() throws {
+    let expression: ExprSyntax = try Renderer.render(
       Template<Void>.closure(
         attributes: [.sendable],
         params: [(name: "value", type: "Int")],
@@ -118,8 +117,8 @@ final class PublicExamplesTests: XCTestCase {
     XCTAssertTrue(rendered.contains(normalized("handle(value)")))
   }
 
-  func testExamplesEscapingParameterExampleRendersExpectedCode() {
-    let declaration: DeclSyntax = Renderer.render(
+  func testExamplesEscapingParameterExampleRendersExpectedCode() throws {
+    let declaration: DeclSyntax = try Renderer.render(
       Declaration<Void>.function(
         FunctionSignature(
           name: "install",
@@ -141,39 +140,8 @@ final class PublicExamplesTests: XCTestCase {
     )
   }
 
-  func testStructuredParameterDefaultsRenderExpectedCode() {
-    let declaration: DeclSyntax = Renderer.render(
-      Declaration<Void>.initDecl(
-        InitializerSignature(
-          parameters: [
-            ParameterSignature<Void>(
-              name: "client",
-              type: "any HTTPClient",
-              defaultValue: .functionCall(function: "NetworkClient", arguments: [])
-            ),
-            ParameterSignature<Void>(
-              name: "policy",
-              type: "Policy",
-              defaultValue: .implicitMember("standard")
-            ),
-          ],
-          body: []
-        )
-      )
-    )
-
-    XCTAssertTrue(
-      normalized(declaration.formatted().description)
-        .contains(
-          normalized(
-            "init(client: any HTTPClient = NetworkClient(), policy: Policy = .standard)"
-          )
-        )
-    )
-  }
-
-  func testExamplesStyleDeclarationRendersExpectedCode() {
-    let declaration: DeclSyntax = Renderer.render(
+  func testExamplesStyleDeclarationRendersExpectedCode() throws {
+    let declaration: DeclSyntax = try Renderer.render(
       Declaration<Void>.function(
         FunctionSignature(
           accessLevel: .public,
@@ -215,6 +183,37 @@ final class PublicExamplesTests: XCTestCase {
         }
         """
       )
+    )
+  }
+
+  func testStructuredParameterDefaultsRenderExpectedCode() throws {
+    let declaration: DeclSyntax = try Renderer.render(
+      Declaration<Void>.initDecl(
+        InitializerSignature(
+          parameters: [
+            ParameterSignature<Void>(
+              name: "client",
+              type: "any HTTPClient",
+              defaultValue: .functionCall(function: "NetworkClient", arguments: [])
+            ),
+            ParameterSignature<Void>(
+              name: "policy",
+              type: "Policy",
+              defaultValue: .implicitMember("standard")
+            ),
+          ],
+          body: []
+        )
+      )
+    )
+
+    XCTAssertTrue(
+      normalized(declaration.formatted().description)
+        .contains(
+          normalized(
+            "init(client: any HTTPClient = NetworkClient(), policy: Policy = .standard)"
+          )
+        )
     )
   }
 }

@@ -62,7 +62,7 @@ public struct MetaEnumMacroMTK: MemberMacro {
     let childCaseNames = extractCaseNames(from: enumDecl)
     let accessModifier = enumDecl.modifiers.first(where: \.isNeededAccessLevelModifier)
 
-    let metaEnum = buildMetaEnum(
+    let metaEnum = try buildMetaEnum(
       parentTypeName: parentTypeName,
       caseNames: childCaseNames,
       accessModifier: accessModifier,
@@ -107,14 +107,14 @@ public struct MetaEnumMacroMTK: MemberMacro {
     caseNames: [String],
     accessModifier: DeclModifierSyntax?,
     uniqueParamName: String
-  ) -> DeclSyntax {
+  ) throws -> DeclSyntax {
     let caseMemberItems = caseNames.map { caseName -> MemberBlockItemSyntax in
       let element = EnumCaseElementSyntax(name: .identifier(caseName))
       let caseDecl = EnumCaseDeclSyntax(elements: EnumCaseElementListSyntax([element]))
       return MemberBlockItemSyntax(decl: DeclSyntax(caseDecl))
     }
 
-    let initDecl = buildMetaInit(
+    let initDecl = try buildMetaInit(
       parentTypeName: parentTypeName,
       caseNames: caseNames,
       accessModifier: accessModifier,
@@ -172,7 +172,7 @@ public struct MetaEnumMacroMTK: MemberMacro {
     caseNames: [String],
     accessModifier: DeclModifierSyntax?,
     paramName: String
-  ) -> DeclSyntax {
+  ) throws -> DeclSyntax {
     let switchCases = caseNames.map { caseName -> SwitchCase<Void> in
       buildSwitchCase(caseName: caseName)
     }
@@ -196,7 +196,7 @@ public struct MetaEnumMacroMTK: MemberMacro {
       body: [switchStatement]
     )
 
-    return Renderer.render(Declaration<Void>.initDecl(initSignature))
+    return try Renderer.render(Declaration<Void>.initDecl(initSignature))
   }
 
   /// Builds one switch case: `case .caseName: self = .caseName`.
@@ -258,7 +258,10 @@ enum MetaEnumError: Error, Sendable {
 
 extension DeclModifierSyntax {
   /// Returns true for modifiers that affect the public API surface.
-  fileprivate var isNeededAccessLevelModifier: Bool {
+  ///
+  /// Internal rather than fileprivate: `OptionSetMemberMacro` uses it too.
+  /// That was invisible while the examples were not a build target.
+  var isNeededAccessLevelModifier: Bool {
     switch name.tokenKind {
     case .keyword(.public):
       return true

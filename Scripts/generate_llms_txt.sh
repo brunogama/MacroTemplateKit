@@ -19,14 +19,14 @@ trap 'rm -f "$TMPFILE"' EXIT
 # Read current version from README.md (from: "x.y.z" pattern), then
 # CHANGELOG.md, then fall back to a default.
 # ---------------------------------------------------------------------------
-VERSION=$(grep -m1 -oE 'from: "[0-9]+\.[0-9]+\.[0-9]+"' "$REPO_ROOT/README.md" 2>/dev/null \
-          | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+VERSION=$(grep -m1 -oE 'from: "[0-9]+\.[0-9]+\.[0-9]+"' "$REPO_ROOT/README.md" 2>/dev/null |
+	grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
 if [[ -z "$VERSION" ]]; then
-    VERSION=$(grep -m1 -oE '\[[0-9]+\.[0-9]+\.[0-9]+\]' "$REPO_ROOT/CHANGELOG.md" 2>/dev/null \
-              | tr -d '[]' || echo "0.0.1")
+	VERSION=$(grep -m1 -oE '\[[0-9]+\.[0-9]+\.[0-9]+\]' "$REPO_ROOT/CHANGELOG.md" 2>/dev/null |
+		tr -d '[]' || echo "0.0.1")
 fi
 
-cat > "$TMPFILE" << LLMS_EOF
+cat >"$TMPFILE" <<LLMS_EOF
 # MacroTemplateKit
 
 > A type-safe, functional templating engine for Swift macro code generation.
@@ -93,9 +93,9 @@ All three types implement \`map\` and satisfy:
 
 \`Renderer\` provides stateless, side-effect-free functions:
 \`\`\`swift
-let expr: ExprSyntax           = Renderer.render(template)
-let stmt: CodeBlockItemSyntax  = Renderer.render(statement)
-let decl: DeclSyntax           = Renderer.render(declaration)
+let expr: ExprSyntax           = try Renderer.render(template)
+let stmt: CodeBlockItemSyntax  = try Renderer.render(statement)
+let decl: DeclSyntax           = try Renderer.render(declaration)
 \`\`\`
 
 ## Quick Example
@@ -123,7 +123,7 @@ let fn: Declaration<Void> = .function(FunctionSignature(
     ]
 ))
 
-let syntax: DeclSyntax = Renderer.render(fn)
+let syntax: DeclSyntax = try Renderer.render(fn)
 \`\`\`
 
 ## Documentation
@@ -133,14 +133,14 @@ let syntax: DeclSyntax = Renderer.render(fn)
 LLMS_EOF
 
 if [[ "${1:-}" == "--check" ]]; then
-    if diff -q "$OUTPUT" "$TMPFILE" > /dev/null 2>&1; then
-        echo "✅ LLMS.txt is up to date."
-        exit 0
-    else
-        echo "❌ LLMS.txt is out of date. Run 'bash Scripts/generate_llms_txt.sh' to regenerate."
-        diff "$OUTPUT" "$TMPFILE" || true
-        exit 1
-    fi
+	if diff -q "$OUTPUT" "$TMPFILE" >/dev/null 2>&1; then
+		echo "✅ LLMS.txt is up to date."
+		exit 0
+	else
+		echo "❌ LLMS.txt is out of date. Run 'bash Scripts/generate_llms_txt.sh' to regenerate."
+		diff "$OUTPUT" "$TMPFILE" || true
+		exit 1
+	fi
 fi
 
 cp "$TMPFILE" "$OUTPUT"

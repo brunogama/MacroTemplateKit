@@ -52,8 +52,8 @@ public enum CaseDetectionMacroMTK: MemberMacro {
       .compactMap { $0.decl.as(EnumCaseDeclSyntax.self) }
       .compactMap { $0.elements.first?.name.text }
 
-    return caseNames.map { caseName in
-      buildCaseProperty(caseName: caseName)
+    return try caseNames.map { caseName in
+      try buildCaseProperty(caseName: caseName)
     }
   }
 
@@ -63,7 +63,7 @@ public enum CaseDetectionMacroMTK: MemberMacro {
   ///
   /// - Parameter caseName: Raw enum case name (e.g. "north").
   /// - Returns: Rendered `DeclSyntax` for the computed property.
-  private static func buildCaseProperty(caseName: String) -> DeclSyntax {
+  private static func buildCaseProperty(caseName: String) throws -> DeclSyntax {
     let propertyName = "is" + initialUppercased(caseName)
 
     // BEFORE: raw string interpolation
@@ -105,7 +105,7 @@ public enum CaseDetectionMacroMTK: MemberMacro {
 
     // Render to get the scaffold DeclSyntax, then surgically replace the
     // placeholder statement with the real `if case` expression.
-    let scaffold = Renderer.render(propertyDeclaration)
+    let scaffold = try Renderer.render(propertyDeclaration)
     return replaceIfCasePlaceholder(in: scaffold, with: ifCaseExpr, caseName: caseName)
   }
 
@@ -151,7 +151,9 @@ public enum CaseDetectionMacroMTK: MemberMacro {
     // Walk the rendered tree looking for the placeholder DeclReferenceExprSyntax
     // whose baseName is "__placeholder__" and replace it.
     let rewriter = PlaceholderRewriter(replacement: ifCaseExpr)
-    return DeclSyntax(rewriter.rewrite(Syntax(decl)))
+    // `rewrite` returns the erased `Syntax`; rewriting a declaration always
+    // yields a declaration, so the cast cannot fail here.
+    return rewriter.rewrite(Syntax(decl)).cast(DeclSyntax.self)
   }
 
   /// Capitalises the first character of a string.

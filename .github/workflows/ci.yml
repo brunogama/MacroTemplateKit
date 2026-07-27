@@ -2,7 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Every branch, not just main. Branch work went uncompiled for a whole
+    # release cycle because this said `branches: [main]` -- pushes to
+    # perf/render-engine triggered nothing at all, so nothing was checked until
+    # a PR was opened.
+    branches: ["**"]
   pull_request:
     branches: [main]
 
@@ -14,6 +18,17 @@ permissions:
   contents: read
 
 jobs:
+  manifests:
+    name: Manifest Parity
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Package.swift matches Package@swift-6.0.swift
+        run: Scripts/check-manifests.sh
+
   build-and-test:
     name: Build & Test
     runs-on: macos-15
@@ -23,34 +38,65 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+        run: Scripts/select-xcode.sh
 
-      - name: Swift Version
-        run: swift --version
-
+      # Builds every target, MacroExamples included.
       - name: Build
-        run: swift build -Xswiftc -warnings-as-errors
+        run: Scripts/build.sh
 
       - name: Run Tests
-        run: swift test --parallel
+        run: Scripts/swift-package.sh test --parallel
 
   build-release:
     name: Build Release
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+        run: Scripts/select-xcode.sh
 
       - name: Build Release
-        run: swift build -c release -Xswiftc -warnings-as-errors
+        run: Scripts/build.sh -c release
+
+  benchmarks:
+    name: Benchmarks
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: Scripts/select-xcode.sh
+
+      # Benchmarks are a separate SwiftPM package and had no CI coverage at all,
+      # so the pipelines every published performance figure comes from could
+      # stop compiling without anything noticing.
+      - name: Build Benchmarks
+        working-directory: Benchmarks
+        run: swift build -c release
+
+      # Not a timing run -- absolutes on a shared runner are meaningless, and
+      # ADR 0005 clause 0 forbids comparing them across invocations anyway.
+      # This enforces clause 3: the pipelines must stay token-identical.
+      # Smallest size and iteration count that still exercises every workload.
+      #
+      # `--workloads` is listed explicitly because `case-path` is not in the
+      # default set, and it is the workload carrying the largest published
+      # margin -- the one whose equivalence claim is worth the most.
+      - name: Equivalence Gate
+        working-directory: Benchmarks
+        run: |
+          swift run -c release RenderEngineBench \
+            --sizes 4 --iterations 5 --warmup 1 \
+            --workloads generate,edit,case-factory,case-path
 
   lint:
     name: SwiftLint
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Checkout
@@ -64,22 +110,23 @@ jobs:
 
   code-coverage:
     name: Code Coverage
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.2.app
+        run: Scripts/select-xcode.sh
 
       - name: Generate Coverage
-        run: swift test --enable-code-coverage
+        run: Scripts/swift-package.sh test --enable-code-coverage
 
       - name: Export Coverage
         run: |
-          xcrun llvm-cov export \
-            .build/debug/MacroTemplateKitPackageTests.xctest/Contents/MacOS/MacroTemplateKitPackageTests \
+          test_binary=".build/debug/MacroTemplateKitPackageTests.xctest"
+          test_binary="$test_binary/Contents/MacOS/MacroTemplateKitPackageTests"
+          xcrun llvm-cov export "$test_binary" \
             -instr-profile .build/debug/codecov/default.profdata \
             -format lcov \
             -ignore-filename-regex Tests/ \

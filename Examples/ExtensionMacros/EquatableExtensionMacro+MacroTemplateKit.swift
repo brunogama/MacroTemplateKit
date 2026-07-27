@@ -74,7 +74,7 @@ public enum EquatableExtensionMacro: ExtensionMacro {
       members: []
     )
 
-    let extensionDecl = Renderer.renderExtensionDecl(signature)
+    let extensionDecl = try Renderer.renderExtensionDecl(signature)
     return [extensionDecl]
   }
 }

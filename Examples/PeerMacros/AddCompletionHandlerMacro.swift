@@ -106,7 +106,7 @@ public struct AddCompletionHandlerMacro: PeerMacro {
             )
         )
 
-        return [Renderer.render(peerFunction)]
+        return [try Renderer.render(peerFunction)]
     }
 }
 

@@ -4,14 +4,13 @@ import XCTest
 @testable import MacroTemplateKit
 
 final class ExtractorTests: XCTestCase {
-
   // MARK: - Function round-trip
 
-  func testExtractFunction_simple() {
+  func testExtractFunction_simple() throws {
     let original = Declaration<Void>.function(
       FunctionSignature(name: "greet", body: [])
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .function(let sig) = extracted else {
@@ -25,7 +24,7 @@ final class ExtractorTests: XCTestCase {
     XCTAssertTrue(sig.parameters.isEmpty)
   }
 
-  func testExtractFunction_withParameters() {
+  func testExtractFunction_withParameters() throws {
     let original = Declaration<Void>.function(
       FunctionSignature(
         accessLevel: .public,
@@ -42,7 +41,7 @@ final class ExtractorTests: XCTestCase {
         body: []
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .function(let sig) = extracted else {
@@ -60,7 +59,7 @@ final class ExtractorTests: XCTestCase {
     XCTAssertEqual(sig.parameters[1].name, "b")
   }
 
-  func testExtractFunction_withGenerics() {
+  func testExtractFunction_withGenerics() throws {
     let original = Declaration<Void>.function(
       FunctionSignature(
         name: "transform",
@@ -77,7 +76,7 @@ final class ExtractorTests: XCTestCase {
         body: []
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .function(let sig) = extracted else {
@@ -93,7 +92,7 @@ final class ExtractorTests: XCTestCase {
 
   // MARK: - Initializer round-trip
 
-  func testExtractInitializer() {
+  func testExtractInitializer() throws {
     let original = Declaration<Void>.initDecl(
       InitializerSignature(
         accessLevel: .public,
@@ -105,7 +104,7 @@ final class ExtractorTests: XCTestCase {
         body: []
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .initDecl(let sig) = extracted else {
@@ -119,7 +118,7 @@ final class ExtractorTests: XCTestCase {
 
   // MARK: - Property round-trip
 
-  func testExtractStoredProperty() {
+  func testExtractStoredProperty() throws {
     let original = Declaration<Void>.property(
       PropertySignature(
         accessLevel: .public,
@@ -129,7 +128,7 @@ final class ExtractorTests: XCTestCase {
         isLet: true
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .property(let sig) = extracted else {
@@ -142,7 +141,7 @@ final class ExtractorTests: XCTestCase {
     XCTAssertTrue(sig.isLet)
   }
 
-  func testExtractComputedProperty() {
+  func testExtractComputedProperty() throws {
     let original = Declaration<Void>.computedProperty(
       ComputedPropertySignature(
         accessLevel: .public,
@@ -155,7 +154,7 @@ final class ExtractorTests: XCTestCase {
         )
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .computedProperty(let sig) = extracted else {
@@ -169,9 +168,30 @@ final class ExtractorTests: XCTestCase {
     XCTAssertTrue(sig.getter.isEmpty)
   }
 
+  func testExtractComputedPropertyPreservesBareSetter() throws {
+    let original = Declaration<Void>.computedProperty(
+      ComputedPropertySignature(
+        name: "value",
+        type: "Int",
+        getter: [.returnStatement(.literal(.integer(42)))],
+        setter: SetterSignature(body: [])
+      )
+    )
+
+    let rendered = try Renderer.render(original)
+    guard case .computedProperty(let signature) = Extractor.extract(rendered) else {
+      return XCTFail("Expected .computedProperty")
+    }
+
+    XCTAssertNil(signature.setter?.parameterName)
+    let reRendered = try Renderer.render(Declaration.computedProperty(signature))
+    XCTAssertTrue(reRendered.description.contains("set {"))
+    XCTAssertFalse(reRendered.description.contains("set(newValue)"))
+  }
+
   // MARK: - Extension round-trip
 
-  func testExtractExtension() {
+  func testExtractExtension() throws {
     let original = Declaration<Void>.extensionDecl(
       ExtensionSignature(
         typeName: "MyType",
@@ -181,7 +201,7 @@ final class ExtractorTests: XCTestCase {
         ]
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .extensionDecl(let sig) = extracted else {
@@ -194,7 +214,7 @@ final class ExtractorTests: XCTestCase {
 
   // MARK: - Struct round-trip
 
-  func testExtractStruct() {
+  func testExtractStruct() throws {
     let original = Declaration<Void>.structDecl(
       StructSignature(
         accessLevel: .public,
@@ -206,7 +226,7 @@ final class ExtractorTests: XCTestCase {
         ]
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .structDecl(let sig) = extracted else {
@@ -220,7 +240,7 @@ final class ExtractorTests: XCTestCase {
 
   // MARK: - Enum round-trip
 
-  func testExtractEnum() {
+  func testExtractEnum() throws {
     let original = Declaration<Void>.enumDecl(
       EnumSignature(
         accessLevel: .public,
@@ -232,7 +252,7 @@ final class ExtractorTests: XCTestCase {
         ]
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .enumDecl(let sig) = extracted else {
@@ -246,7 +266,7 @@ final class ExtractorTests: XCTestCase {
     XCTAssertEqual(sig.cases[0].rawValue, "north")
   }
 
-  func testExtractEnum_withAssociatedTypes() {
+  func testExtractEnum_withAssociatedTypes() throws {
     let original = Declaration<Void>.enumDecl(
       EnumSignature(
         name: "Result",
@@ -256,7 +276,7 @@ final class ExtractorTests: XCTestCase {
         ]
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .enumDecl(let sig) = extracted else {
@@ -269,7 +289,7 @@ final class ExtractorTests: XCTestCase {
 
   // MARK: - TypeAlias round-trip
 
-  func testExtractTypeAlias() {
+  func testExtractTypeAlias() throws {
     let original = Declaration<Void>.typeAlias(
       TypeAliasSignature(
         accessLevel: .public,
@@ -277,7 +297,7 @@ final class ExtractorTests: XCTestCase {
         existingType: "() -> Void"
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .typeAlias(let sig) = extracted else {
@@ -389,7 +409,7 @@ final class ExtractorTests: XCTestCase {
 
   // MARK: - Mutating function
 
-  func testExtractFunction_mutating() {
+  func testExtractFunction_mutating() throws {
     let original = Declaration<Void>.function(
       FunctionSignature(
         isMutating: true,
@@ -397,7 +417,7 @@ final class ExtractorTests: XCTestCase {
         body: []
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .function(let sig) = extracted else {
@@ -408,7 +428,7 @@ final class ExtractorTests: XCTestCase {
 
   // MARK: - Parameter attributes
 
-  func testExtractFunction_escapingParameter() {
+  func testExtractFunction_escapingParameter() throws {
     let original = Declaration<Void>.function(
       FunctionSignature(
         name: "perform",
@@ -423,7 +443,7 @@ final class ExtractorTests: XCTestCase {
         body: []
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .function(let sig) = extracted else {
@@ -436,54 +456,9 @@ final class ExtractorTests: XCTestCase {
     )
   }
 
-  func testExtractFunction_preservesTypeSpecifiersAndAttributeArguments() {
-    let original = Declaration<Void>.function(
-      FunctionSignature(
-        name: "register",
-        parameters: [
-          ParameterSignature(
-            name: "handler",
-            type: "() -> Void",
-            specifiers: ["borrowing"],
-            attributes: [.sendable]
-          ),
-          ParameterSignature(
-            name: "callback",
-            type: "(Int32) -> Void",
-            attributes: [
-              AttributeSignature(name: "convention", arguments: .raw("c"))
-            ]
-          ),
-        ],
-        body: []
-      )
-    )
-
-    let rendered = Renderer.render(original)
-    let extracted = Extractor.extract(rendered)
-
-    guard case .function(let signature) = extracted else {
-      return XCTFail("Expected .function")
-    }
-    XCTAssertEqual(signature.parameters[0].specifiers, ["borrowing"])
-    XCTAssertEqual(signature.parameters[0].attributes, [.sendable])
-    XCTAssertEqual(signature.parameters[1].attributes.first?.name, "convention")
-    let reRendered = Renderer.render(Declaration.function(signature)).formatted().description
-    XCTAssertTrue(reRendered.contains("callback: @convention(c) (Int32) -> Void"))
-
-    guard let function = rendered.as(FunctionDeclSyntax.self) else {
-      return XCTFail("Expected FunctionDeclSyntax")
-    }
-    let directParameters = Extractor.extractParameters(
-      from: function.signature.parameterClause
-    )
-    XCTAssertEqual(directParameters[0].specifiers, ["borrowing"])
-    XCTAssertEqual(directParameters[1].attributes, signature.parameters[1].attributes)
-  }
-
   // MARK: - Availability attribute round-trip
 
-  func testExtractFunction_withAvailableAttribute() {
+  func testExtractFunction_withAvailableAttribute() throws {
     let original = Declaration<Void>.function(
       FunctionSignature(
         attributes: [
@@ -496,7 +471,7 @@ final class ExtractorTests: XCTestCase {
         body: []
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .function(let sig) = extracted else {
@@ -536,16 +511,19 @@ final class ExtractorTests: XCTestCase {
 
     guard case .raw(let text) = sig.attributes[0].arguments else {
       return XCTFail(
-        "Expected .raw arguments, got \(String(describing: sig.attributes[0].arguments))")
+        "Expected .raw arguments, got \(String(describing: sig.attributes[0].arguments))"
+      )
     }
     XCTAssertTrue(text.contains("mySelector"))
   }
 
   // MARK: - Typed variable extraction
 
-  func testExtractVariable_typedOverload() {
-    let decl = DeclSyntax("public var x: Int, y: String")
-      .as(VariableDeclSyntax.self)!
+  func testExtractVariable_typedOverload() throws {
+    let decl = try XCTUnwrap(
+      DeclSyntax("public var x: Int, y: String")
+        .as(VariableDeclSyntax.self)
+    )
     let results = Extractor.extract(decl)
 
     XCTAssertEqual(results.count, 2)
@@ -577,7 +555,7 @@ final class ExtractorTests: XCTestCase {
     XCTAssertEqual(sig.typeName, "MyType")
   }
 
-  func testExtractFunction_withAvailableDeprecated() {
+  func testExtractFunction_withAvailableDeprecated() throws {
     let original = Declaration<Void>.function(
       FunctionSignature(
         attributes: [
@@ -591,7 +569,7 @@ final class ExtractorTests: XCTestCase {
         body: []
       )
     )
-    let rendered = Renderer.render(original)
+    let rendered = try Renderer.render(original)
     let extracted = Extractor.extract(rendered)
 
     guard case .function(let sig) = extracted else {
@@ -664,7 +642,52 @@ final class ExtractorTests: XCTestCase {
     XCTAssertTrue(sig.isStatic)
   }
 
-  func testFunctionExtractionDropsExecutableParameterDefaults() {
+  func testExtractFunction_preservesTypeSpecifiersAndAttributeArguments() throws {
+    let original = Declaration<Void>.function(
+      FunctionSignature(
+        name: "register",
+        parameters: [
+          ParameterSignature(
+            name: "handler",
+            type: "() -> Void",
+            specifiers: ["borrowing"],
+            attributes: [.sendable]
+          ),
+          ParameterSignature(
+            name: "callback",
+            type: "(Int32) -> Void",
+            attributes: [
+              AttributeSignature(name: "convention", arguments: .raw("c"))
+            ]
+          ),
+        ],
+        body: []
+      )
+    )
+
+    let rendered = try Renderer.render(original)
+    let extracted = Extractor.extract(rendered)
+
+    guard case .function(let signature) = extracted else {
+      return XCTFail("Expected .function")
+    }
+    XCTAssertEqual(signature.parameters[0].specifiers, ["borrowing"])
+    XCTAssertEqual(signature.parameters[0].attributes, [.sendable])
+    XCTAssertEqual(signature.parameters[1].attributes.first?.name, "convention")
+    let reRendered = try Renderer.render(Declaration.function(signature)).formatted().description
+    XCTAssertTrue(reRendered.contains("callback: @convention(c) (Int32) -> Void"))
+
+    guard let function = rendered.as(FunctionDeclSyntax.self) else {
+      return XCTFail("Expected FunctionDeclSyntax")
+    }
+    let directParameters = Extractor.extractParameters(
+      from: function.signature.parameterClause
+    )
+    XCTAssertEqual(directParameters[0].specifiers, ["borrowing"])
+    XCTAssertEqual(directParameters[1].attributes, signature.parameters[1].attributes)
+  }
+
+  func testFunctionExtractionDropsExecutableParameterDefaults() throws {
     let declaration = Declaration<Void>.function(
       FunctionSignature(
         name: "load",
@@ -679,7 +702,7 @@ final class ExtractorTests: XCTestCase {
       )
     )
 
-    let extracted = Extractor.extract(Renderer.render(declaration))
+    let extracted = try Extractor.extract(Renderer.render(declaration))
 
     guard case .function(let signature) = extracted else {
       return XCTFail("Expected a function declaration")

@@ -24,7 +24,6 @@ import SwiftSyntax
 /// - **`class` modifier**: `class func` members are treated as static during extraction
 ///   since `FunctionSignature.isStatic` covers both `static` and `class` dispatch.
 public enum Extractor {
-
   // MARK: - Top-level dispatch
 
   /// Extracts a `DeclSyntax` into the kit's declaration model.
@@ -213,8 +212,8 @@ public enum Extractor {
             hasGetterOrSetter = true
           case .keyword(.set):
             hasGetterOrSetter = true
-            let paramName = accessor.parameters?.name.text ?? "newValue"
-            setter = SetterSignature<Never>(parameterName: paramName, body: [])
+            let parameterName = accessor.parameters?.name.text
+            setter = SetterSignature<Never>(parameterName: parameterName, body: [])
           default:
             break
           }

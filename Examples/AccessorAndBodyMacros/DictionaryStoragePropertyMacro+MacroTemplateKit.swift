@@ -98,7 +98,7 @@ public struct DictionaryStoragePropertyMacro: AccessorMacro {
     in context: some MacroExpansionContext
   ) throws -> [AccessorDeclSyntax] {
     let propertyInfo = try extractPropertyInfo(from: declaration)
-    return buildAccessorDeclarations(for: propertyInfo)
+    return try buildAccessorDeclarations(for: propertyInfo)
   }
 
   // MARK: - Supporting Types
@@ -142,10 +142,9 @@ public struct DictionaryStoragePropertyMacro: AccessorMacro {
 
   private static func buildAccessorDeclarations(
     for info: PropertyInfo
-  ) -> [AccessorDeclSyntax] {
+  ) throws -> [AccessorDeclSyntax] {
     let storageVariable: Template<Void> = .variable("_storage")
     let propertyKey: Template<Void> = .literal(.string(info.name))
-    let defaultValue: Template<Void> = .variable(info.defaultValueText)
     let newValueVariable: Template<Void> = .variable("newValue")
 
     // Model _storage["name", default: defaultValue] as a subscript with
@@ -189,11 +188,11 @@ public struct DictionaryStoragePropertyMacro: AccessorMacro {
 
     let getter = AccessorDeclSyntax(
       accessorSpecifier: .keyword(.get),
-      body: CodeBlockSyntax(statements: Renderer.renderStatements(getterStatements))
+      body: CodeBlockSyntax(statements: try Renderer.renderStatements(getterStatements))
     )
     let setter = AccessorDeclSyntax(
       accessorSpecifier: .keyword(.set),
-      body: CodeBlockSyntax(statements: Renderer.renderStatements(setterStatements))
+      body: CodeBlockSyntax(statements: try Renderer.renderStatements(setterStatements))
     )
 
     return [getter, setter]

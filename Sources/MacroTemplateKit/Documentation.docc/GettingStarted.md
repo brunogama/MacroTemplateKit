@@ -12,7 +12,7 @@ Add MacroTemplateKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7"),
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
@@ -43,7 +43,7 @@ Build a ``Declaration`` and pass it to ``Renderer``. In the common case, use `Te
 import MacroTemplateKit
 import SwiftSyntax
 
-let decl: DeclSyntax = Renderer.render(
+let decl: DeclSyntax = try Renderer.render(
     Declaration.function(FunctionSignature(
         accessLevel: .public,
         name: "greet",
@@ -101,7 +101,7 @@ let initializer = Declaration<Void>.initDecl(
 The chainable API is the recommended style for common expression assembly:
 
 ```swift
-let expr: ExprSyntax = Renderer.render(
+let expr: ExprSyntax = try Renderer.render(
     Template<Void>.variable("api")
         .method("fetch") {
             TemplateArgument<Void>.labeled("id", .variable("userId"))
@@ -116,7 +116,7 @@ Generic clauses, parameter packs, `where` requirements, and common `@...`
 attributes are first-class parts of declaration signatures:
 
 ```swift
-let decl: DeclSyntax = Renderer.render(
+let decl: DeclSyntax = try Renderer.render(
     Declaration.function(FunctionSignature(
         accessLevel: .public,
         attributes: [.mainActor],
@@ -149,7 +149,7 @@ The type parameter `A` on ``Template``, ``Statement``, and ``Declaration`` lets 
 
 ```swift
 let template: Template<String> = .variable("x", payload: "from user input")
-let expr: ExprSyntax = Renderer.render(template.map { _ in () })
+let expr: ExprSyntax = try Renderer.render(template.map { _ in () })
 ```
 
 ## Extract, Transform, Render
@@ -168,7 +168,7 @@ guard let extracted: Declaration<Never> = Extractor.extract(declaration) else {
 if case .function(let sig) = extracted {
     // sig is FunctionSignature<Never>
     // Use wither methods to produce a modified copy
-    let asyncVariant: DeclSyntax = sig
+    let asyncVariant: DeclSyntax = try sig
         .withName(sig.name + "Async")
         .withIsAsync(true)
         .withCanThrow(true)

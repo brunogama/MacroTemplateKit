@@ -1,4 +1,5 @@
 // MARK: - DefaultFatalErrorImplementationMacro using MacroTemplateKit
+
 //
 // Original swift-syntax example from:
 //   swiftlang/swift-syntax
@@ -82,7 +83,7 @@ import SwiftSyntaxMacros
 ///     name:      "<methodName>",
 ///     parameters: [...],
 ///     isAsync:   <bool>,
-///     canThrow:  <bool>,
+///     throwingEffect: <effect>,
 ///     returnType: <string?>,
 ///     body: [
 ///       .expression(.functionCall("fatalError", [(nil, .literal("<methodName> is not implemented"))]))
@@ -91,132 +92,129 @@ import SwiftSyntaxMacros
 /// )
 /// ```
 public enum DefaultFatalErrorImplementationMacro: ExtensionMacro {
+    // MARK: - Diagnostics
 
-  // MARK: - Diagnostics
-
-  private static let messageID = MessageID(
-    domain: "MacroTemplateKit.Examples",
-    id: "DefaultFatalErrorImplementation"
-  )
-
-  // MARK: - ExpansionMacro
-
-  public static func expansion(
-    of node: AttributeSyntax,
-    attachedTo declaration: some DeclGroupSyntax,
-    providingExtensionsOf type: some TypeSyntaxProtocol,
-    conformingTo protocols: [TypeSyntax],
-    in context: some MacroExpansionContext
-  ) throws -> [ExtensionDeclSyntax] {
-    guard let protocolDecl = declaration.as(ProtocolDeclSyntax.self) else {
-      throw SimpleDiagnosticMessage(
-        message: "Macro `defaultFatalErrorImplementation` can only be applied to a protocol",
-        diagnosticID: messageID,
-        severity: .error
-      )
-    }
-
-    let methodDeclarations = extractMethodDeclarations(from: protocolDecl)
-    guard !methodDeclarations.isEmpty else {
-      return []
-    }
-
-    let typeName = type.trimmed.description
-    let extensionSignature = ExtensionSignature<Never>(
-      typeName: typeName,
-      conformances: [],
-      whereRequirements: [],
-      members: methodDeclarations
+    private static let messageID = MessageID(
+        domain: "MacroTemplateKit.Examples",
+        id: "DefaultFatalErrorImplementation"
     )
 
-    return [Renderer.renderExtensionDecl(extensionSignature)]
-  }
+    // MARK: - ExpansionMacro
 
-  // MARK: - Private Helpers
-
-  /// Extracts all function declarations from a protocol and converts them to
-  /// `Declaration<Never>` templates with fatalError stub bodies.
-  private static func extractMethodDeclarations(
-    from protocolDecl: ProtocolDeclSyntax
-  ) -> [Declaration<Never>] {
-    protocolDecl.memberBlock.members
-      .map(\.decl)
-      .compactMap { decl -> Declaration<Never>? in
-        guard let functionDecl = decl.as(FunctionDeclSyntax.self) else {
-          return nil
+    public static func expansion(
+        of _: AttributeSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        providingExtensionsOf type: some TypeSyntaxProtocol,
+        conformingTo _: [TypeSyntax],
+        in _: some MacroExpansionContext
+    ) throws -> [ExtensionDeclSyntax] {
+        guard let protocolDecl = declaration.as(ProtocolDeclSyntax.self) else {
+            throw MacroExpansionErrorMessage(
+                "Macro `defaultFatalErrorImplementation` can only be applied to a protocol"
+            )
         }
-        return makeStubDeclaration(from: functionDecl)
-      }
-  }
 
-  /// Converts a protocol `FunctionDeclSyntax` into a `Declaration<Never>` with a
-  /// `fatalError` stub body.
-  ///
-  /// The stub message includes the method name so the crash site is identifiable
-  /// without a stack trace.
-  private static func makeStubDeclaration(
-    from functionDecl: FunctionDeclSyntax
-  ) -> Declaration<Never> {
-    let methodName = functionDecl.name.text
-    let parameters = extractParameters(from: functionDecl)
-    let isAsync = functionDecl.signature.effectSpecifiers?.asyncSpecifier != nil
-    let canThrow = functionDecl.signature.effectSpecifiers?.throwsClause != nil
-    let returnType = functionDecl.signature.returnClause?.type.trimmedDescription
+        let methodDeclarations = extractMethodDeclarations(from: protocolDecl)
+        guard !methodDeclarations.isEmpty else {
+            return []
+        }
 
-    // Build a fatalError call with a descriptive message string.
-    // Using .literal(.string(...)) ensures the string is properly quoted and
-    // escaped in the rendered output — no manual escaping needed.
-    let stubBody: [Statement<Never>] = [
-      .expression(
-        .functionCall(
-          function: "fatalError",
-          arguments: [
-            (label: nil, value: .literal(.string("\(methodName) is not implemented")))
-          ]
+        let typeName = type.trimmed.description
+        let extensionSignature = ExtensionSignature<Never>(
+            typeName: typeName,
+            conformances: [],
+            whereRequirements: [],
+            members: methodDeclarations
         )
-      )
-    ]
 
-    let signature = FunctionSignature<Never>(
-      accessLevel: .internal,
-      isStatic: false,
-      isMutating: false,
-      name: methodName,
-      parameters: parameters,
-      isAsync: isAsync,
-      canThrow: canThrow,
-      returnType: returnType,
-      body: stubBody
-    )
-
-    return .function(signature)
-  }
-
-  /// Converts SwiftSyntax parameter syntax to signature-only `ParameterSignature<Never>` values.
-  ///
-  /// In SwiftSyntax, an unlabelled parameter (`_ name: Type`) has
-  /// `firstName.tokenKind == .keyword(.wildcard)`.  A label-and-name pair (`label name: Type`)
-  /// has `firstName` as the external label and `secondName` as the internal name.
-  private static func extractParameters(
-    from functionDecl: FunctionDeclSyntax
-  ) -> [ParameterSignature<Never>] {
-    functionDecl.signature.parameterClause.parameters.map { param in
-      let externalLabel: String?
-      switch param.firstName.tokenKind {
-      case .keyword(.wildcard):
-        // Explicit `_` means no external label.
-        externalLabel = "_"
-      default:
-        externalLabel = param.firstName.text
-      }
-      let internalName = (param.secondName ?? param.firstName).text
-      return ParameterSignature<Never>(
-        label: externalLabel,
-        name: internalName,
-        type: param.type.trimmedDescription,
-        isInout: false,
-        defaultValue: nil
-      )
+        return try [Renderer.renderExtensionDecl(extensionSignature)]
     }
-  }
+
+    // MARK: - Private Helpers
+
+    /// Extracts all function declarations from a protocol and converts them to
+    /// `Declaration<Never>` templates with fatalError stub bodies.
+    private static func extractMethodDeclarations(
+        from protocolDecl: ProtocolDeclSyntax
+    ) -> [Declaration<Never>] {
+        protocolDecl.memberBlock.members
+            .map(\.decl)
+            .compactMap { decl -> Declaration<Never>? in
+                guard let functionDecl = decl.as(FunctionDeclSyntax.self) else {
+                    return nil
+                }
+                return makeStubDeclaration(from: functionDecl)
+            }
+    }
+
+    /// Converts a protocol `FunctionDeclSyntax` into a `Declaration<Never>` with a
+    /// `fatalError` stub body.
+    ///
+    /// The stub message includes the method name so the crash site is identifiable
+    /// without a stack trace.
+    private static func makeStubDeclaration(
+        from functionDecl: FunctionDeclSyntax
+    ) -> Declaration<Never> {
+        let methodName = functionDecl.name.text
+        let parameters = extractParameters(from: functionDecl)
+        let isAsync = functionDecl.signature.effectSpecifiers?.asyncSpecifier != nil
+        let throwingEffect = Extractor.extract(functionDecl).throwingEffect
+        let returnType = functionDecl.signature.returnClause?.type.trimmedDescription
+
+        // Build a fatalError call with a descriptive message string.
+        // Using .literal(.string(...)) ensures the string is properly quoted and
+        // escaped in the rendered output — no manual escaping needed.
+        let stubBody: [Statement<Never>] = [
+            .expression(
+                .functionCall(
+                    function: "fatalError",
+                    arguments: [
+                        (label: nil, value: .literal(.string("\(methodName) is not implemented"))),
+                    ]
+                )
+            ),
+        ]
+
+        let signature = FunctionSignature<Never>(
+            accessLevel: .internal,
+            isStatic: false,
+            isMutating: false,
+            name: methodName,
+            parameters: parameters,
+            isAsync: isAsync,
+            throwingEffect: throwingEffect,
+            returnType: returnType,
+            body: stubBody
+        )
+
+        return .function(signature)
+    }
+
+    /// Converts SwiftSyntax parameter syntax to signature-only `ParameterSignature<Never>` values.
+    ///
+    /// In SwiftSyntax, an unlabelled parameter (`_ name: Type`) has
+    /// `firstName.tokenKind == .keyword(.wildcard)`.  A label-and-name pair (`label name: Type`)
+    /// has `firstName` as the external label and `secondName` as the internal name.
+    private static func extractParameters(
+        from functionDecl: FunctionDeclSyntax
+    ) -> [ParameterSignature<Never>] {
+        functionDecl.signature.parameterClause.parameters.map { param in
+            let externalLabel: String?
+            switch param.firstName.tokenKind {
+            case .wildcard:
+                // Explicit `_` means no external label.
+                externalLabel = "_"
+            default:
+                externalLabel = param.firstName.text
+            }
+            let internalName = (param.secondName ?? param.firstName).text
+            return ParameterSignature<Never>(
+                label: externalLabel,
+                name: internalName,
+                type: param.type.trimmedDescription,
+                isInout: false,
+                defaultValue: nil
+            )
+        }
+    }
 }

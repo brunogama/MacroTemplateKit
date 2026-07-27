@@ -14,17 +14,19 @@ final class ThrowingEffectTests: XCTestCase {
     XCTAssertTrue(throwing.canThrow)
   }
 
-  func testRendererPreservesThrowingEffectSpelling() {
-    XCTAssertTrue(render(.none).contains("func execute()"))
-    XCTAssertTrue(render(.throws()).contains("func execute() throws"))
+  func testRendererPreservesThrowingEffectSpelling() throws {
+    XCTAssertTrue(try render(.none).contains("func execute()"))
+    XCTAssertTrue(try render(.throws()).contains("func execute() throws"))
     XCTAssertTrue(
-      render(.throws(errorType: "NetworkError"), isAsync: true)
+      try render(.throws(errorType: "NetworkError"), isAsync: true)
         .contains("func execute() async throws(NetworkError)")
     )
-    XCTAssertTrue(render(.rethrows).contains("func execute(operation: () throws -> Void) rethrows"))
+    XCTAssertTrue(
+      try render(.rethrows).contains("func execute(operation: () throws -> Void) rethrows")
+    )
   }
 
-  func testRendererAndExtractorRoundTripEveryThrowingEffect() {
+  func testRendererAndExtractorRoundTripEveryThrowingEffect() throws {
     let effects: [ThrowingEffect] = [
       .none,
       .throws(),
@@ -34,7 +36,7 @@ final class ThrowingEffectTests: XCTestCase {
 
     for effect in effects {
       let declaration = Declaration<Void>.function(signature(effect))
-      let extracted = Extractor.extract(Renderer.render(declaration))
+      let extracted = try Extractor.extract(Renderer.render(declaration))
 
       guard case .function(let function) = extracted else {
         return XCTFail("Expected a function declaration")
@@ -87,8 +89,8 @@ final class ThrowingEffectTests: XCTestCase {
   private func render(
     _ effect: ThrowingEffect,
     isAsync: Bool = false
-  ) -> String {
-    Renderer.render(Declaration<Void>.function(signature(effect, isAsync: isAsync)))
+  ) throws -> String {
+    try Renderer.render(Declaration<Void>.function(signature(effect, isAsync: isAsync)))
       .formatted().description
   }
 

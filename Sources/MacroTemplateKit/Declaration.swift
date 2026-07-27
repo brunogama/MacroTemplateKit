@@ -149,7 +149,7 @@ public enum ThrowingEffect: Equatable, Hashable, Sendable {
 }
 
 /// Function signature with all declaration components.
-public struct FunctionSignature<A>: Sendable where A: Sendable {
+public struct FunctionSignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
@@ -194,6 +194,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   /// Function body statements.
   public let body: [Statement<A>]
 
+  @inlinable
   public init(
     accessLevel: AccessLevel = .internal,
     attributes: [AttributeSignature] = [],
@@ -228,6 +229,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
   ///
   /// Keeping this initializer separate from the legacy Boolean initializer prevents ordinary
   /// call sites from becoming ambiguous while allowing lossless typed-throws and `rethrows` models.
+  @inlinable
   public init(
     accessLevel: AccessLevel = .internal,
     attributes: [AttributeSignature] = [],
@@ -261,7 +263,7 @@ public struct FunctionSignature<A>: Sendable where A: Sendable {
 ///
 /// Keeping defaults inside `Template` ensures declaration transformations cannot lose or
 /// bypass expression structure.
-public struct ParameterSignature<A>: Sendable where A: Sendable {
+public struct ParameterSignature<A: Sendable>: Sendable {
   /// The external label, kept separate from the local name so rendering preserves call syntax.
   public let label: String?
 
@@ -309,6 +311,7 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
   ///   - defaultValue: A structural default expression that shares payload transformations.
   ///     The initializer discards this value when `isInout` is `true` so the signature cannot
   ///     represent syntax that Swift rejects.
+  @inlinable
   public init(
     label: String? = nil,
     name: String,
@@ -319,12 +322,23 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
     isInout: Bool = false,
     defaultValue: Template<A>? = nil
   ) {
-    let normalizedIsInout = isInout || specifiers.contains("inout")
+    let normalizedSpecifiers: [String]
+    let normalizedIsInout: Bool
+    if specifiers.isEmpty {
+      normalizedSpecifiers = specifiers
+      normalizedIsInout = isInout
+    } else if specifiers.contains("inout") {
+      normalizedSpecifiers = specifiers.filter { $0 != "inout" }
+      normalizedIsInout = true
+    } else {
+      normalizedSpecifiers = specifiers
+      normalizedIsInout = isInout
+    }
 
     self.label = label
     self.name = name
     self.type = type
-    self.specifiers = specifiers.filter { $0 != "inout" }
+    self.specifiers = normalizedSpecifiers
     self.attributes = attributes
     self.lateSpecifiers = lateSpecifiers
     self.isInout = normalizedIsInout
@@ -337,7 +351,7 @@ public struct ParameterSignature<A>: Sendable where A: Sendable {
   ///
   /// - Parameter transform: Function applied to each payload in the default expression.
   /// - Returns: A parameter with identical signature structure and transformed default metadata.
-  public func map<B>(_ transform: (A) -> B) -> ParameterSignature<B> where B: Sendable {
+  public func map<B: Sendable>(_ transform: (A) -> B) -> ParameterSignature<B> {
     ParameterSignature<B>(
       label: label,
       name: name,
@@ -356,7 +370,7 @@ extension ParameterSignature: Equatable where A: Equatable {}
 extension ParameterSignature: Hashable where A: Hashable {}
 
 /// Property signature for stored properties.
-public struct PropertySignature<A>: Sendable where A: Sendable {
+public struct PropertySignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
   public let attributes: [AttributeSignature]
@@ -386,7 +400,7 @@ public struct PropertySignature<A>: Sendable where A: Sendable {
 }
 
 /// Computed property signature with accessors.
-public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
+public struct ComputedPropertySignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
   public let attributes: [AttributeSignature]
@@ -415,22 +429,22 @@ public struct ComputedPropertySignature<A>: Sendable where A: Sendable {
   }
 }
 
-/// Setter signature with parameter name and body.
-public struct SetterSignature<A>: Sendable where A: Sendable {
-  /// Setter parameter name (default: "newValue").
-  public let parameterName: String
+/// Setter signature with an optional explicit parameter name and body.
+public struct SetterSignature<A: Sendable>: Sendable {
+  /// Explicit setter parameter name, or `nil` for Swift's implicit `newValue`.
+  public let parameterName: String?
 
   /// Setter body statements.
   public let body: [Statement<A>]
 
-  public init(parameterName: String = "newValue", body: [Statement<A>]) {
+  public init(parameterName: String? = nil, body: [Statement<A>]) {
     self.parameterName = parameterName
     self.body = body
   }
 }
 
 /// Extension signature with type name, conformances, where clause, and members.
-public struct ExtensionSignature<A>: Sendable where A: Sendable {
+public struct ExtensionSignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
   public let typeName: String
@@ -454,7 +468,7 @@ public struct ExtensionSignature<A>: Sendable where A: Sendable {
 }
 
 /// Struct signature with name and members.
-public struct StructSignature<A>: Sendable where A: Sendable {
+public struct StructSignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
   public let attributes: [AttributeSignature]
@@ -484,7 +498,7 @@ public struct StructSignature<A>: Sendable where A: Sendable {
 }
 
 /// Initializer signature for init declarations.
-public struct InitializerSignature<A>: Sendable where A: Sendable {
+public struct InitializerSignature<A: Sendable>: Sendable {
   /// Access level (public, internal, private, fileprivate).
   public let accessLevel: AccessLevel
 
@@ -543,8 +557,8 @@ extension Declaration {
   ///
   /// - Parameter transform: Function applied to each template payload
   /// - Returns: New declaration with transformed payloads and identical structure
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> Declaration<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> Declaration<B>
+  where A: Sendable {
     switch self {
     case .function(let signature):
       return .function(signature.map(transform))
@@ -567,8 +581,8 @@ extension Declaration {
 }
 
 extension FunctionSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> FunctionSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> FunctionSignature<B>
+  where A: Sendable {
     FunctionSignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
@@ -587,8 +601,8 @@ extension FunctionSignature {
 }
 
 extension PropertySignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> PropertySignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> PropertySignature<B>
+  where A: Sendable {
     PropertySignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
@@ -602,8 +616,9 @@ extension PropertySignature {
 }
 
 extension ComputedPropertySignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> ComputedPropertySignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B)
+    -> ComputedPropertySignature<B>
+  where A: Sendable {
     ComputedPropertySignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
@@ -617,8 +632,8 @@ extension ComputedPropertySignature {
 }
 
 extension SetterSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> SetterSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> SetterSignature<B>
+  where A: Sendable {
     SetterSignature<B>(
       parameterName: parameterName,
       body: body.map { $0.map(transform) }
@@ -627,8 +642,8 @@ extension SetterSignature {
 }
 
 extension ExtensionSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> ExtensionSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> ExtensionSignature<B>
+  where A: Sendable {
     ExtensionSignature<B>(
       accessLevel: accessLevel,
       typeName: typeName,
@@ -640,8 +655,8 @@ extension ExtensionSignature {
 }
 
 extension StructSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> StructSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> StructSignature<B>
+  where A: Sendable {
     StructSignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,
@@ -655,8 +670,8 @@ extension StructSignature {
 }
 
 extension InitializerSignature {
-  public func map<B>(_ transform: @escaping @Sendable (A) -> B) -> InitializerSignature<B>
-  where A: Sendable, B: Sendable {
+  public func map<B: Sendable>(_ transform: @escaping @Sendable (A) -> B) -> InitializerSignature<B>
+  where A: Sendable {
     InitializerSignature<B>(
       accessLevel: accessLevel,
       attributes: attributes,

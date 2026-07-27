@@ -44,7 +44,7 @@ extension DictionaryStorageMacroMTK: MemberMacro {
     conformingTo protocols: [TypeSyntax],
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
-    return [buildStorageProperty()]
+    return [try buildStorageProperty()]
   }
 
   // MARK: - Private Helpers
@@ -65,7 +65,7 @@ extension DictionaryStorageMacroMTK: MemberMacro {
   /// - `type`          — expressed as a plain `String` type annotation since
   ///                     `[String: Any]` is a valid Swift type string and the
   ///                     renderer passes it through `TypeSyntax(stringLiteral:)`.
-  private static func buildStorageProperty() -> DeclSyntax {
+  private static func buildStorageProperty() throws -> DeclSyntax {
     let storageProperty = Declaration<Void>.property(
       PropertySignature(
         name: "_storage",
@@ -74,7 +74,7 @@ extension DictionaryStorageMacroMTK: MemberMacro {
         initializer: .dictionaryLiteral([])
       )
     )
-    return Renderer.render(storageProperty)
+    return try Renderer.render(storageProperty)
   }
 }
 
@@ -144,12 +144,12 @@ public struct DictionaryStoragePropertyMacroMTK: AccessorMacro {
       throw DictionaryStorageError.missingInitializer
     }
 
-    let getter = buildGetter(
+    let getter = try buildGetter(
       propertyName: identifier.text,
       type: type,
       defaultValue: defaultValue
     )
-    let setter = buildSetter(propertyName: identifier.text)
+    let setter = try buildSetter(propertyName: identifier.text)
     return [getter, setter]
   }
 
@@ -179,7 +179,7 @@ public struct DictionaryStoragePropertyMacroMTK: AccessorMacro {
     propertyName: String,
     type: TypeSyntax,
     defaultValue: ExprSyntax
-  ) -> AccessorDeclSyntax {
+  ) throws -> AccessorDeclSyntax {
     // Build the subscript-with-default expression using raw SwiftSyntax
     // because Template.subscriptAccess only models single-index subscripts.
     // `_storage["propertyName"]` would be expressible via Template, but the
@@ -190,7 +190,7 @@ public struct DictionaryStoragePropertyMacroMTK: AccessorMacro {
       expression: defaultValue
     )
     let subscriptWithDefault = SubscriptCallExprSyntax(
-      calledExpression: Renderer.render(
+      calledExpression: try Renderer.render(
         Template<Void>.variable("_storage")
       ),
       arguments: LabeledExprListSyntax([
@@ -232,7 +232,7 @@ public struct DictionaryStoragePropertyMacroMTK: AccessorMacro {
   /// AFTER: MacroTemplateKit
   ///
   ///   Statement.assignmentStatement(lhs: subscriptExpr, rhs: newValue)
-  private static func buildSetter(propertyName: String) -> AccessorDeclSyntax {
+  private static func buildSetter(propertyName: String) throws -> AccessorDeclSyntax {
     // `_storage["propertyName"] = newValue`
     let lhs = Template<Void>.subscriptAccess(
       base: .variable("_storage"),
@@ -242,7 +242,7 @@ public struct DictionaryStoragePropertyMacroMTK: AccessorMacro {
 
     let assignmentStatement = Statement<Void>.assignmentStatement(lhs: lhs, rhs: rhs)
     let setterBody = CodeBlockSyntax(
-      statements: CodeBlockItemListSyntax([Renderer.render(assignmentStatement)])
+      statements: CodeBlockItemListSyntax([try Renderer.render(assignmentStatement)])
     )
 
     return AccessorDeclSyntax(

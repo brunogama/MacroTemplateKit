@@ -18,7 +18,7 @@ public func \(name)(\(params)) async throws -> \(returnType) {
 // ...and hoping the braces balance.
 
 // Write this:
-let decl: DeclSyntax = Renderer.render(
+let decl: DeclSyntax = try Renderer.render(
     Declaration.function(FunctionSignature(
         accessLevel: .public,
         name: name,
@@ -44,7 +44,7 @@ MacroTemplateKit eliminates that failure mode:
 - **Type-checked template composition.** The three-layer type hierarchy (`Template<A>`, `Statement<A>`, `Declaration<A>`) mirrors Swift's own expression/statement/declaration hierarchy. Misusing a layer is a compile error, not a runtime surprise.
 - **Bidirectional.** `Extractor` converts `DeclSyntax` nodes back into the kit's typed model. Receive existing declarations from a macro protocol, extract them, transform with wither methods, then render new output -- without touching SwiftSyntax internals.
 - **Parametric metadata for free.** The type parameter `A` lets you attach arbitrary compile-time data -- variable origins, type info, source locations -- to variable references without changing what gets rendered. Strip it with `map` before handing off to the renderer.
-- **Pure, deterministic rendering.** `Renderer.render` has no side effects. The same template always produces the same syntax. This makes macro output straightforward to test.
+- **Deterministic rendering.** `Renderer.render` is a pure function of its input, but it `throws`: if the renderer ever produces source that does not parse, it fails loudly with a `RenderError` naming MacroTemplateKit as the culprit rather than handing the compiler a broken tree that gets blamed on your macro. The same template always produces the same syntax. This makes macro output straightforward to test.
 - **Sendable throughout.** All three template types conditionally conform to `Sendable` when their payload does, making them safe to use in Swift 6 concurrent macro implementations.
 
 ## Architecture
@@ -84,7 +84,7 @@ DeclSyntax  ──►  Extractor.extract  ──►  Declaration<Never>
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7"),
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ],
 targets: [
@@ -123,7 +123,7 @@ import MacroTemplateKit
 import SwiftSyntax
 
 // Renders: public func greet(name: String) -> String { ... }
-let decl: DeclSyntax = Renderer.render(
+let decl: DeclSyntax = try Renderer.render(
     Declaration.function(FunctionSignature(
         accessLevel: .public,
         name: "greet",
@@ -178,7 +178,7 @@ Build expressions with `.call`, chained `.property(_:)`, chained `.method(_:)`, 
 
 ```swift
 // fetchUser(id: userId, cache: true)
-let call: ExprSyntax = Renderer.render(
+let call: ExprSyntax = try Renderer.render(
     Template<Void>.call(
         "fetchUser",
         arguments: [
@@ -189,14 +189,14 @@ let call: ExprSyntax = Renderer.render(
 )
 
 // request.url.absoluteString
-let chain: ExprSyntax = Renderer.render(
+let chain: ExprSyntax = try Renderer.render(
     Template<Void>.variable("request")
         .property("url")
         .property("absoluteString")
 )
 
 // try await api.fetch(request)
-let effect: ExprSyntax = Renderer.render(
+let effect: ExprSyntax = try Renderer.render(
     Template<Void>.variable("api")
         .method("fetch") {
             TemplateArgument<Void>.unlabeled(.variable("request"))
@@ -211,7 +211,7 @@ Statements render to `CodeBlockItemSyntax` -- ready to drop into any function bo
 
 ```swift
 // let data = try await api.fetch(id: id)
-let binding: CodeBlockItemSyntax = Renderer.render(
+let binding: CodeBlockItemSyntax = try Renderer.render(
     Statement<Void>.letBinding(
         name: "data",
         type: nil,
@@ -224,7 +224,7 @@ let binding: CodeBlockItemSyntax = Renderer.render(
 )
 
 // guard !items.isEmpty else { return }
-let guard_: CodeBlockItemSyntax = Renderer.render(
+let guard_: CodeBlockItemSyntax = try Renderer.render(
     Statement<Void>.guardStatement(
         condition: .binaryOperation(
             left: .propertyAccess(base: .variable("items"), property: "isEmpty"),
@@ -244,7 +244,7 @@ let guard_: CodeBlockItemSyntax = Renderer.render(
 //     let data = try await api.fetch(id: id)
 //     return User(from: data)
 // }
-let fn: DeclSyntax = Renderer.render(
+let fn: DeclSyntax = try Renderer.render(
     Declaration.function(FunctionSignature(
         accessLevel: .public,
         name: "loadUser",
@@ -282,7 +282,7 @@ let fn: DeclSyntax = Renderer.render(
 Declaration signatures can model generic clauses, same-type requirements, parameter packs, and common `@...` attributes directly.
 
 ```swift
-let register: DeclSyntax = Renderer.render(
+let register: DeclSyntax = try Renderer.render(
     Declaration.function(FunctionSignature(
         accessLevel: .public,
         attributes: [.mainActor],
@@ -313,7 +313,7 @@ let register: DeclSyntax = Renderer.render(
 //     handler: @escaping () -> Void
 // ) where Service.ID == String, each Dependency: Sendable {}
 
-let callback: ExprSyntax = Renderer.render(
+let callback: ExprSyntax = try Renderer.render(
     Template<Void>.closure(
         attributes: [.sendable],
         params: [(name: "value", type: "Int")],
@@ -339,7 +339,7 @@ let callback: ExprSyntax = Renderer.render(
 // extension MyType: Equatable, Hashable where T: Hashable {
 //     static let shared = MyType()
 // }
-let ext: DeclSyntax = Renderer.render(
+let ext: DeclSyntax = try Renderer.render(
     Declaration.extensionDecl(ExtensionSignature(
         typeName: "MyType",
         conformances: ["Equatable", "Hashable"],
@@ -384,7 +384,7 @@ if case .function(let sig) = extracted {
         .withIsAsync(true)
         .withReturnType("Void")
         .withBody([])
-    return [asyncVariant.rendered]
+    return [try asyncVariant.rendered]
 }
 ```
 
@@ -415,14 +415,14 @@ let original = FunctionSignature<Void>(
     returnType: "User"
 )
 
-let variant: DeclSyntax = original
+let variant: DeclSyntax = try original
     .withAccessLevel(.public)
     .withIsAsync(true)
     .withCanThrow(true)
     .withReturnType("User?")
     .addingParameter(ParameterSignature(label: "cache", name: "cache", type: "Bool"))
     .addingAttribute(.mainActor)
-    .rendered  // shortcut for Renderer.render(sig.asDeclaration)
+    .rendered  // shortcut for try Renderer.render(sig.asDeclaration)
 // @MainActor public func loadUser(id: String, cache cache: Bool) async throws -> User?
 ```
 
@@ -442,8 +442,8 @@ let sig = FunctionSignature<Void>(
 )
 
 // These two lines produce the same DeclSyntax:
-let a: DeclSyntax = Renderer.render(Declaration.function(sig))
-let b: DeclSyntax = sig.rendered  // shortcut
+let a: DeclSyntax = try Renderer.render(Declaration.function(sig))
+let b: DeclSyntax = try sig.rendered  // shortcut
 ```
 
 `TypeAliasSignature.asDeclaration` is generic over payload type since `TypeAliasSignature` itself is not parameterized:
@@ -477,7 +477,7 @@ func validate(_ t: Template<VarInfo>) -> Bool {
 }
 
 // Strip metadata and render -- payload is never in the output
-let expr: ExprSyntax = Renderer.render(template.map { _ in () })
+let expr: ExprSyntax = try Renderer.render(template.map { _ in () })
 ```
 
 ### Transforming Templates with map
@@ -499,7 +499,7 @@ let enriched: Template<EnrichedInfo> = original.map { string in
 }
 
 // Discard metadata before rendering
-let expr: ExprSyntax = Renderer.render(enriched.map { _ in () })
+let expr: ExprSyntax = try Renderer.render(enriched.map { _ in () })
 ```
 
 The same `map` is available on signature types and `Declaration` itself. The common use case is the extract-then-map pattern: `Extractor` always produces `Declaration<Never>`, and `map` converts it to `Declaration<Void>` (or any other payload) before you attach body statements or call wither methods:
@@ -553,6 +553,8 @@ let withVoid: FunctionSignature<Void> = sig.map { _ in () }
 | `.subscriptAccess(base:index:)` | `base[index]` |
 | `.subscriptCall(base:arguments:)` | `base[a, b]` or `base[key, default: value]` |
 | `.forceUnwrap(_:)` | `expr!` |
+| `.cast(_:type:kind:)` | `expr as Type` / `as? Type` / `as! Type` |
+| `.syntax(_:)` | An existing `ExprSyntax`, spliced in as-is |
 | `.assignment(lhs:rhs:)` | `lhs = rhs` |
 | `.selfAccess(_:)` | `TypeName.self` |
 | `.variableDeclaration(name:type:initializer:)` | Initializer expression (in expression position) |
@@ -595,16 +597,16 @@ Fluent factory shortcuts are available for common patterns: `Template.call(_:arg
 
 ```swift
 // Expression
-Renderer.render(_ template: Template<A>) -> ExprSyntax
+try Renderer.render(_ template: Template<A>) -> ExprSyntax
 
 // Statement
-Renderer.render(_ statement: Statement<A>) -> CodeBlockItemSyntax
+try Renderer.render(_ statement: Statement<A>) -> CodeBlockItemSyntax
 
 // Multiple statements (for function bodies)
-Renderer.renderStatements(_ statements: [Statement<A>]) -> CodeBlockItemListSyntax
+Renderer.renderStatements(_ statements: [Statement<A>]) throws -> CodeBlockItemListSyntax
 
 // Declaration
-Renderer.render(_ declaration: Declaration<A>) -> DeclSyntax
+try Renderer.render(_ declaration: Declaration<A>) -> DeclSyntax
 ```
 
 ### Extractor
@@ -668,9 +670,45 @@ Each file shows a real macro rewritten to use the template API, which makes them
 
 **Payloads are invisible at render time.** `Renderer.render` discards the type parameter entirely. A `Template<Int>` and a `Template<String>` carrying the same variable name produce identical `ExprSyntax`. This separation lets you use the metadata system freely without worrying about output correctness.
 
+**Rendered tokens are stable; concrete child node types are not.** The renderer guarantees the documented `ExprSyntax`, `DeclSyntax`, and `CodeBlockItemSyntax` wrappers and valid, precedence-correct source. SwiftParser leaves binary and ternary expressions as `SequenceExprSyntax` until SwiftOperators folds them, so callers should not assume an `InfixOperatorExprSyntax` or `TernaryExprSyntax` result. Fold explicitly when downstream logic requires those concrete nodes.
+
 **No invalid states.** The API has no optional rendering path for well-formed input. Constructing a `Declaration.function` with `isAsync: true` always produces an `async` function declaration. There are no flags that silently produce incorrect output.
 
-**Tradeoffs to know about.** MacroTemplateKit covers the common 90% of macro code generation patterns. If you need to emit syntax that falls outside the current case set -- raw attribute lists, `#if` directives, operator declarations -- you will need to drop down to SwiftSyntax directly. The library's types are designed to compose with handwritten SwiftSyntax: you can use rendered output wherever a `DeclSyntax`, `ExprSyntax`, or `CodeBlockItemSyntax` is accepted.
+**Correct by construction where a string cannot be.** Because a `Template` is a tree rather than text, the renderer can inspect it and fix things a hand-written source string cannot. Nested operations are parenthesised according to Swift's precedence rules, so `.operation(.operation(a, "+", b), "*", c)` emits `(a + b) * c` rather than silently regrouping. Reserved keywords used as identifiers are backtick-escaped, so a property named `default` generates code that compiles. String literals are escaped with the right number of pound delimiters. A string has no structure to inspect, so its author has to get all of this right by hand, every time.
+
+**Tradeoffs to know about.** MacroTemplateKit covers the common 90% of macro code generation patterns. If you need to emit syntax that falls outside the current case set -- raw attribute lists, `#if` directives, operator declarations -- you will need to drop down to SwiftSyntax directly. The library's types are designed to compose with handwritten SwiftSyntax: use `Template.syntax(_:)` to splice an existing `ExprSyntax` into a template, and use rendered output wherever a `DeclSyntax`, `ExprSyntax`, or `CodeBlockItemSyntax` is accepted.
+
+**Custom operators need their precedence declared.** `Operator` accepts a string literal for the standard operators. For anything else, pass the precedence explicitly -- `Operator("|>", precedence: .multiplication)` -- or the renderer assumes the loosest binding and parenthesises every nesting defensively.
+
+## Performance
+
+Rendering goes through a source-text emitter and a single parse per fragment rather than per-node structural construction. Measured against hand-written SwiftSyntax initializers producing token-identical output, on two macro shapes at input sizes of 16/64/256, reported as `min` over 3 runs of 2000+ iterations:
+
+| workload | shape | vs hand-rolled | vs hand-rolled, invariants hoisted |
+|---|---|---|---|
+| generate | accessor pairs over stored properties | 0.53--0.54x | **0.74x** |
+| case-factory | static factories over enum cases | 0.57--0.58x | **1.00--1.02x** |
+| case-path | `@CasePathable`-style `AnyCasePath` property per case | 0.42--0.43x | **0.67--0.69x** |
+
+**Read the right-hand column.** The left one compares against a baseline that rebuilds expansion-invariant nodes -- the `static` modifier, both parens, the return type -- once per generated declaration. A macro author writing that by hand would hoist them, and hoisting alone makes the case-factory baseline 38% faster. Crediting the library for that is crediting it for someone else's mistake.
+
+So the honest summary is narrower than it first looked:
+
+- On **generate**, the library is about 26% faster than a competently hand-rolled equivalent.
+- On **case-factory**, it is **at parity or marginally slower** (1.00--1.02x). The apparent 0.6x there was almost entirely baseline error. An earlier version of this table claimed 0.94--0.96x; re-measuring every pipeline in a single process, rather than comparing numbers collected in different sessions, moved it above 1.0. Cross-session drift on this workload is ~10% for identical code, which is larger than the effect, so treat any sub-5% claim about it as unsupported --- including a favourable one.
+- On **case-path** -- the shape a TCA-style app pays for every case of every `@CasePathable` action enum -- it is about **32% faster even against the hoisted baseline**. The pattern behind all three rows: the deeper the generated declaration, the better the library does. Structural construction pays per node (~70 of them per case-path property, closures inside labeled arguments inside a generic getter); the emitter appends text and parses once per declaration. Hoisting cannot close that gap, because most of the tree varies per case at the leaves but must still be assembled per case.
+
+What survives, and it is the claim that matters: **using the library is no longer a performance tax.** Before this work MacroTemplateKit ran at 0.98--0.99x versus assembling nodes by hand, so it cost nothing and bought nothing. It now ranges from parity to a comfortable win, depending on shape. It is not a free speedup, and this README is not going to tell you it is.
+
+Caveats, stated plainly:
+
+- These are per-expansion figures in the microsecond range. Across a large project they are worth tens of milliseconds of build time, which nobody will notice. Choose this library for what it lets you express, not to speed up your builds.
+- **Trivia is now matched on every baseline, and it moved the numbers in our favour.** The baselines used to attach no trivia at all, emitting `staticfuncmakeCase0(_value:String)` where the library emits spaced source; the equivalence gate compares token streams, so it could not see this. All six baselines now emit comparable whitespace, with `interned-notrivia` kept as a control to measure the difference in the same process. On `case-factory` it is worth 1--4%, which is why it was written off as negligible; on `case-path`, which has far more whitespace, it is worth ~8% and moved that row from 0.75x to 0.68x. Stated plainly because it is a correction that flatters us: it was predicted, deferred as self-serving, then measured. Inspect with `--workloads trivia`.
+- **The `case-path` benchmark uses the typed `MatchPattern`, not the raw-source escape hatch**, because a benchmark that reaches for `.variable` measures a library you would not actually write with. Switching to it appeared to cost ~10% at the time, but that comparison spanned two benchmark sessions and does not meet the bar ADR 0005 clause 0 now sets, so no cost is claimed here. `.variable` remains available for raw source.
+- The baselines are hand-written implementations maintained in this repository. An earlier version of this section warned that a SwiftSyntax expert might beat them and narrow these ratios. That is exactly what happened, to us, on our own baseline -- see [ADR 0004](docs/adr/0004-baselines-must-hoist-invariants.md). Treat the remaining margin as an upper bound.
+- **There is no memory claim here, deliberately.** The benchmark does report a ~0.56x figure for bytes retained per expansion, and earlier versions of this table printed it. It does not reach you. A plugin serialises each expansion to source and drops the tree, so peak memory is one expansion's worth no matter how many expansions a build performs -- measured flat across a 2048x sweep, from 64 to 131072 expansions. The difference between pipelines is real per live tree and is then multiplied by a count that is always 1. See [ADR 0003](docs/adr/0003-memory-win-does-not-accumulate.md). Time is the claim, because time is the thing that adds up.
+
+Reproduce with `swift build -c release --package-path Benchmarks && Benchmarks/.build/release/RenderEngineBench`. Every pipeline is gated on producing token-identical output, so the comparison is like for like.
 
 ## Requirements
 
@@ -686,7 +724,7 @@ For downstream macro packages, prefer the tagged binary release:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7"),
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
@@ -716,7 +754,7 @@ binary release.
 
 **File > Add Package Dependencies**, enter `https://github.com/brunogama/MacroTemplateKit.git`, then:
 
-- select version `0.0.7` or later to consume the binary release
+- select version `0.1.0` or later to consume the binary release
 - use a branch or local checkout only when developing MacroTemplateKit itself
 
 ## Contributing
@@ -728,8 +766,8 @@ Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 To match CI locally (format, lint, build, test):
 
 ```bash
-./scripts/bootstrap.sh
-./scripts/ci-local.sh
+./Scripts/bootstrap.sh
+./Scripts/ci-local.sh
 ```
 
 ## Changelog

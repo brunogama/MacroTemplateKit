@@ -158,7 +158,7 @@ public enum OptionSetMemberMacro: MemberMacro {
       caseNames: caseNames
     )
 
-    let renderedMembers = memberDeclarations.map { Renderer.render($0) }
+    let renderedMembers = try memberDeclarations.map { try Renderer.render($0) }
     return [typeAliasDecl] + renderedMembers
   }
 

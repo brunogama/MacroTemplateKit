@@ -4,26 +4,26 @@ import XCTest
 @testable import MacroTemplateKit
 
 final class SwiftSyntaxCompatibilityTests: XCTestCase {
-  func testGenericCallRendersTypeArgument() {
+  func testGenericCallRendersTypeArgument() throws {
     let template: Template<Void> = .genericCall(
       function: "decode",
       typeArguments: ["Payload"],
       arguments: []
     )
 
-    XCTAssertEqual(Renderer.render(template).formatted().description, "decode<Payload>()")
+    XCTAssertEqual(try Renderer.render(template).formatted().description, "decode<Payload>()")
   }
 
-  func testGenericParameterPackAndRequirementRender() {
+  func testGenericParameterPackAndRequirementRender() throws {
     let declaration = genericDeclaration()
-    let source = Renderer.render(declaration).formatted().description
+    let source = try Renderer.render(declaration).formatted().description
 
     XCTAssertTrue(source.contains("func load<each Element>()"))
     XCTAssertTrue(source.contains("where each Element: Sendable"))
   }
 
-  func testExtractorReadsGenericParameterPackAndRequirement() {
-    let extracted = Extractor.extract(Renderer.render(genericDeclaration()))
+  func testExtractorReadsGenericParameterPackAndRequirement() throws {
+    let extracted = try Extractor.extract(Renderer.render(genericDeclaration()))
 
     guard case .function(let signature) = extracted else {
       return XCTFail("Expected a function declaration")
@@ -37,7 +37,7 @@ final class SwiftSyntaxCompatibilityTests: XCTestCase {
   }
 
   #if canImport(SwiftSyntax603)
-    func testLateTypeSpecifierRoundTripsAfterAttributes() {
+    func testInvalidLateTypeSpecifierIsRejectedByParseGate() {
       let declaration = Declaration<Void>.function(
         FunctionSignature(
           name: "perform",
@@ -53,15 +53,9 @@ final class SwiftSyntaxCompatibilityTests: XCTestCase {
         )
       )
 
-      let rendered = Renderer.render(declaration)
-      let source = rendered.formatted().description
-      let extracted = Extractor.extract(rendered)
-
-      XCTAssertTrue(source.contains("handler: @Sendable nonisolated () async -> Void"))
-      guard case .function(let signature) = extracted else {
-        return XCTFail("Expected a function declaration")
+      XCTAssertThrowsError(try Renderer.render(declaration)) { error in
+        XCTAssertTrue(error is RenderError)
       }
-      XCTAssertEqual(signature.parameters[0].lateSpecifiers, ["nonisolated"])
     }
   #endif
 

@@ -1,3 +1,4 @@
+---
 # SwiftLint Configuration for MacroTemplateKit
 
 excluded:
@@ -74,6 +75,13 @@ type_body_length:
 cyclomatic_complexity:
   warning: 15
   error: 25
+  # The SourceEmitter functions are one exhaustive `switch` over a node enum,
+  # so their "complexity" is just the case count -- 35 for Template. That is
+  # not the branching complexity this rule exists to catch, and the compiler
+  # already enforces exhaustiveness, which is the property that makes these
+  # switches safe to extend. Counting cases here would only push the emitters
+  # into being split for the linter's benefit rather than the reader's.
+  ignores_case_statements: true
 
 enum_case_associated_values_count:
   warning: 6

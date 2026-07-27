@@ -27,6 +27,10 @@ echo "==> SwiftLint (strict)"
 swiftlint lint --strict Sources/ Tests/
 
 echo
+echo "==> Manifest parity"
+"$(dirname "$0")/check-manifests.sh"
+
+echo
 echo "==> SwiftSyntax compatibility matrix"
 MTK_MATRIX_MODE=xcode27 bash Scripts/test-swift-syntax-matrix.sh
 

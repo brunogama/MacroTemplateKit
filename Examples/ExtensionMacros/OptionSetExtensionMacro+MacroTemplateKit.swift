@@ -95,7 +95,7 @@ public enum OptionSetExtensionMacro: ExtensionMacro {
       members: []
     )
 
-    return [Renderer.renderExtensionDecl(signature)]
+    return [try Renderer.renderExtensionDecl(signature)]
   }
 
   // MARK: - Private Helpers

@@ -16,427 +16,71 @@ extension Renderer {
   /// - Handles functions, properties, computed properties, extensions, and structs
   /// - Recursively renders statement bodies and nested declarations
   ///
+  /// Implemented via the source-emit-then-parse pipeline (`renderParsed(_:)`
+  /// below). The per-node structural implementation this superseded is
+  ///
   /// - Parameter declaration: Declaration to render
   /// - Returns: SwiftSyntax declaration node
-  public static func render<A: Sendable>(_ declaration: Declaration<A>) -> DeclSyntax {
-    switch declaration {
-    case .function(let sig):
-      return DeclSyntax(renderFunction(sig))
+  public static func render<A: Sendable>(_ declaration: Declaration<A>) throws -> DeclSyntax {
+    try renderParsed(declaration)
+  }
 
-    case .property(let sig):
-      return DeclSyntax(renderProperty(sig))
-
-    case .computedProperty(let sig):
-      return DeclSyntax(renderComputedProperty(sig))
-
-    case .extensionDecl(let sig):
-      return DeclSyntax(renderExtension(sig))
-
-    case .structDecl(let sig):
-      return DeclSyntax(renderStruct(sig))
-
-    case .enumDecl(let sig):
-      return DeclSyntax(renderEnum(sig))
-
-    case .typeAlias(let sig):
-      return DeclSyntax(renderTypeAlias(sig))
-
-    case .initDecl(let sig):
-      return DeclSyntax(renderInitializer(sig))
+  /// Renders an extension signature to a concrete `ExtensionDeclSyntax`.
+  ///
+  /// `ExtensionMacro.expansion(...)` is required to return
+  /// `[ExtensionDeclSyntax]`, not `[DeclSyntax]`. Without this entry point
+  /// every extension macro has to downcast the general `render(_:)` result
+  /// and force-unwrap it — pushing an unwrap that can only fail on a bug in
+  /// this library into the author's macro, which is precisely the trade
+  /// `RenderError` exists to avoid.
+  ///
+  /// - Throws: `RenderError` if the emitted source does not parse, or parses
+  ///   as something other than an extension.
+  public static func renderExtensionDecl<A: Sendable>(
+    _ signature: ExtensionSignature<A>
+  ) throws -> ExtensionDeclSyntax {
+    let declaration = try render(Declaration.extensionDecl(signature))
+    guard let extensionDecl = declaration.as(ExtensionDeclSyntax.self) else {
+      throw RenderError(
+        kind: .declaration,
+        source: declaration.description,
+        diagnostics: [
+          "expected an extension declaration, parsed as \(declaration.kind)"
+        ]
+      )
     }
+    return extensionDecl
   }
 
   // MARK: - Private Declaration Helpers
 
-  private static func renderFunction<A: Sendable>(_ sig: FunctionSignature<A>) -> FunctionDeclSyntax
-  {
-    let params = renderParameterList(sig.parameters)
-
-    let parameterClause = FunctionParameterClauseSyntax(
-      parameters: FunctionParameterListSyntax(params)
-    )
-
-    let throwsClause = renderThrowsClause(sig.throwingEffect)
-    var effectSpecifiers: FunctionEffectSpecifiersSyntax?
-    if sig.isAsync || throwsClause != nil {
-      effectSpecifiers = FunctionEffectSpecifiersSyntax(
-        asyncSpecifier: sig.isAsync ? .keyword(.async) : nil,
-        throwsClause: throwsClause
-      )
-    }
-
-    let returnClause = sig.returnType.map { type in
-      ReturnClauseSyntax(type: TypeSyntax(stringLiteral: type))
-    }
-
-    let signature = FunctionSignatureSyntax(
-      parameterClause: parameterClause,
-      effectSpecifiers: effectSpecifiers,
-      returnClause: returnClause
-    )
-
-    let body = CodeBlockSyntax(statements: renderStatements(sig.body))
-
-    var modifierList: [DeclModifierSyntax] = []
-    if let keyword = sig.accessLevel.keyword {
-      modifierList.append(DeclModifierSyntax(name: .keyword(keyword)))
-    }
-    if sig.isStatic {
-      modifierList.append(DeclModifierSyntax(name: .keyword(.static)))
-    }
-    if sig.isMutating {
-      modifierList.append(DeclModifierSyntax(name: .keyword(.mutating)))
-    }
-
-    return FunctionDeclSyntax(
-      attributes: renderAttributes(sig.attributes),
-      modifiers: DeclModifierListSyntax(modifierList),
-      name: .identifier(sig.name),
-      genericParameterClause: renderGenericParameterClause(sig.genericParameters),
-      signature: signature,
-      genericWhereClause: renderGenericWhereClause(sig.whereRequirements),
-      body: body
-    )
-  }
-
-  private static func renderThrowsClause(_ effect: ThrowingEffect) -> ThrowsClauseSyntax? {
-    switch effect {
-    case .none:
-      return nil
-    case .rethrows:
-      return ThrowsClauseSyntax(throwsSpecifier: .keyword(.rethrows))
-    case .throws(let errorType):
-      guard let errorType else {
-        return ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))
-      }
-      return ThrowsClauseSyntax(
-        throwsSpecifier: .keyword(.throws),
-        leftParen: .leftParenToken(),
-        type: TypeSyntax(stringLiteral: errorType),
-        rightParen: .rightParenToken()
-      )
-    }
-  }
-
-  private static func renderProperty<A: Sendable>(_ sig: PropertySignature<A>) -> VariableDeclSyntax
-  {
-    var modifierList: [DeclModifierSyntax] = []
-    if let keyword = sig.accessLevel.keyword {
-      modifierList.append(DeclModifierSyntax(name: .keyword(keyword)))
-    }
-    if sig.isStatic {
-      modifierList.append(DeclModifierSyntax(name: .keyword(.static)))
-    }
-    let modifiers = DeclModifierListSyntax(modifierList)
-
-    let pattern = IdentifierPatternSyntax(identifier: .identifier(sig.name))
-    let typeAnnotation = sig.type.map { TypeAnnotationSyntax(type: TypeSyntax(stringLiteral: $0)) }
-    let initializer = sig.initializer.map { InitializerClauseSyntax(value: render($0)) }
-
-    let binding = PatternBindingSyntax(
-      pattern: PatternSyntax(pattern),
-      typeAnnotation: typeAnnotation,
-      initializer: initializer
-    )
-
-    return VariableDeclSyntax(
-      attributes: renderAttributes(sig.attributes),
-      modifiers: modifiers,
-      bindingSpecifier: sig.isLet ? .keyword(.let) : .keyword(.var),
-      bindings: PatternBindingListSyntax([binding])
-    )
-  }
-
-  private static func renderComputedProperty<A: Sendable>(
-    _ sig: ComputedPropertySignature<A>
-  ) -> VariableDeclSyntax {
-    var modifierList: [DeclModifierSyntax] = []
-    if let keyword = sig.accessLevel.keyword {
-      modifierList.append(DeclModifierSyntax(name: .keyword(keyword)))
-    }
-    if sig.isStatic {
-      modifierList.append(DeclModifierSyntax(name: .keyword(.static)))
-    }
-    let modifiers = DeclModifierListSyntax(modifierList)
-
-    let getterBody = CodeBlockSyntax(statements: renderStatements(sig.getter))
-    let getter = AccessorDeclSyntax(
-      accessorSpecifier: .keyword(.get),
-      body: getterBody
-    )
-
-    var accessors: AccessorDeclListSyntax
-    if let setterSig = sig.setter {
-      let setterBody = CodeBlockSyntax(statements: renderStatements(setterSig.body))
-      let setter = AccessorDeclSyntax(
-        accessorSpecifier: .keyword(.set),
-        parameters: AccessorParametersSyntax(
-          name: .identifier(setterSig.parameterName)
-        ),
-        body: setterBody
-      )
-      accessors = AccessorDeclListSyntax([getter, setter])
-    } else {
-      accessors = AccessorDeclListSyntax([getter])
-    }
-
-    let pattern = IdentifierPatternSyntax(identifier: .identifier(sig.name))
-    let typeAnnotation = TypeAnnotationSyntax(type: TypeSyntax(stringLiteral: sig.type))
-
-    let binding = PatternBindingSyntax(
-      pattern: PatternSyntax(pattern),
-      typeAnnotation: typeAnnotation,
-      accessorBlock: AccessorBlockSyntax(accessors: .accessors(accessors))
-    )
-
-    return VariableDeclSyntax(
-      attributes: renderAttributes(sig.attributes),
-      modifiers: modifiers,
-      bindingSpecifier: .keyword(.var),
-      bindings: PatternBindingListSyntax([binding])
-    )
-  }
-
-  /// Renders an `ExtensionSignature` directly to `ExtensionDeclSyntax`.
-  ///
-  /// Use this when the `ExtensionMacro` protocol requires `[ExtensionDeclSyntax]`
-  /// rather than `DeclSyntax`.
-  public static func renderExtensionDecl<A: Sendable>(
-    _ sig: ExtensionSignature<A>
-  ) -> ExtensionDeclSyntax {
-    renderExtension(sig)
-  }
-
-  private static func renderExtension<A: Sendable>(
-    _ sig: ExtensionSignature<A>
-  ) -> ExtensionDeclSyntax {
-    let members = MemberBlockItemListSyntax(
-      sig.members.map { member in
-        MemberBlockItemSyntax(decl: render(member))
-      }
-    )
-
-    return ExtensionDeclSyntax(
-      modifiers: renderModifiers(accessLevel: sig.accessLevel),
-      extendedType: TypeSyntax(stringLiteral: sig.typeName),
-      inheritanceClause: renderInheritanceClause(sig.conformances),
-      genericWhereClause: renderGenericWhereClause(sig.whereRequirements),
-      memberBlock: MemberBlockSyntax(members: members)
-    )
-  }
-
-  private static func renderStruct<A: Sendable>(_ sig: StructSignature<A>) -> StructDeclSyntax {
-    let members = MemberBlockItemListSyntax(
-      sig.members.map { member in
-        MemberBlockItemSyntax(decl: render(member))
-      }
-    )
-
-    return StructDeclSyntax(
-      attributes: renderAttributes(sig.attributes),
-      modifiers: renderModifiers(accessLevel: sig.accessLevel),
-      name: .identifier(sig.name),
-      genericParameterClause: renderGenericParameterClause(sig.genericParameters),
-      inheritanceClause: renderInheritanceClause(sig.conformances),
-      genericWhereClause: renderGenericWhereClause(sig.whereRequirements),
-      memberBlock: MemberBlockSyntax(members: members)
-    )
-  }
-
-  private static func renderEnum<A: Sendable>(_ sig: EnumSignature<A>) -> EnumDeclSyntax {
-    var members: [MemberBlockItemSyntax] = sig.cases.map { enumCase in
-      MemberBlockItemSyntax(decl: DeclSyntax(stringLiteral: renderEnumCaseDeclaration(enumCase)))
-    }
-
-    members.append(
-      contentsOf: sig.members.map { member in
-        MemberBlockItemSyntax(decl: render(member))
-      }
-    )
-
-    return EnumDeclSyntax(
-      attributes: renderAttributes(sig.attributes),
-      modifiers: renderModifiers(accessLevel: sig.accessLevel),
-      name: .identifier(sig.name),
-      genericParameterClause: renderGenericParameterClause(sig.genericParameters),
-      inheritanceClause: renderInheritanceClause(sig.conformances),
-      genericWhereClause: renderGenericWhereClause(sig.whereRequirements),
-      memberBlock: MemberBlockSyntax(members: MemberBlockItemListSyntax(members))
-    )
-  }
-
-  private static func renderEnumCaseDeclaration(_ sig: EnumCaseSignature) -> String {
-    var declaration = "case \(sig.name)"
-
-    if !sig.associatedTypes.isEmpty {
-      declaration += "(\(sig.associatedTypes.joined(separator: ", ")))"
-    }
-
-    if let rawValue = sig.rawValue {
-      declaration += " = \"\(rawValue)\""
-    }
-
-    return declaration
-  }
-
-  private static func renderTypeAlias(_ sig: TypeAliasSignature) -> TypeAliasDeclSyntax {
-    TypeAliasDeclSyntax(
-      attributes: renderAttributes(sig.attributes),
-      modifiers: renderModifiers(accessLevel: sig.accessLevel),
-      typealiasKeyword: .keyword(
-        .typealias,
-        leadingTrivia: sig.accessLevel.keyword == nil ? Trivia() : .space,
-        trailingTrivia: .space
-      ),
-      name: .identifier(sig.name),
-      genericParameterClause: renderGenericParameterClause(sig.genericParameters),
-      initializer: TypeInitializerClauseSyntax(
-        equal: .equalToken(leadingTrivia: .space, trailingTrivia: .space),
-        value: TypeSyntax(stringLiteral: sig.existingType)
-      ),
-      genericWhereClause: renderGenericWhereClause(sig.whereRequirements)
-    )
-  }
-
-  private static func renderInitializer<A: Sendable>(
-    _ sig: InitializerSignature<A>
-  ) -> InitializerDeclSyntax {
-    let params = renderParameterList(sig.parameters)
-
-    let parameterClause = FunctionParameterClauseSyntax(
-      parameters: FunctionParameterListSyntax(params)
-    )
-
-    let throwsClause: ThrowsClauseSyntax? =
-      sig.canThrow
-      ? ThrowsClauseSyntax(throwsSpecifier: .keyword(.throws))
-      : nil
-
-    let signature = FunctionSignatureSyntax(
-      parameterClause: parameterClause,
-      effectSpecifiers: throwsClause.map { clause in
-        FunctionEffectSpecifiersSyntax(throwsClause: clause)
-      }
-    )
-
-    let body = CodeBlockSyntax(statements: renderStatements(sig.body))
-
-    return InitializerDeclSyntax(
-      attributes: renderAttributes(sig.attributes),
-      modifiers: renderModifiers(accessLevel: sig.accessLevel),
-      optionalMark: sig.isFailable ? .postfixQuestionMarkToken() : nil,
-      genericParameterClause: renderGenericParameterClause(sig.genericParameters),
-      signature: signature,
-      genericWhereClause: renderGenericWhereClause(sig.whereRequirements),
-      body: body
-    )
-  }
-
   // MARK: - Modifier Helpers
 
-  private static func renderGenericParameterClause(
-    _ genericParameters: [GenericParameterSignature]
-  ) -> GenericParameterClauseSyntax? {
-    guard !genericParameters.isEmpty else { return nil }
-
-    let parameters = GenericParameterListSyntax(
-      genericParameters.enumerated().map { index, parameter in
-        SwiftSyntaxCompatibility.genericParameter(
-          parameter,
-          trailingComma: index < genericParameters.count - 1
-            ? .commaToken(trailingTrivia: .space)
-            : nil
-        )
-      }
-    )
-
-    return GenericParameterClauseSyntax(parameters: parameters)
-  }
-
-  private static func renderGenericWhereClause(
-    _ requirements: [WhereRequirement]
-  ) -> GenericWhereClauseSyntax? {
-    guard !requirements.isEmpty else { return nil }
-
-    let renderedRequirements = GenericRequirementListSyntax(
-      requirements.enumerated().map { index, requirement in
-        let renderedRequirement: GenericRequirementSyntax.Requirement
-
-        switch requirement.relation {
-        case .conformance:
-          renderedRequirement = .conformanceRequirement(
-            ConformanceRequirementSyntax(
-              leftType: TypeSyntax(stringLiteral: requirement.leftType),
-              rightType: TypeSyntax(stringLiteral: requirement.rightType)
-            ))
-        case .sameType:
-          renderedRequirement = SwiftSyntaxCompatibility.sameTypeRequirement(
-            leftType: TypeSyntax(stringLiteral: requirement.leftType),
-            rightType: TypeSyntax(stringLiteral: requirement.rightType)
-          )
-        }
-
-        return GenericRequirementSyntax(
-          requirement: renderedRequirement,
-          trailingComma: index < requirements.count - 1
-            ? .commaToken(trailingTrivia: .space)
-            : nil
-        )
-      }
-    )
-
-    return GenericWhereClauseSyntax(requirements: renderedRequirements)
-  }
-
-  private static func renderModifiers(accessLevel: AccessLevel) -> DeclModifierListSyntax {
-    guard let keyword = accessLevel.keyword else {
-      return DeclModifierListSyntax([])
-    }
-    return DeclModifierListSyntax([
-      DeclModifierSyntax(name: .keyword(keyword))
-    ])
-  }
-
-  private static func renderInheritanceClause(
-    _ conformances: [String]
-  ) -> InheritanceClauseSyntax? {
-    guard !conformances.isEmpty else { return nil }
-
-    let lastIndex = conformances.count - 1
-    let types = conformances.enumerated().map { index, conformance in
-      InheritedTypeSyntax(
-        type: TypeSyntax(stringLiteral: conformance),
-        trailingComma: index < lastIndex ? .commaToken(trailingTrivia: .space) : nil
-      )
-    }
-
-    return InheritanceClauseSyntax(inheritedTypes: InheritedTypeListSyntax(types))
-  }
-
   // MARK: - Parameter Helpers
+}
 
-  private static func renderParameterList<A: Sendable>(
-    _ parameters: [ParameterSignature<A>]
-  ) -> [FunctionParameterSyntax] {
-    parameters.enumerated().map { index, parameter in
-      let firstName =
-        parameter.label.map { TokenSyntax.identifier($0) } ?? .identifier(parameter.name)
-      let secondName = parameter.label == nil ? nil : TokenSyntax.identifier(parameter.name)
-      let specifiers = (parameter.isInout ? ["inout"] : []) + parameter.specifiers
-      let attributes = parameter.attributes.map(renderAttributeSource)
-      let typeString =
-        (specifiers + attributes + parameter.lateSpecifiers + [parameter.type])
-        .joined(separator: " ")
-
-      return FunctionParameterSyntax(
-        firstName: firstName,
-        secondName: secondName,
-        type: TypeSyntax(stringLiteral: typeString),
-        defaultValue: parameter.defaultValue.map {
-          InitializerClauseSyntax(value: Renderer.render($0))
-        },
-        trailingComma: index == parameters.count - 1 ? nil : .commaToken()
-      )
+extension Renderer {
+  /// Renders a declaration via the source-emit-then-parse pipeline (see
+  /// `Renderer.renderParsed(_: Template<A>)` in `Renderer.swift` and
+  /// `Renderer.renderParsed(_: Statement<A>)` in `StatementRenderer.swift`
+  /// for the same technique one and two levels down, at expression and
+  /// statement granularity).
+  ///
+  /// `SourceEmitter` writes Swift source text for the declaration
+  /// (embedding `Template`/`Statement` source text for every nested
+  /// expression/statement body via `SourceEmitter+Declarations.swift`)
+  /// into a buffer, which is then parsed once into a `DeclSyntax` node.
+  /// This is the implementation behind the public
+  /// `render(_: Declaration<A>)` entry point above; it remains a separate
+  /// internal name so the token-parity suite can call it directly
+  static func renderParsed<A: Sendable>(_ declaration: Declaration<A>) throws -> DeclSyntax {
+    var buffer = ""
+    buffer.reserveCapacity(128)
+    SourceEmitter.emit(declaration, into: &buffer)
+    let decl: DeclSyntax = "\(raw: buffer)"
+    guard !decl.hasError else {
+      throw RenderError.make(kind: .declaration, source: buffer, node: decl)
     }
+    return mergeStringSegmentsIfNeeded(decl, emittedSource: buffer)
   }
 }

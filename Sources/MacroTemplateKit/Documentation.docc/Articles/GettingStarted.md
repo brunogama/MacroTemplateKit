@@ -14,7 +14,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.0.7"),
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
@@ -53,7 +53,7 @@ let x: Template<Void> = .variable("x")
 // x + 1
 let sum: Template<Void> = .binaryOperation(left: x, operator: "+", right: one)
 
-let expr: ExprSyntax = Renderer.render(sum)
+let expr: ExprSyntax = try Renderer.render(sum)
 print(expr.description) // x + 1
 ```
 
@@ -97,7 +97,7 @@ let stmt: Statement<Void> = .letBinding(
         .tryAwait()
 )
 
-let codeItem: CodeBlockItemSyntax = Renderer.render(stmt)
+let codeItem: CodeBlockItemSyntax = try Renderer.render(stmt)
 ```
 
 ## Building Declarations with Declaration\<A\>
@@ -131,7 +131,7 @@ let function: Declaration<Void> = .function(FunctionSignature(
     ]
 ))
 
-let decl: DeclSyntax = Renderer.render(function)
+let decl: DeclSyntax = try Renderer.render(function)
 ```
 
 ### Building an Initializer with a Structural Default
@@ -213,7 +213,7 @@ let withOrigin: Template<Origin> = .variable(
 
 // Erase metadata for rendering
 let erased: Template<Void> = withOrigin.map { _ in () }
-let expr: ExprSyntax = Renderer.render(erased)
+let expr: ExprSyntax = try Renderer.render(erased)
 ```
 
 The functor laws guarantee safe, predictable transformations:
@@ -241,7 +241,7 @@ guard let extracted: Declaration<Never> = Extractor.extract(declaration) else {
 
 if case .function(let sig) = extracted {
     // sig.name, sig.parameters, sig.accessLevel, sig.isAsync, etc. are all available
-    let newSig: DeclSyntax = sig
+    let newSig: DeclSyntax = try sig
         .withName(sig.name + "Cached")
         .withBody([
             .returnStatement(.call("cache", arguments: [.unlabeled(.variable("id"))]))
@@ -272,7 +272,7 @@ Every signature type has `with*` and `adding*` methods that return a modified co
 
 ```swift
 // Build a public async throwing variant from an extracted signature
-let variant: DeclSyntax = sig
+let variant: DeclSyntax = try sig
     .withAccessLevel(.public)
     .withIsAsync(true)
     .withCanThrow(true)
@@ -282,7 +282,7 @@ let variant: DeclSyntax = sig
     .rendered  // shortcut for Renderer.render(sig.asDeclaration)
 ```
 
-The `.rendered` property and `.asDeclaration` are available on every signature type, so you rarely need to wrap a signature in `Declaration.function(...)` manually.
+The throwing `.rendered` property and `.asDeclaration` are available on every signature type, so you rarely need to wrap a signature in `Declaration.function(...)` manually.
 
 ## Next Steps
 

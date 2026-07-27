@@ -102,7 +102,7 @@ public struct ObservablePropertyMacro: AccessorMacro {
     in context: some MacroExpansionContext
   ) throws -> [AccessorDeclSyntax] {
     let propertyName = try extractPropertyName(from: declaration)
-    return buildAccessorDeclarations(propertyName: propertyName)
+    return try buildAccessorDeclarations(propertyName: propertyName)
   }
 
   // MARK: - Private Helpers
@@ -123,7 +123,7 @@ public struct ObservablePropertyMacro: AccessorMacro {
 
   private static func buildAccessorDeclarations(
     propertyName: String
-  ) -> [AccessorDeclSyntax] {
+  ) throws -> [AccessorDeclSyntax] {
     let registrar: Template<Void> = .variable("_registrar")
     let storage: Template<Void> = .variable("_storage")
     let selfVariable: Template<Void> = .variable("self")
@@ -209,11 +209,11 @@ public struct ObservablePropertyMacro: AccessorMacro {
 
     let getter = AccessorDeclSyntax(
       accessorSpecifier: .keyword(.get),
-      body: CodeBlockSyntax(statements: Renderer.renderStatements(getterStatements))
+      body: CodeBlockSyntax(statements: try Renderer.renderStatements(getterStatements))
     )
     let setter = AccessorDeclSyntax(
       accessorSpecifier: .keyword(.set),
-      body: CodeBlockSyntax(statements: Renderer.renderStatements(setterStatements))
+      body: CodeBlockSyntax(statements: try Renderer.renderStatements(setterStatements))
     )
 
     return [getter, setter]
