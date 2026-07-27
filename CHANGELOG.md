@@ -30,7 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never failed the parse gate, and token-parity against the legacy renderer
   actively pinned it in place, since that renderer omitted the colon too.
   Deleting the legacy path is what allowed the fix. Any golden files or string
-  comparisons covering typed closure parameters will need updating.
+    comparisons covering typed closure parameters will need updating.
+- Binary and ternary templates now return SwiftParser's unfolded
+  `SequenceExprSyntax` inside the public `ExprSyntax` wrapper instead of the
+  concrete `InfixOperatorExprSyntax` / `TernaryExprSyntax` nodes assembled by
+  the structural renderer. The emitted tokens and operator precedence are
+  unchanged. Downstream code that switches on those concrete node types must
+  either operate on `ExprSyntax` or fold the sequence with SwiftOperators.
 
 ### Added
 

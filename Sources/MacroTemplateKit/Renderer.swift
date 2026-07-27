@@ -98,12 +98,9 @@ public struct Renderer {
   // MARK: - Collections Rendering
 
   // MARK: - Extension Cases Rendering
-
 }
 
-extension Renderer {
-
-}
+extension Renderer {}
 
 extension Renderer {
   /// Renders a template via the source-emit-then-parse pipeline.
@@ -119,7 +116,9 @@ extension Renderer {
     // it produces — rendering a bare identifier is otherwise as expensive as
     // rendering a whole declaration. Building these structurally keeps a
     // caller who renders leaf expressions in a loop off that cliff.
-    if let leaf = renderLeaf(template) { return leaf }
+    if let leaf = renderLeaf(template) {
+      return leaf
+    }
 
     var buffer = ""
     SourceEmitter.emit(template, into: &buffer)
@@ -127,8 +126,21 @@ extension Renderer {
     guard !expr.hasError else {
       throw RenderError.make(kind: .expression, source: buffer, node: expr)
     }
-    guard mightNeedSegmentMerge(buffer) else { return expr }
-    return StringSegmentMerger().visit(expr)
+    return mergeStringSegmentsIfNeeded(expr, emittedSource: buffer)
+  }
+
+  /// Restores the structural renderer's string-segment convention when parsing
+  /// source containing escaped newlines or carriage returns.
+  ///
+  /// This shared entry point stays internal because statement and declaration
+  /// rendering live in separate files. The scan and rewriter remain private
+  /// implementation details of the expression renderer.
+  static func mergeStringSegmentsIfNeeded<Node: SyntaxProtocol>(
+    _ node: Node,
+    emittedSource: String
+  ) -> Node {
+    guard mightNeedSegmentMerge(emittedSource) else { return node }
+    return StringSegmentMerger().rewrite(node).cast(Node.self)
   }
 
   /// Reports whether `buffer` could contain a Swift string-literal escape
@@ -146,18 +158,16 @@ extension Renderer {
   /// pass, never a skipped one — false positives are acceptable, false
   /// negatives are not.
   ///
-  /// Internal rather than private: `Renderer.renderParsed(_: Statement<A>)`
-  /// (`StatementRenderer.swift`) reuses this same scan rather than
-  /// duplicating it, since a `Statement` buffer embeds `Template` source
-  /// text via `SourceEmitter.emit(_: Template<A>, into:)` and is therefore
-  /// just as susceptible to the escaped-newline segment-splitting quirk
-  /// documented on `StringSegmentMerger` below.
-  static func mightNeedSegmentMerge(_ buffer: String) -> Bool {
+  private static func mightNeedSegmentMerge(_ buffer: String) -> Bool {
     var previousWasBackslash = false
     for scalar in buffer.unicodeScalars {
       if previousWasBackslash {
-        if scalar == "#" { continue }
-        if scalar == "n" || scalar == "r" { return true }
+        if scalar == "#" {
+          continue
+        }
+        if scalar == "n" || scalar == "r" {
+          return true
+        }
       }
       previousWasBackslash = (scalar == "\\")
     }
@@ -179,11 +189,7 @@ extension Renderer {
 /// (leaving `.expressionSegment` interpolation segments untouched), restoring
 /// parity with the structural renderer's convention.
 ///
-/// Internal rather than private so `TemplateEmitterParityTests` can exercise
-/// it directly for interpolation-adjacent segment boundaries: `SourceEmitter`
-/// does not emit `Template.stringInterpolation` yet (pending Task 3), so
-/// `Renderer.renderParsed(_:)` cannot be used to reach that case today.
-final class StringSegmentMerger: SyntaxRewriter {
+private final class StringSegmentMerger: SyntaxRewriter {
   override func visit(_ node: StringLiteralExprSyntax) -> ExprSyntax {
     let rewritten = super.visit(node)
     guard let literal = rewritten.as(StringLiteralExprSyntax.self) else { return rewritten }

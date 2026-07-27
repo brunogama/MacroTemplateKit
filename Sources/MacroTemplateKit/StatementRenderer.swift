@@ -32,7 +32,7 @@ extension Renderer {
   public static func renderStatements<A: Sendable>(
     _ statements: [Statement<A>]
   ) throws -> CodeBlockItemListSyntax {
-    CodeBlockItemListSyntax(try statements.map { try render($0) })
+    try CodeBlockItemListSyntax(statements.map { try render($0) })
   }
 
   // MARK: - Private Statement Helpers
@@ -42,7 +42,6 @@ extension Renderer {
   // MARK: - Switch Statement
 
   // MARK: - Assignment Statement
-
 }
 
 extension Renderer {
@@ -66,7 +65,6 @@ extension Renderer {
     guard !item.hasError else {
       throw RenderError.make(kind: .statement, source: buffer, node: item)
     }
-    guard mightNeedSegmentMerge(buffer) else { return item }
-    return StringSegmentMerger().visit(item)
+    return mergeStringSegmentsIfNeeded(item, emittedSource: buffer)
   }
 }

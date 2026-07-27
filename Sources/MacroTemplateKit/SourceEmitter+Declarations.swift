@@ -393,11 +393,9 @@ extension SourceEmitter {
   }
 
   /// Text-emission counterpart to `Renderer.renderEnumCaseDeclaration`:
-  /// emits `case name[(Type1, Type2)][ = "rawValue"]`. The legacy helper
-  /// builds this same text and feeds it through `DeclSyntax(stringLiteral:)`
-  /// — it does not escape `rawValue` before splicing it between quotes, so
-  /// this transcription doesn't either; replicated verbatim for parity,
-  /// not "fixed".
+  /// emits `case name[(Type1, Type2)][ = "rawValue"]`. Raw values use the
+  /// same delimiter and escaping logic as template string literals so quotes,
+  /// backslashes, control characters, and existing pound runs remain valid.
   private static func emit(_ enumCase: EnumCaseSignature, into buffer: inout String) {
     buffer.append("case ")
     buffer.append(escapeIdentifier(enumCase.name))
@@ -407,9 +405,8 @@ extension SourceEmitter {
       buffer.append(")")
     }
     if let rawValue = enumCase.rawValue {
-      buffer.append(" = \"")
-      buffer.append(rawValue)
-      buffer.append("\"")
+      buffer.append(" = ")
+      emit(.string(rawValue), into: &buffer)
     }
   }
 }

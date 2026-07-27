@@ -81,7 +81,6 @@ extension Renderer {
     guard !decl.hasError else {
       throw RenderError.make(kind: .declaration, source: buffer, node: decl)
     }
-    guard mightNeedSegmentMerge(buffer) else { return decl }
-    return StringSegmentMerger().visit(decl)
+    return mergeStringSegmentsIfNeeded(decl, emittedSource: buffer)
   }
 }

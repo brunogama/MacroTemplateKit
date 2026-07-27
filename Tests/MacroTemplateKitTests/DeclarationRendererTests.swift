@@ -789,6 +789,28 @@ final class DeclarationRendererTests: XCTestCase {
     XCTAssertTrue(text.contains("CaseIterable"))
   }
 
+  func testRenderEnum_escapesRawStringValues() throws {
+    let rawValue = "quote: \" path: C:\\tmp\nnext"
+    let decl: Declaration<Void> = .enumDecl(
+      EnumSignature(
+        name: "Escaped",
+        conformances: ["String"],
+        cases: [EnumCaseSignature(name: "value", rawValue: rawValue)]
+      )
+    )
+
+    let result = try Renderer.render(decl)
+    let enumDecl = try XCTUnwrap(result.as(EnumDeclSyntax.self))
+    let caseDecl = try XCTUnwrap(
+      enumDecl.memberBlock.members.first?.decl.as(EnumCaseDeclSyntax.self)
+    )
+    let stringLiteral = try XCTUnwrap(
+      caseDecl.elements.first?.rawValue?.value.as(StringLiteralExprSyntax.self)
+    )
+
+    XCTAssertEqual(stringLiteral.representedLiteralValue, rawValue)
+  }
+
   func testRenderEnum_withAssociatedTypes() throws {
     let decl: Declaration<Void> = .enumDecl(
       EnumSignature(

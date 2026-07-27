@@ -670,6 +670,8 @@ Each file shows a real macro rewritten to use the template API, which makes them
 
 **Payloads are invisible at render time.** `Renderer.render` discards the type parameter entirely. A `Template<Int>` and a `Template<String>` carrying the same variable name produce identical `ExprSyntax`. This separation lets you use the metadata system freely without worrying about output correctness.
 
+**Rendered tokens are stable; concrete child node types are not.** The renderer guarantees the documented `ExprSyntax`, `DeclSyntax`, and `CodeBlockItemSyntax` wrappers and valid, precedence-correct source. SwiftParser leaves binary and ternary expressions as `SequenceExprSyntax` until SwiftOperators folds them, so callers should not assume an `InfixOperatorExprSyntax` or `TernaryExprSyntax` result. Fold explicitly when downstream logic requires those concrete nodes.
+
 **No invalid states.** The API has no optional rendering path for well-formed input. Constructing a `Declaration.function` with `isAsync: true` always produces an `async` function declaration. There are no flags that silently produce incorrect output.
 
 **Correct by construction where a string cannot be.** Because a `Template` is a tree rather than text, the renderer can inspect it and fix things a hand-written source string cannot. Nested operations are parenthesised according to Swift's precedence rules, so `.operation(.operation(a, "+", b), "*", c)` emits `(a + b) * c` rather than silently regrouping. Reserved keywords used as identifiers are backtick-escaped, so a property named `default` generates code that compiles. String literals are escaped with the right number of pound delimiters. A string has no structure to inspect, so its author has to get all of this right by hand, every time.

@@ -8,7 +8,6 @@ import XCTest
 /// Verifies that Renderer.render produces correct SwiftSyntax node types for each
 /// Template case, ensuring valid AST generation for macro expansion.
 final class RendererTests: XCTestCase {
-
   // MARK: - Literal Rendering
 
   func testRenderLiteral_integer() throws {
@@ -117,8 +116,8 @@ final class RendererTests: XCTestCase {
     // content — not tree shape — is guaranteed); the legacy structural
     // renderer builds `TernaryExprSyntax` directly. Both are token-equivalent.
     XCTAssertTrue(
-      result.is(TernaryExprSyntax.self) || result.is(SequenceExprSyntax.self),
-      "Should render as TernaryExprSyntax or (pre-fold) SequenceExprSyntax"
+      result.is(SequenceExprSyntax.self),
+      "Parse-backed rendering should return an unfolded SequenceExprSyntax"
     )
     XCTAssertTrue(result.description.contains("true"), "Should contain condition")
     XCTAssertTrue(result.description.contains("1"), "Should contain then branch")
@@ -184,8 +183,8 @@ final class RendererTests: XCTestCase {
     // yields an unfolded `SequenceExprSyntax` here rather than
     // `InfixOperatorExprSyntax`; both carry the same tokens.
     XCTAssertTrue(
-      result.is(InfixOperatorExprSyntax.self) || result.is(SequenceExprSyntax.self),
-      "Should render as InfixOperatorExprSyntax or (pre-fold) SequenceExprSyntax"
+      result.is(SequenceExprSyntax.self),
+      "Parse-backed rendering should return an unfolded SequenceExprSyntax"
     )
     XCTAssertTrue(result.description.contains("1"), "Should contain left operand")
     XCTAssertTrue(result.description.contains("+"), "Should contain operator")
@@ -203,8 +202,8 @@ final class RendererTests: XCTestCase {
     // See `testRenderConditional`'s comment on `SequenceExprSyntax` vs
     // `InfixOperatorExprSyntax` — both are token-equivalent here.
     XCTAssertTrue(
-      result.is(InfixOperatorExprSyntax.self) || result.is(SequenceExprSyntax.self),
-      "Should render as InfixOperatorExprSyntax or (pre-fold) SequenceExprSyntax"
+      result.is(SequenceExprSyntax.self),
+      "Parse-backed rendering should return an unfolded SequenceExprSyntax"
     )
     XCTAssertTrue(result.description.contains("x"), "Should contain left variable")
     XCTAssertTrue(result.description.contains(">="), "Should contain comparison operator")
@@ -312,8 +311,8 @@ final class RendererTests: XCTestCase {
     // `testRenderConditional`'s comment on `SequenceExprSyntax` vs
     // `InfixOperatorExprSyntax` — both are token-equivalent here.
     XCTAssertTrue(
-      result.is(InfixOperatorExprSyntax.self) || result.is(SequenceExprSyntax.self),
-      "Should render initializer as InfixOperatorExprSyntax or (pre-fold) SequenceExprSyntax"
+      result.is(SequenceExprSyntax.self),
+      "Parse-backed rendering should return an unfolded SequenceExprSyntax"
     )
     XCTAssertTrue(result.description.contains("a"), "Should contain variable a")
     XCTAssertTrue(result.description.contains("+"), "Should contain operator")
@@ -374,8 +373,8 @@ final class RendererTests: XCTestCase {
     // See `testRenderConditional`'s comment on `SequenceExprSyntax` vs
     // `TernaryExprSyntax` — both are token-equivalent here.
     XCTAssertTrue(
-      result.is(TernaryExprSyntax.self) || result.is(SequenceExprSyntax.self),
-      "Should render as TernaryExprSyntax or (pre-fold) SequenceExprSyntax"
+      result.is(SequenceExprSyntax.self),
+      "Parse-backed rendering should return an unfolded SequenceExprSyntax"
     )
     XCTAssertTrue(result.description.contains("x"), "Should contain variable x")
     XCTAssertTrue(result.description.contains(">"), "Should contain comparison operator")
