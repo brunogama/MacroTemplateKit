@@ -7,147 +7,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Bug Fixes
+
+- Publish changelog updates through pull requests
+- Address pr review feedback
+- Align pr gates after main merge
+
+### Miscellaneous Tasks
+
+- Merge origin/main into perf/render-engine
+
+## [0.0.7] - 2026-07-14
+
+### Bug Fixes
+
+- **declarations**: Preserve parameter type ordering
+- **ci**: Scope lint policy to enforced sources
+- **ci**: Enforce hosted validation failures
+- **declarations**: Normalize invalid inout defaults
+
+### Documentation
+
+- **changelog**: Record signature preservation
+- **changelog**: Record inout normalization
+- Prepare release 0.0.7
+
+### Features
+
+- Add structured expression primitives [skip changelog]
+- **declarations**: Preserve function throwing effects
+- **declarations**: Structure parameter default expressions
+- **template**: Model contextual and inout expressions
+
+### Miscellaneous Tasks
+
+- **release**: Publish with github cli
+- Keep commit lint installs ephemeral
+- **security**: Constrain workflow token permissions
+- Scope changelog skip directive
+- Run danger on supported node
+- Run commit lint on supported node
+- Run danger js under node 20
+- Trust danger homebrew formulas
+- Scope standalone lint to first-parent commits
+- Lint pull request first-parent commits
+
+## [0.0.6] - 2026-03-07
+
+### Bug Fixes
+
+- **compatibility**: Support syntax versions 600 through 603
+- Make CI pass — bash 3.2 array expansion, and 33 lint violations
+
+### Documentation
+
+- Update changelog [skip ci]
+- Fix author name in readme
+- Add docc tutorials for common workflows
+- Refresh guides and examples for the new dx
+- Record that CI was disabled at the repository level
+
+### Features
+
+- Add typed signatures and fluent templates
+
+### Miscellaneous Tasks
+
+- Fix danger validation
+- Update pre-commit settings
+- Pre-commits
+- Regenerate LLMS.txt [skip ci]
+- Trigger first run after re-enabling GitHub Actions
+- Compile everything, on every branch
+
+### Refactor
+
+- Restore render engine lint compliance
+
+### Styling
+
+- Normalize enforced swift formatting
+
+### Bench
+
+- Make the equivalence check fail the process
+
+### Build
+
+- Normalize Scripts/ directory casing
+- Fix warnings-as-errors under the swiftbuild build system
+- Make the two package manifests one source of truth
+
 ## [0.1.0] - 2026-07-25
 
-### Breaking Changes
-
-- `Renderer.render`, `StatementRenderer.render`, `DeclarationRenderer.render`,
-  `renderStatements`, and the `rendered` convenience properties now `throw`.
-  The parse gate was an `assert`, which is stripped from release builds --- the
-  only configuration a macro plugin ships in --- so a malformed emit reached the
-  compiler as a broken tree and was blamed on the user's macro. Call sites need
-  `try`; `rendered` is now a throwing computed property. See
-  `docs/adr/0001-parse-gate-throws.md`.
-- `Template.binaryOperation` and the `operation` factory take an `Operator`
-  instead of a `String`. String literals still work, so `operator: "+"` is
-  unchanged; custom operators can now declare their precedence.
-- `SetterSignature.parameterName` is now `String?` and defaults to `nil`,
-  emitting the bare `set { ... }` form. Previously it was mandatory, so every
-  generated setter carried an explicit `(newValue)`.
-- Closure parameters with an explicit type now emit the colon: `{ (x: Int) in }`
-  where the previous output was `{ (x Int) in }`. The old form parses --- Swift
-  reads it as a parameter with two *names* rather than a typed one --- so it
-  never failed the parse gate, and token-parity against the legacy renderer
-  actively pinned it in place, since that renderer omitted the colon too.
-  Deleting the legacy path is what allowed the fix. Any golden files or string
-    comparisons covering typed closure parameters will need updating.
-- Binary and ternary templates now return SwiftParser's unfolded
-  `SequenceExprSyntax` inside the public `ExprSyntax` wrapper instead of the
-  concrete `InfixOperatorExprSyntax` / `TernaryExprSyntax` nodes assembled by
-  the structural renderer. The emitted tokens and operator precedence are
-  unchanged. Downstream code that switches on those concrete node types must
-  either operate on `ExprSyntax` or fold the sequence with SwiftOperators.
-
-### Added
-
-- `Template.cast(_:type:kind:)` for `as`, `as?`, and `as!`. Without it the kit
-  could not express a forced cast at all.
-- `Template.syntax(_:)` splices an existing `ExprSyntax` into a template,
-  instead of routing its description through `.variable`.
-- `Operator`, `Precedence`, and `Associativity` are public, so a macro emitting
-  a custom operator can state how tightly it binds.
-- `RenderError` carries the offending source and the parse diagnostics, and
-  names MacroTemplateKit rather than the caller.
-- `Renderer.renderExtensionDecl(_:)` returns a concrete `ExtensionDeclSyntax`.
-  `ExtensionMacro.expansion(...)` is required to return `[ExtensionDeclSyntax]`,
-  and the general `render(_:)` returns `DeclSyntax`, so without this every
-  extension macro had to force-unwrap a downcast --- pushing an unwrap that can
-  only fail on a bug in this library into the author's macro. The gap was found
-  by making `Examples/` a build target, which it had never been: 24 example
-  files and 57 call sites had not compiled since `render` began throwing.
-- `MatchPattern` and the `Statement.guardCase` / `Statement.ifCase` cases, for
-  destructuring an enum case: `guard case let .success(value) = result else`.
-  Previously this could only be written by handing raw source to
-  `Template.variable`, which meant it was invisible to `map` and unchecked
-  until the parse gate. `MatchPattern` covers enum cases, tuples, wildcards,
-  bindings, and expression patterns, hoisting a single `let` in front of the
-  whole pattern when any name is bound. Named `MatchPattern` because it covers
-  only match position, not the binding patterns in a signature or a `let`. A
-  bare `Pattern` also shadows out under `import XCTest`, though not under
-  SwiftSyntax, which defines no such type.
-
-  Typed patterns measured about 10% slower than the raw-string form on the
-  `case-path` benchmark when first introduced. That figure came from comparing
-  two benchmark sessions, anchored by a baseline that happened to read
-  identically in both --- weaker evidence than an in-process comparison, and
-  below the bar ADR 0005 clause 0 now sets. Treat it as indicative, not
-  measured. `.variable` remains available for raw source where it matters.
-
 ### Bug Fixes
 
-- Nested operations are parenthesised by precedence. `.operation(.operation(a,
-  "+", b), "*", c)` emitted `a + b * c` --- it parsed cleanly and passed token
-  parity, so nothing caught it, and the generated code silently meant something
-  other than what the template said.
-- Reserved keywords used as identifiers are backtick-escaped, so a property
-  named `default` or `class` generates code that compiles. Contextual keywords
-  (`open`, `some`, `get`) and expression keywords (`self`, `super`, `nil`) are
-  deliberately left bare.
-- The leaf fast path no longer bypasses the parse gate. `.variable` is built
-  structurally only when its contents are a plain identifier; anything else
-  falls through to the parser, which validates it.
-- `SourceEmitter` no longer renders closure bodies by calling back into the
-  parse-backed renderer and re-serialising the result --- a round trip inside
-  the emitter.
-
-### Performance
-
-- Rendering goes through a source-text emitter and one parse per fragment.
-  Against a hand-written SwiftSyntax baseline that hoists its loop invariants,
-  producing token-identical output, `min` over 3 runs at sizes 16/64/256:
-
-  | workload | shape | ratio |
-  |---|---|---|
-  | case-path | `@CasePathable`-style property per case | 0.67--0.69x |
-  | generate | accessor pairs over stored properties | 0.74x |
-  | case-factory | static factories over enum cases | 1.00--1.02x (parity) |
-
-  Depth decides: structural construction pays per node, the emitter appends text
-  and parses once per declaration, so the deeper the generated declaration the
-  further ahead the library gets. Previously the kit ran at 0.98--0.99x, so it
-  cost nothing and bought nothing; it now ranges from parity on flat
-  declarations to a comfortable win on deeply nested ones. Absolute figures are microseconds per expansion ---
-  this is not a build-time story.
-
-  Two earlier claims in this section were wrong and are withdrawn:
-
-  - **`~0.55x retained memory` is removed.** It was measured with every rendered
-    tree held alive at once. A plugin serialises each expansion and drops the
-    tree, so peak memory is one expansion's worth however many expansions a
-    build performs --- measured flat across a 2048x sweep. The ratio is real per
-    live tree and is then multiplied by a count that is always 1.
-    See `docs/adr/0003-memory-win-does-not-accumulate.md`.
-  - **`0.59--0.64x` compared against a baseline that rebuilt expansion-invariant
-    nodes inside its per-item loop.** Hoisting them alone makes that baseline up
-    to 1.75x faster. The ratios above use the hoisted baseline.
-    See `docs/adr/0004-baselines-must-hoist-invariants.md`.
-  - **A third correction, made after those two.** `case-factory` was restated
-    here as 0.94--0.96x, and is now 1.00--1.02x --- at parity, marginally
-    slower. Nothing changed in the library. The earlier figure compared numbers
-    collected in different benchmark sessions, and absolutes drift ~10% between
-    sessions on this hardware for identical code. Every ratio published now
-    comes from a single invocation. Sub-5% claims about this workload are not
-    supportable in either direction.
-
-  See also `docs/adr/0002-relax-render-engine-merge-gate.md`.
-
-## [0.0.7] - 2026-07-13
-
-### Breaking Changes
-
-- `ParameterSignature` now carries the declaration payload and accepts a `Template` default expression. This keeps parameter defaults inside the same structural transformation as the enclosing declaration.
-
-### Bug Fixes
-
-- Preserve parameter type-specifier order and argument-bearing attributes across extraction and
-  rendering on SwiftSyntax 600 and 603.
-- Normalize defaults away from `inout` parameters so rendered declarations remain valid Swift.
+- Make Examples a build target — none of them compiled
+- Stop the leaf fast path from bypassing the parse gate
+- Parenthesize nested expressions by precedence
+- Address Task 2 review findings in SourceEmitter/Renderer
 - Address second round of PR #20 review feedback
 - Address PR #20 review feedback
 - Document single-binding limitation, add @available extraction tests
 
 ### Documentation
 
+- Narrow the MatchPattern naming rationale to what was verified
+- Restate the merge gate (ADR 0005) and close Task 8
+- Withdraw two CHANGELOG claims the benchmarks disproved
+- Update README and CHANGELOG for the render-engine work
+- Add parse-backed renderer implementation plan
+- Sharpen glossary after benchmark work
+- Add parse-backed renderer design spec with approach spike
+- Record CAS-eval matrix results (#23)
+- Add toolchain-cache-eval implementation plan; align spec cold-cell definition
+- Add toolchain compilation-cache evaluation design spec
+- Update changelog [skip ci]
 - Document Extractor API, wither methods, and extract-transform-render pipeline
 - Update changelog [skip ci]
 - Align review tests with macro template kit
@@ -164,11 +139,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Preserve ordinary throws, typed throws, and rethrows through the function declaration model.
-- Expose parameter-clause extraction so macro adapters can attach structured defaults without
-  duplicating Swift's parameter grammar.
-- Add contextual member expressions for code such as `.get` and `.shared`.
-- Add invocation-side inout expressions for code such as `&request`.
+- Typed match patterns — MatchPattern, guardCase, ifCase
+- Model infix operators as a type so custom precedence can be declared
+- Throw RenderError instead of asserting on unparsable output
+- Add Template.syntax for SwiftSyntax interop
+- Close renderer expressiveness gaps blocking idiomatic usage
+- Cut Renderer's public API over to the parse-backed pipeline
+- Emit all Declaration cases in SourceEmitter
+- Emit all Statement cases in SourceEmitter
+- Emit all Template cases in SourceEmitter
+- Add SourceEmitter skeleton with parse-backed render entry point
 - Raw attribute args, extension access level, strict concurrency
 - Extract all variable bindings, add extractAll public API
 - Add Extractor API, wither methods, and convenience combinators
@@ -176,6 +156,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Miscellaneous Tasks
 
+- Untrack docs/agents
+- Untrack docs/agents
 - Regenerate llms.txt
 - Simplify macos build matrix
 - Fix danger validation
@@ -184,6 +166,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Regenerate LLMS.txt [skip ci]
 - Update readme
 - Code review
+
+### Performance
+
+- Drop `indirect` from MatchPattern, and withdraw the 10% claim
+- Measure idiomatic MTK usage and revise the merge gate
+- Add switchable-pipeline render-engine benchmark harness
+
+### Refactor
+
+- Delete the legacy structural renderer (Task 7)
+
+### Testing
+
+- Add case-factory workload on an enum fixture
+- Add mtk-leaf pipeline as a granularity regression guard
+- Add token-parity harness and renderer corpus
+
+### Bench
+
+- Match trivia on every baseline — the correction favours us, by 1-8%
+- Close the trivia bias — and find a worse problem behind it
+- Add case-path — the @CasePathable shape TCA actually pays for
+- Attack the structural baseline — it was beatable, and the ratios move
+- Measure whether the memory win accumulates — it does not
+
+### Release
+
+- 0.1.0
 
 ## [0.0.5] - 2026-03-07
 
@@ -238,7 +248,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - **quick-10**: Add trailing commas to InheritedTypeListSyntax elements
-- Update <Package@swift-6.0.swift> swift-syntax range to 510..<700
+- Update Package@swift-6.0.swift swift-syntax range to 510..<700
 - **lint**: Remove array_init rule and disable tags from tests
 - **ci**: Use direct git-cliff installation instead of docker action
 - **ci**: Use Xcode-bundled Swift instead of standalone toolchain
@@ -276,9 +286,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of MacroTemplateKit v0.0.1
 
-[Unreleased]: https://github.com/brunogama/MacroTemplateKit/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.7...v0.1.0
+[Unreleased]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.7...HEAD
 [0.0.7]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.6...v0.0.7
+[0.0.6]: https://github.com/brunogama/MacroTemplateKit/compare/v0.1.0...v0.0.6
+[0.1.0]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.5...v0.1.0
 [0.0.5]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/brunogama/MacroTemplateKit/compare/v.0.0.3...v0.0.4
 [.0.0.3]: https://github.com/brunogama/MacroTemplateKit/compare/v0.0.1...v.0.0.3
+
