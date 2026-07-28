@@ -87,3 +87,24 @@ make a small change. Measured by the edit workload's (since removed) negative co
 indicted at scale — distinct from the expansion pipeline, which is sometimes loosely called
 a "round trip" but never serializes.
 _Avoid_: using "round trip" for the expansion pipeline
+
+## Release Distribution
+
+**Release Candidate**:
+The versioned changelog, Quick Start, and derived documentation carried by the
+`automation/changelog-main` pull request. It becomes releasable only after approval and merge.
+
+**Release Distribution Marker**:
+`RELEASE_DISTRIBUTION` records whether generated install metadata describes the bootstrap source
+tag or a pinned binary tag. It is explicit so shallow CI checkouts never infer distribution from
+which tags happened to be fetched.
+
+**Release Base Version**:
+`RELEASE_BASE_VERSION` is the predecessor tag required before a candidate may publish. It orders
+per-PR release runs without dropping queued merge events.
+
+**Pinned Binary Release**:
+The universal macOS XCFramework built with Xcode 16.2 and SwiftSyntax 600.0.1 from an approved
+release candidate. Its tag points to a detached binary-manifest commit while `main` remains a
+source package (ADR 0007).
+_Avoid_: implying compatibility with arbitrary Swift or SwiftSyntax versions

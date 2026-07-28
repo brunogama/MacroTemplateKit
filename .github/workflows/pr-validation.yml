@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install swift-format
         run: brew install swift-format
@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install SwiftLint
         run: brew install swiftlint
@@ -70,16 +70,40 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Select Xcode
         run: Scripts/select-xcode.sh
 
-      - name: Check Manifests
-        run: Scripts/check-manifests.sh
+      - name: Check Manifests And Release Metadata
+        run: |
+          Scripts/check-manifests.sh
+          Scripts/check-release-metadata.sh
+          Scripts/test-release-automation.sh
 
       - name: Build with Strict Warnings
         run: Scripts/build.sh
+
+  binary-release-check:
+    name: Binary Release
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Select Pinned Xcode
+        run: |
+          developer_dir="/Applications/Xcode_16.2.app/Contents/Developer"
+          test -d "$developer_dir"
+          sudo xcode-select -s "$developer_dir"
+          test "$(xcodebuild -version | sed -n '1p')" = "Xcode 16.2"
+
+      - name: Build And Consumer-Test XCFramework
+        run: |
+          Scripts/build-release-xcframework.sh \
+            "$(tr -d '[:space:]' < VERSION)" \
+            "$RUNNER_TEMP/release"
 
   swift-syntax-compatibility:
     name: SwiftSyntax ${{ matrix.swift-syntax }} (macOS 26 hosted)
@@ -91,7 +115,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Record hosted toolchain
         run: |
@@ -125,7 +149,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Select Xcode
         run: Scripts/select-xcode.sh
@@ -142,12 +166,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24.18.0"
 
@@ -181,7 +205,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
@@ -189,7 +213,7 @@ jobs:
         run: Scripts/select-xcode.sh
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24.18.0"
 
@@ -217,6 +241,7 @@ jobs:
       - format-check
       - lint-check
       - build-check
+      - binary-release-check
       - test-check
       - danger-check
       - commitlint-check
@@ -235,6 +260,10 @@ jobs:
           fi
           if [ "${{ needs.build-check.result }}" != "success" ]; then
             echo "::error::Build check failed"
+            exit 1
+          fi
+          if [ "${{ needs.binary-release-check.result }}" != "success" ]; then
+            echo "::error::Binary release check failed"
             exit 1
           fi
           if [ "${{ needs.test-check.result }}" != "success" ]; then
