@@ -8,7 +8,8 @@ MacroTemplateKit provides a parametric algebraic data type (ADT) that separates 
 
 - **URL**: https://github.com/brunogama/MacroTemplateKit
 - **License**: MIT
-- **Swift**: 6.0+
+- **Swift**: 5.10+
+- **Distribution**: Source package; supports the SwiftSyntax 6xx release line
 - **Platforms**: iOS 16+, macOS 13+, tvOS 16+, watchOS 9+
 
 ## Installation
@@ -16,7 +17,8 @@ MacroTemplateKit provides a parametric algebraic data type (ADT) that separates 
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
 

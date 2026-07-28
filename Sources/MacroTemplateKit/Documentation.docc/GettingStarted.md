@@ -12,7 +12,7 @@ Add MacroTemplateKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
+.package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "0.1.0"),
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.1")
 ]
 ```
@@ -30,10 +30,9 @@ Then add it to your macro target:
 )
 ```
 
-Tagged releases resolve to a prebuilt XCFramework. Use that path when you want
-MacroTemplateKit without inheriting this repository's `swift-syntax` version
-range. Use a branch or local checkout only when you are contributing to
-MacroTemplateKit itself.
+Version `0.1.0` is the final source-only tag. Starting with the next approved
+release, tags resolve to a universal macOS `MacroTemplateKit.xcframework`
+pinned to Xcode 16.2, Swift 6.0, and SwiftSyntax 600.0.1.
 
 ## Render a Function
 

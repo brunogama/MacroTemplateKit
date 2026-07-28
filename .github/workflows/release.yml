@@ -1,66 +1,435 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  pull_request:
+    types: [closed]
 
 permissions:
   contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
   release:
-    name: Create Release
+    name: Publish Approved Binary Release
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.ref == 'automation/changelog-main' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: macos-15
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout Merged Release Candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
-      - name: Select Xcode
-        run: Scripts/select-xcode.sh
-
-      - name: Check Manifests
-        run: Scripts/check-manifests.sh
-
-      - name: Build Release
-        run: Scripts/build.sh -c release
-
-      - name: Run Tests
-        run: Scripts/swift-package.sh test --parallel
-
-      - name: Extract Release Notes
-        id: release_notes
-        run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
-
-          # Extract changelog section for this version
-          awk \
-            "/## \[$VERSION\]/{flag=1; next} /## \[/{flag=0} flag" \
-            CHANGELOG.md > release_notes.md
-
-          if [ ! -s release_notes.md ]; then
-            echo "Release $VERSION" > release_notes.md
-          fi
-
-      - name: Create GitHub Release
+      - name: Require Approval
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.release_notes.outputs.VERSION }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          release_arguments=(
-            "$GITHUB_REF_NAME"
-            --repo "$GITHUB_REPOSITORY"
-            --verify-tag
-            --title "MacroTemplateKit $VERSION"
-            --notes-file release_notes.md
-          )
-
-          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
-            release_arguments+=(--prerelease)
+          review_decision="$(
+            gh pr view "$PR_NUMBER" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json reviewDecision \
+              --jq .reviewDecision
+          )"
+          owner="${GITHUB_REPOSITORY%%/*}"
+          repository="${GITHUB_REPOSITORY#*/}"
+          query="$(cat <<GRAPHQL
+          query(
+            \$owner: String!
+            \$repository: String!
+            \$number: Int!
+          ) {
+            repository(owner: \$owner, name: \$repository) {
+              pullRequest(number: \$number) {
+                reviews(last: 100) {
+                  nodes { state commit { oid } }
+                }
+              }
+            }
+          }
+          GRAPHQL
+          )"
+          jq_filter="[.data.repository.pullRequest.reviews.nodes[] |"
+          jq_filter+=" select(.state == \"APPROVED\" and"
+          jq_filter+=" .commit.oid == \$head)] | length"
+          approvals="$(
+            gh api graphql \
+              -f query="$query" \
+              -F owner="$owner" \
+              -F repository="$repository" \
+              -F number="$PR_NUMBER" |
+              jq --arg head "$PR_HEAD_SHA" "$jq_filter"
+          )"
+          if [[ "$review_decision" != "APPROVED" || "$approvals" == "0" ]]; then
+            echo "error: current release candidate was not approved" >&2
+            exit 1
           fi
 
-          gh release create "${release_arguments[@]}"
+      - name: Read Release Version
+        id: release
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          base_version="$(tr -d '[:space:]' < RELEASE_BASE_VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "error: VERSION is not semantic: $version" >&2
+            exit 1
+          fi
+          if [[ ! "$base_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "error: release base is not semantic: $base_version" >&2
+            exit 1
+          fi
+          tag="v$version"
+          grep -Fq "## [$version]" CHANGELOG.md
+
+          published=false
+          release_error="$RUNNER_TEMP/release-view-error.txt"
+          if release_json="$(
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" \
+              2>"$release_error"
+          )"; then
+            is_draft="$(jq -r .draft <<<"$release_json")"
+            if [[ "$is_draft" == "false" ]]; then
+              asset_count="$(
+                jq '[.assets[] | select(
+                  .name == "MacroTemplateKit.xcframework.zip"
+                )] | length' <<<"$release_json"
+              )"
+              if [[ "$asset_count" != "1" ]]; then
+                echo "error: published release is missing its XCFramework" >&2
+                exit 1
+              fi
+              git fetch origin "refs/tags/$tag:refs/tags/$tag"
+              tagged_commit="$(git rev-list -n 1 "$tag")"
+              parent_line="$(git rev-list --parents -n 1 "$tag")"
+              if [[ "$parent_line" != "$tagged_commit $CANDIDATE_SHA" ]]; then
+                echo "error: published tag has the wrong parent" >&2
+                exit 1
+              fi
+              expected_changes="$(
+                printf 'D\t%s\n' \
+                  Package@swift-6.0.swift Package@swift-6.2.swift
+                printf 'M\tPackage.swift\n'
+              )"
+              expected_changes="$(sort <<<"$expected_changes")"
+              actual_changes="$(
+                git diff --name-status "$CANDIDATE_SHA" "$tagged_commit" |
+                  sort
+              )"
+              if [[ "$actual_changes" != "$expected_changes" ]]; then
+                echo "error: published release tree has unexpected changes" >&2
+                exit 1
+              fi
+              for source_manifest in \
+                Package@swift-6.0.swift Package@swift-6.2.swift; do
+                if git cat-file -e "$tag:$source_manifest" 2>/dev/null; then
+                  echo "error: published tag contains $source_manifest" >&2
+                  exit 1
+                fi
+              done
+              manifest="$(git show "$tag:Package.swift")"
+              if grep -q '__[A-Z]*__' <<<"$manifest"; then
+                echo "error: published release manifest has placeholders" >&2
+                exit 1
+              fi
+              if ! grep -Fq '.binaryTarget(' <<<"$manifest"; then
+                echo "error: published manifest is not binary-only" >&2
+                exit 1
+              fi
+              if ! grep -Fq "/releases/download/$tag/" <<<"$manifest"; then
+                echo "error: published manifest has the wrong asset URL" >&2
+                exit 1
+              fi
+              expected="$(
+                grep -oE 'checksum: \"[a-f0-9]{64}\"' <<<"$manifest" |
+                  cut -d '"' -f 2
+              )"
+              expected_manifest="$RUNNER_TEMP/ExpectedPackage.swift"
+              actual_manifest="$RUNNER_TEMP/PublishedPackage.swift"
+              Scripts/render-binary-manifest.sh \
+                "$version" "$expected" "$expected_manifest"
+              git show "$tag:Package.swift" > "$actual_manifest"
+              if ! cmp -s "$expected_manifest" "$actual_manifest"; then
+                echo "error: published binary manifest is not canonical" >&2
+                exit 1
+              fi
+              mkdir -p "$RUNNER_TEMP/published"
+              gh release download "$tag" \
+                --repo "$GITHUB_REPOSITORY" \
+                --pattern MacroTemplateKit.xcframework.zip \
+                --dir "$RUNNER_TEMP/published" \
+                --clobber
+              published_zip="$RUNNER_TEMP/published/MacroTemplateKit.xcframework.zip"
+              actual="$(swift package compute-checksum "$published_zip")"
+              if [[ -z "$expected" || "$actual" != "$expected" ]]; then
+                echo "error: published release checksum is invalid" >&2
+                exit 1
+              fi
+              unzip -q "$published_zip" -d "$RUNNER_TEMP/published/unpacked"
+              published_binary="$RUNNER_TEMP/published/unpacked/"
+              published_binary+="MacroTemplateKit.xcframework/"
+              published_binary+="macos-arm64_x86_64/"
+              published_binary+="MacroTemplateKit.framework/MacroTemplateKit"
+              architectures="$(lipo -archs "$published_binary")"
+              for architecture in arm64 x86_64; do
+                if [[ " $architectures " != *" $architecture "* ]]; then
+                  echo "error: published binary lacks $architecture" >&2
+                  exit 1
+                fi
+              done
+              published=true
+            fi
+          elif ! grep -Fq 'HTTP 404' "$release_error"; then
+            cat "$release_error" >&2
+            echo "error: unable to determine release state" >&2
+            exit 1
+          fi
+
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "base_tag=v$base_version"
+            echo "published=$published"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Wait For Previous Release
+        if: steps.release.outputs.published == 'false'
+        env:
+          BASE_TAG: ${{ steps.release.outputs.base_tag }}
+        run: |
+          for attempt in {1..60}; do
+            if git ls-remote --exit-code --tags origin \
+              "refs/tags/$BASE_TAG" >/dev/null 2>&1; then
+              exit 0
+            fi
+            echo "Waiting for prerequisite release $BASE_TAG ($attempt/60)"
+            sleep 30
+          done
+          echo "error: prerequisite release $BASE_TAG was not published" >&2
+          exit 1
+
+      - name: Select Pinned Xcode
+        if: steps.release.outputs.published == 'false'
+        run: |
+          developer_dir="/Applications/Xcode_16.2.app/Contents/Developer"
+          if [[ ! -d "$developer_dir" ]]; then
+            echo "error: Xcode 16.2 is unavailable on this runner" >&2
+            exit 1
+          fi
+          sudo xcode-select -s "$developer_dir"
+          test "$(xcodebuild -version | sed -n '1p')" = "Xcode 16.2"
+          swift --version
+
+      - name: Validate Source Candidate
+        if: steps.release.outputs.published == 'false'
+        env:
+          MTK_MATRIX_MODE: hosted
+        run: |
+          Scripts/check-manifests.sh
+          Scripts/check-release-metadata.sh
+          Scripts/test-release-automation.sh
+          Scripts/test-swift-syntax-matrix.sh 600.0.1
+
+      - name: Build And Consumer-Test XCFramework
+        if: steps.release.outputs.published == 'false'
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          chmod +x Scripts/build-release-xcframework.sh
+          Scripts/build-release-xcframework.sh \
+            "$VERSION" "$RUNNER_TEMP/release"
+
+      - name: Stage Detached Binary Release
+        if: steps.release.outputs.published == 'false'
+        id: stage
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          artifact="$RUNNER_TEMP/release/MacroTemplateKit.xcframework.zip"
+          checksum="$(cat "$RUNNER_TEMP/release/checksum.txt")"
+          binary_manifest="$RUNNER_TEMP/Package.swift"
+          Scripts/render-binary-manifest.sh \
+            "$VERSION" "$checksum" "$binary_manifest"
+
+          awk \
+            "/## \[$VERSION\]/{flag=1; next} /## \[/{flag=0} flag" \
+            CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
+          if [[ ! -s "$RUNNER_TEMP/release-notes.md" ]]; then
+            echo "MacroTemplateKit $VERSION" > "$RUNNER_TEMP/release-notes.md"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "github-actions[bot]@users.noreply.github.com"
+          git switch --detach HEAD
+          cp "$binary_manifest" Package.swift
+          git rm Package@swift-6.0.swift Package@swift-6.2.swift
+          git add Package.swift
+          git commit -m "release: $TAG [skip ci] [skip changelog]"
+          release_commit="$(git rev-parse HEAD)"
+          release_parent="$(git rev-parse HEAD^)"
+          expected_changes="$(
+            printf 'D\t%s\n' \
+              Package@swift-6.0.swift Package@swift-6.2.swift
+            printf 'M\tPackage.swift\n'
+          )"
+          expected_changes="$(sort <<<"$expected_changes")"
+          actual_changes="$(
+            git diff --name-status "$release_parent" "$release_commit" |
+              sort
+          )"
+          if [[ "$actual_changes" != "$expected_changes" ]]; then
+            echo "error: detached release tree has unexpected changes" >&2
+            exit 1
+          fi
+          release_branch="automation/release-$VERSION-"
+          release_branch+="${release_commit:0:12}"
+
+          remote_sha="$(
+            git ls-remote --heads origin "$release_branch" |
+              awk '{ print $1 }'
+          )"
+          if [[ -n "$remote_sha" && "$remote_sha" != "$release_commit" ]]; then
+            echo "error: immutable release branch points elsewhere" >&2
+            exit 1
+          fi
+          if [[ -z "$remote_sha" ]]; then
+            git push origin "HEAD:refs/heads/$release_branch"
+          fi
+
+          stage_error="$RUNNER_TEMP/stage-release-error.txt"
+          if draft_json="$(
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+              2>"$stage_error"
+          )"; then
+            if [[ "$(jq -r .draft <<<"$draft_json")" != "true" ]]; then
+              echo "error: release became published during staging" >&2
+              exit 1
+            fi
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --target "$release_branch" \
+              --title "MacroTemplateKit $VERSION" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+            gh release upload "$TAG" "$artifact" \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          elif grep -Fq 'HTTP 404' "$stage_error"; then
+            gh release create "$TAG" "$artifact" \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --target "$release_branch" \
+              --title "MacroTemplateKit $VERSION" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          else
+            cat "$stage_error" >&2
+            echo "error: unable to determine staged release state" >&2
+            exit 1
+          fi
+
+          {
+            echo "branch=$release_branch"
+            echo "commit=$release_commit"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify And Publish Release
+        if: steps.release.outputs.published == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ steps.stage.outputs.branch }}
+          RELEASE_COMMIT: ${{ steps.stage.outputs.commit }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/download"
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern MacroTemplateKit.xcframework.zip \
+            --dir "$RUNNER_TEMP/download" \
+            --clobber
+          downloaded="$RUNNER_TEMP/download/MacroTemplateKit.xcframework.zip"
+          expected="$(cat "$RUNNER_TEMP/release/checksum.txt")"
+          actual="$(swift package compute-checksum "$downloaded")"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "error: staged release asset checksum changed" >&2
+            exit 1
+          fi
+
+          remote_branch_sha="$(
+            git ls-remote --heads origin "$RELEASE_BRANCH" |
+              awk '{ print $1 }'
+          )"
+          if [[ "$remote_branch_sha" != "$RELEASE_COMMIT" ]]; then
+            echo "error: release target moved before publication" >&2
+            exit 1
+          fi
+          remote_tag_sha="$(
+            git ls-remote --tags origin "refs/tags/$TAG" |
+              awk '{ print $1 }'
+          )"
+          if [[ -n "$remote_tag_sha" && \
+            "$remote_tag_sha" != "$RELEASE_COMMIT" ]]; then
+            echo "error: release tag already points elsewhere" >&2
+            exit 1
+          fi
+          draft="$(
+            gh release view "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json isDraft,targetCommitish
+          )"
+          draft_state="$(jq -r .isDraft <<<"$draft")"
+          draft_target="$(jq -r .targetCommitish <<<"$draft")"
+          if [[ "$draft_state" != "true" || \
+            "$draft_target" != "$RELEASE_BRANCH" ]]; then
+            echo "error: draft release target is not immutable" >&2
+            exit 1
+          fi
+
+          gh release edit "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false
+          git fetch origin "refs/tags/$TAG:refs/tags/$TAG"
+          tagged_commit="$(git rev-list -n 1 "$TAG")"
+          if [[ "$tagged_commit" != "$RELEASE_COMMIT" ]]; then
+            echo "error: published tag does not identify the release commit" >&2
+            exit 1
+          fi
+          while read -r _ reference; do
+            [[ -z "$reference" ]] && continue
+            git push origin --delete "${reference#refs/heads/}"
+          done < <(
+            git ls-remote --heads origin \
+              "refs/heads/automation/release-${TAG#v}-*"
+          )
+
+      - name: Release Summary
+        env:
+          PUBLISHED: ${{ steps.release.outputs.published }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if [[ "$PUBLISHED" == "true" ]]; then
+            while read -r _ reference; do
+              [[ -z "$reference" ]] && continue
+              git push origin --delete "${reference#refs/heads/}"
+            done < <(
+              git ls-remote --heads origin \
+                "refs/heads/automation/release-$VERSION-*"
+            )
+            echo "$TAG was already published and verified"
+          else
+            echo "Published $TAG with MacroTemplateKit.xcframework.zip"
+          fi

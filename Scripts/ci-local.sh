@@ -9,13 +9,13 @@ echo
 
 if ! command -v swift-format >/dev/null 2>&1; then
 	echo "error: swift-format is not installed." >&2
-	echo "Run: scripts/bootstrap.sh" >&2
+	echo "Run: Scripts/bootstrap.sh" >&2
 	exit 1
 fi
 
 if ! command -v swiftlint >/dev/null 2>&1; then
 	echo "error: swiftlint is not installed." >&2
-	echo "Run: scripts/bootstrap.sh" >&2
+	echo "Run: Scripts/bootstrap.sh" >&2
 	exit 1
 fi
 
@@ -29,6 +29,11 @@ swiftlint lint --strict Sources/ Tests/
 echo
 echo "==> Manifest parity"
 "$(dirname "$0")/check-manifests.sh"
+
+echo
+echo "==> Release metadata"
+Scripts/check-release-metadata.sh
+Scripts/test-release-automation.sh
 
 echo
 echo "==> SwiftSyntax compatibility matrix"

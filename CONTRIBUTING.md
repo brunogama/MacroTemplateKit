@@ -140,6 +140,7 @@ git log -1 --pretty=format:'%s' | npx commitlint --verbose
 ```
 
 **Format:**
+
 ```
 <type>(<scope>): <subject>
 
@@ -149,6 +150,7 @@ git log -1 --pretty=format:'%s' | npx commitlint --verbose
 ```
 
 **Allowed types:**
+
 | Type | Description |
 |------|-------------|
 | `feat` | New feature |
@@ -164,6 +166,7 @@ git log -1 --pretty=format:'%s' | npx commitlint --verbose
 | `revert` | Reverts a previous commit |
 
 **Rules:**
+
 - Type must be lowercase
 - Subject must be lowercase
 - Subject must not be empty
@@ -171,6 +174,7 @@ git log -1 --pretty=format:'%s' | npx commitlint --verbose
 - No period at the end of subject
 
 **Examples:**
+
 ```
 feat: add new template case for dictionary literals
 fix: correct rendering of empty array literals
@@ -183,6 +187,7 @@ fix(template): handle nil payload in conditional
 ```
 
 **Invalid examples:**
+
 ```
 Added new feature          # No type prefix
 Feat: Add new feature      # Type must be lowercase
@@ -230,18 +235,22 @@ Rendering functions must be:
 - [ ] All tests pass
 - [ ] No compiler warnings
 - [ ] Documentation updated
-- [ ] CHANGELOG.md updated (for user-facing changes)
+- [ ] User-facing changes use an accurate Conventional Commit
 - [ ] Follows coding standards
 
 ## Release Process
 
-Releases are managed by maintainers:
+Releases are automated and reviewed:
 
-1. Update version in documentation
-2. Update CHANGELOG.md
-3. Create git tag: `git tag v0.0.6`
-4. Push tag: `git push origin v0.0.6`
-5. Create GitHub release
+1. Merge releasable Conventional Commits into `main`.
+2. Review the `automation/changelog-main` pull request, including its version,
+   changelog, and Quick Start updates.
+3. Approve and merge that pull request.
+4. Let the Release workflow build and consumer-test the pinned XCFramework,
+   render its checksum into the binary manifest, and publish the tag and release.
+
+Do not create or push version tags manually. Release tags identify detached
+binary-manifest commits; `main` remains the source package.
 
 ## Getting Help
 

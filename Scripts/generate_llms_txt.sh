@@ -16,15 +16,41 @@ TMPFILE="$(mktemp)"
 trap 'rm -f "$TMPFILE"' EXIT
 
 # ---------------------------------------------------------------------------
-# Read current version from README.md (from: "x.y.z" pattern), then
-# CHANGELOG.md, then fall back to a default.
+# Read the prepared release version, then fall back to README/CHANGELOG for
+# checkouts created before VERSION became the release source of truth.
 # ---------------------------------------------------------------------------
-VERSION=$(grep -m1 -oE 'from: "[0-9]+\.[0-9]+\.[0-9]+"' "$REPO_ROOT/README.md" 2>/dev/null |
-	grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
-if [[ -z "$VERSION" ]]; then
-	VERSION=$(grep -m1 -oE '\[[0-9]+\.[0-9]+\.[0-9]+\]' "$REPO_ROOT/CHANGELOG.md" 2>/dev/null |
-		tr -d '[]' || echo "0.0.1")
+VERSION=""
+if [[ -f "$REPO_ROOT/VERSION" ]]; then
+	VERSION="$(tr -d '[:space:]' <"$REPO_ROOT/VERSION")"
 fi
+if [[ -z "$VERSION" ]]; then
+	VERSION=$(grep -m1 -oE '(from|exact): "[0-9]+\.[0-9]+\.[0-9]+"' \
+		"$REPO_ROOT/README.md" 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)
+fi
+if [[ -z "$VERSION" ]]; then
+	VERSION=$(grep -m1 -oE '\[[0-9]+\.[0-9]+\.[0-9]+\]' \
+		"$REPO_ROOT/CHANGELOG.md" 2>/dev/null | tr -d '[]' || echo "0.0.1")
+fi
+
+RELEASE_DISTRIBUTION="$(
+	tr -d '[:space:]' <"$REPO_ROOT/RELEASE_DISTRIBUTION"
+)"
+case "$RELEASE_DISTRIBUTION" in
+source)
+	DEPENDENCY_RULE="from"
+	SWIFT_REQUIREMENT="5.10+"
+	DISTRIBUTION="Source package; supports the SwiftSyntax 6xx release line"
+	;;
+binary)
+	DEPENDENCY_RULE="exact"
+	SWIFT_REQUIREMENT="6.0 with Xcode 16.2"
+	DISTRIBUTION="Pinned macOS binary; requires SwiftSyntax 600.0.1 exactly"
+	;;
+*)
+	echo "error: unsupported release distribution: $RELEASE_DISTRIBUTION" >&2
+	exit 1
+	;;
+esac
 
 cat >"$TMPFILE" <<LLMS_EOF
 # MacroTemplateKit
@@ -37,7 +63,8 @@ MacroTemplateKit provides a parametric algebraic data type (ADT) that separates 
 
 - **URL**: https://github.com/brunogama/MacroTemplateKit
 - **License**: MIT
-- **Swift**: 6.0+
+- **Swift**: ${SWIFT_REQUIREMENT}
+- **Distribution**: ${DISTRIBUTION}
 - **Platforms**: iOS 16+, macOS 13+, tvOS 16+, watchOS 9+
 
 ## Installation
@@ -45,7 +72,8 @@ MacroTemplateKit provides a parametric algebraic data type (ADT) that separates 
 \`\`\`swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", from: "${VERSION}")
+    .package(url: "https://github.com/brunogama/MacroTemplateKit.git", ${DEPENDENCY_RULE}: "${VERSION}"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", ${DEPENDENCY_RULE}: "600.0.1")
 ]
 \`\`\`
 

@@ -1,17 +1,15 @@
 // swift-tools-version: 5.10
 // Package.binary.swift -- Release manifest for binary distribution.
 // MacroTemplateKit is a compile-time library that wraps SwiftSyntax.
-// When distributed as an XCFramework, consumers avoid pulling swift-syntax.
-// On tagged releases, CI swaps this file to Package.swift.
+// This internal-distribution XCFramework is pinned to Xcode 16.2 and
+// SwiftSyntax 600.0.1. Consumers must provide that exact SwiftSyntax dependency.
+// Release automation installs this manifest only in the detached tagged tree.
 import PackageDescription
 
 let package = Package(
   name: "MacroTemplateKit",
   platforms: [
-    .iOS(.v16),
-    .macOS(.v13),
-    .tvOS(.v16),
-    .watchOS(.v9),
+    .macOS(.v13)
   ],
   products: [
     .library(
@@ -21,7 +19,7 @@ let package = Package(
   ],
   dependencies: [],
   targets: [
-    // Pre-built XCFramework -- no swift-syntax required.
+    // Pre-built host framework for use from Swift macro implementation targets.
     .binaryTarget(
       name: "MacroTemplateKit",
       url: "https://github.com/brunogama/MacroTemplateKit/releases/download/__VERSION__/MacroTemplateKit.xcframework.zip",
