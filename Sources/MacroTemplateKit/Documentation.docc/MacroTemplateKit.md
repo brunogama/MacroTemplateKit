@@ -25,7 +25,15 @@ All three types are generic over a payload parameter `A` that carries compile-ti
 
 ### Tutorials
 
-- <doc:MacroTemplateKitTutorials>
+- <doc:MacroTemplateKitTutorial>
+
+### How-to Guides
+
+- <doc:MacroTemplateKitHowToGuides>
+
+### Reference
+
+- <doc:MacroTemplateKitReference>
 
 ### Templates
 
