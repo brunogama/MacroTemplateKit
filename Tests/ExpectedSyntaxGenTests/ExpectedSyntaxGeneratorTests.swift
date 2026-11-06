@@ -170,4 +170,27 @@ final class ExpectedSyntaxGeneratorTests: XCTestCase {
 
     XCTAssertEqual(generated, expected)
   }
+
+  func testCheckedInBenchmarkFixtureIsCurrent() throws {
+    let packageRoot = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent()
+      .deletingLastPathComponent()
+      .deletingLastPathComponent()
+    let input = packageRoot.appendingPathComponent("Benchmarks/Fixtures/static-storage.swift")
+    let checkedIn = packageRoot.appendingPathComponent(
+      "Benchmarks/Sources/RenderEngineBench/GeneratedStaticStorage.generated.swift"
+    )
+
+    let source = try String(contentsOf: input, encoding: .utf8)
+    let expected = try String(contentsOf: checkedIn, encoding: .utf8)
+    let generated = try ExpectedSyntaxGenerator.generate(
+      source: source,
+      options: ExpectedSyntaxGenerationOptions(
+        kind: .declaration,
+        factoryName: "makeGeneratedStorageMember"
+      )
+    )
+
+    XCTAssertEqual(generated, expected)
+  }
 }

@@ -42,6 +42,40 @@ a getter/setter pair per property. Extraction from the parsed fixture runs
 inside the timed region (a macro pays it on every expansion); parsing the
 fixture itself does not (the compiler hands macros a parsed tree).
 
+### Static syntax integration spike
+
+The `generate` workload also includes four variants that preserve the dynamic
+accessor path and vary only the invariant `_storage` declaration:
+
+| Pipeline | Invariant storage member |
+|---|---|
+| `mtk` | Build its DSL value and render it for every expansion. |
+| `mtk-static-rendered` | Reuse one MacroTemplateKit-rendered `DeclSyntax`. |
+| `expected-static-factory` | Call the generated SwiftSyntax factory for every expansion. |
+| `expected-static-cached` | Reuse one `DeclSyntax` from the generated factory. |
+
+This is a hybrid macro experiment, not a replacement-renderer benchmark. The
+accessors remain input-dependent and are rendered identically in every row.
+Compare `mtk` with `expected-static-factory` for materialization cost. Compare
+the two cached rows for warmed reuse. A cached row has already initialized its
+static syntax before timing, so it does not measure process startup or a first
+macro expansion.
+
+The generated factory is derived before the benchmark target compiles and must
+stay aligned with the benchmark's resolved SwiftSyntax version:
+
+```sh
+swift run ExpectedSyntaxGen Benchmarks/Fixtures/static-storage.swift \
+  --kind declaration \
+  --name makeGeneratedStorageMember \
+  --output Benchmarks/Sources/RenderEngineBench/GeneratedStaticStorage.generated.swift
+```
+
+The generate workload keeps its normal token-equivalence gate. When two or
+more static-storage variants are selected, it also checks the storage member's
+source after removing only root EOF trivia, so internal spaces and trivia must
+remain identical.
+
 Before timing, all selected pipelines must produce **token-identical** output
 for the same fixture; a failed equivalence check is printed prominently because
 it means the timings compare different work.

@@ -6,6 +6,9 @@ import SwiftSyntax
 let allPipelines: [ASTGeneratorPipeline] = [
     StructuralPipeline(),
     MTKPipeline(),
+    MTKStaticRenderedPipeline(),
+    ExpectedStaticFactoryPipeline(),
+    ExpectedStaticCachedPipeline(),
     MTKLeafPipeline(),
     InterpolationPipeline(),
     ReparsePipeline(),
@@ -151,6 +154,7 @@ func runWorkload<Pipeline, Fixture>(
     fixture: (Int) -> Fixture,
     equivalenceFixture: Fixture,
     parts: (Pipeline, Fixture) -> OutputParts,
+    exactParts: ((Pipeline, Fixture) -> OutputParts?)? = nil,
     measure: (Pipeline, Fixture) -> (TimingStats, retainedBytesPerIteration: Double)
 ) {
     let selected = requestedNames.compactMap { requested in
@@ -169,6 +173,19 @@ func runWorkload<Pipeline, Fixture>(
         equivalenceFailed = true
     } else {
         print("✅ Output equivalence check passed (token-identical across pipelines)\n")
+    }
+
+    if let exactParts {
+        let exactOutputs = selected.compactMap { pipeline -> (name: String, parts: OutputParts)? in
+            guard let parts = exactParts(pipeline, equivalenceFixture) else { return nil }
+            return (name(pipeline), parts)
+        }
+        if exactOutputs.count > 1, let mismatch = firstMismatch(exactOutputs) {
+            print("❌ Static-storage source check FAILED — variants differ before timing:\n\(mismatch)\n")
+            equivalenceFailed = true
+        } else if exactOutputs.count > 1 {
+            print("✅ Static-storage source check passed (non-EOF trivia included)\n")
+        }
     }
 
     var results: [BenchResult] = []
@@ -201,6 +218,11 @@ if options.workloads.contains("generate") {
         equivalenceFixture: equivalenceFixture,
         parts: { pipeline, fixture in
             outputParts(of: pipeline.expand(properties: extractStoredProperties(from: fixture)))
+        },
+        exactParts: { pipeline, fixture in
+            guard pipeline is any StaticStorageExperimentPipeline else { return nil }
+            let output = pipeline.expand(properties: extractStoredProperties(from: fixture))
+            return [("storage member source", output.storageMember.trimmedDescription)]
         },
         measure: { pipeline, structDecl in
             measureLoop(warmup: options.warmup, iterations: options.iterations) {
