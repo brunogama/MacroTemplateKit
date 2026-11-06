@@ -170,6 +170,29 @@ mapping the declaration transforms every reference as one structural unit.
 
 For most macros, `Template<Void>`, `Statement<Void>`, and `Declaration<Void>` are the default path. Use a non-`Void` payload only when you want to carry compile-time metadata through template construction.
 
+---
+
+## ExpectedSyntaxGen
+
+The source checkout also provides `ExpectedSyntaxGen`, a developer tool that turns
+valid Swift source into a factory function built entirely from public SwiftSyntax
+constructors. It is useful for checked macro fixtures and exact syntax-tree tests.
+
+```bash
+swift run ExpectedSyntaxGen Input.swift \
+  --kind file \
+  --name makeExpectedFile \
+  --output ExpectedFile.swift
+```
+
+File, declaration, expression, and declaration-list outputs are supported. Generated
+source must be regenerated when the consuming SwiftSyntax version changes. The tool is
+available from source checkouts only and is not part of the binary release manifest.
+See [ExpectedSyntaxGen](docs/expected-syntax-gen.md) for root-mode limits, stdin and
+stdout usage, the programmatic API, and the macro-fixture regeneration command.
+
+---
+
 ## Usage Examples
 
 ### Expressions

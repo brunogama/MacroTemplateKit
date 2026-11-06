@@ -6,6 +6,9 @@ import SwiftSyntax
 let allPipelines: [ASTGeneratorPipeline] = [
     StructuralPipeline(),
     MTKPipeline(),
+    MTKStaticRenderedPipeline(),
+    ExpectedStaticFactoryPipeline(),
+    ExpectedStaticCachedPipeline(),
     MTKLeafPipeline(),
     InterpolationPipeline(),
     ReparsePipeline(),
@@ -140,45 +143,64 @@ let caseFactoryEquivalenceFixture = Fixtures.enumDecl(caseCount: 6)
 /// nothing observed the result.
 var equivalenceFailed = false
 
+/// Defines one comparable workload and the operations that construct it.
+struct Workload<Pipeline, Fixture> {
+    let header: String
+    let registry: [Pipeline]
+    let requestedNames: [String]
+    let name: (Pipeline) -> String
+    let fixture: (Int) -> Fixture
+    let equivalenceFixture: Fixture
+    let parts: (Pipeline, Fixture) -> OutputParts
+    let exactParts: ((Pipeline, Fixture) -> OutputParts?)?
+    let measure: (Pipeline, Fixture) -> (TimingStats, retainedBytesPerIteration: Double)
+}
+
 /// Runs one workload end-to-end: select pipelines by name, gate on output
 /// equivalence, measure every (pipeline × size) cell, and print the table
 /// with the first selected pipeline as the ratio baseline.
-func runWorkload<Pipeline, Fixture>(
-    header: String,
-    registry: [Pipeline],
-    requestedNames: [String],
-    name: (Pipeline) -> String,
-    fixture: (Int) -> Fixture,
-    equivalenceFixture: Fixture,
-    parts: (Pipeline, Fixture) -> OutputParts,
-    measure: (Pipeline, Fixture) -> (TimingStats, retainedBytesPerIteration: Double)
-) {
-    let selected = requestedNames.compactMap { requested in
-        registry.first { name($0) == requested }
+func runWorkload<Pipeline, Fixture>(_ workload: Workload<Pipeline, Fixture>) {
+    let selected = workload.requestedNames.compactMap { requested in
+        workload.registry.first { workload.name($0) == requested }
     }
     guard !selected.isEmpty else {
         FileHandle.standardError.write(Data("no matching pipelines; use --list\n".utf8))
         exit(64)
     }
 
-    print(header)
-    print("Pipelines: \(selected.map(name).joined(separator: ", "))")
+    print(workload.header)
+    print("Pipelines: \(selected.map(workload.name).joined(separator: ", "))")
 
-    if let mismatch = firstMismatch(selected.map { (name($0), parts($0, equivalenceFixture)) }) {
+    if let mismatch = firstMismatch(
+        selected.map { (workload.name($0), workload.parts($0, workload.equivalenceFixture)) }
+    ) {
         print("❌ Output equivalence check FAILED — timings below compare different work:\n\(mismatch)\n")
         equivalenceFailed = true
     } else {
         print("✅ Output equivalence check passed (token-identical across pipelines)\n")
     }
 
+    if let exactParts = workload.exactParts {
+        let exactOutputs = selected.compactMap { pipeline -> (name: String, parts: OutputParts)? in
+            guard let parts = exactParts(pipeline, workload.equivalenceFixture) else { return nil }
+            return (workload.name(pipeline), parts)
+        }
+        if exactOutputs.count > 1, let mismatch = firstMismatch(exactOutputs) {
+            print("❌ Static-storage source check FAILED — variants differ before timing:\n\(mismatch)\n")
+            equivalenceFailed = true
+        } else if exactOutputs.count > 1 {
+            print("✅ Static-storage source check passed (non-EOF trivia included)\n")
+        }
+    }
+
     var results: [BenchResult] = []
     for size in options.sizes {
-        let sizedFixture = fixture(size)
+        let sizedFixture = workload.fixture(size)
         for pipeline in selected {
-            let (timing, retained) = measure(pipeline, sizedFixture)
+            let (timing, retained) = workload.measure(pipeline, sizedFixture)
             results.append(
                 BenchResult(
-                    pipeline: name(pipeline),
+                    pipeline: workload.name(pipeline),
                     propertyCount: size,
                     timing: timing,
                     retainedBytesPerIteration: retained
@@ -186,87 +208,105 @@ func runWorkload<Pipeline, Fixture>(
             )
         }
     }
-    printTable(results: results, sizes: options.sizes, baselineName: name(selected[0]))
+    printTable(results: results, sizes: options.sizes, baselineName: workload.name(selected[0]))
 }
 
 // MARK: - Workloads
 
 if options.workloads.contains("generate") {
     runWorkload(
-        header: "## Workload: generate — DictionaryStorage-style expansion (storage member + accessors per property)",
-        registry: allPipelines,
-        requestedNames: options.pipelineNames,
-        name: { type(of: $0).name },
-        fixture: { Fixtures.structDecl(propertyCount: $0) },
-        equivalenceFixture: equivalenceFixture,
-        parts: { pipeline, fixture in
-            outputParts(of: pipeline.expand(properties: extractStoredProperties(from: fixture)))
-        },
-        measure: { pipeline, structDecl in
-            measureLoop(warmup: options.warmup, iterations: options.iterations) {
-                pipeline.expand(properties: extractStoredProperties(from: structDecl))
+        Workload(
+            header: "## Workload: generate — DictionaryStorage-style expansion "
+                + "(storage member + accessors per property)",
+            registry: allPipelines,
+            requestedNames: options.pipelineNames,
+            name: { type(of: $0).name },
+            fixture: { Fixtures.structDecl(propertyCount: $0) },
+            equivalenceFixture: equivalenceFixture,
+            parts: { pipeline, fixture in
+                outputParts(of: pipeline.expand(properties: extractStoredProperties(from: fixture)))
+            },
+            exactParts: { pipeline, fixture in
+                guard pipeline is any StaticStorageExperimentPipeline else { return nil }
+                let output = pipeline.expand(properties: extractStoredProperties(from: fixture))
+                return [("storage member source", output.storageMember.trimmedDescription)]
+            },
+            measure: { pipeline, structDecl in
+                measureLoop(warmup: options.warmup, iterations: options.iterations) {
+                    pipeline.expand(properties: extractStoredProperties(from: structDecl))
+                }
             }
-        }
+        )
     )
 }
 
 if options.workloads.contains("edit") {
     runWorkload(
-        header: "## Workload: edit — inject one _storage member into an existing N-property struct",
-        registry: allEditPipelines,
-        requestedNames: options.editPipelineNames,
-        name: { type(of: $0).name },
-        fixture: { Fixtures.structDecl(propertyCount: $0) },
-        equivalenceFixture: equivalenceFixture,
-        parts: { pipeline, fixture in outputParts(of: pipeline.edit(fixture)) },
-        measure: { pipeline, structDecl in
-            measureLoop(warmup: options.warmup, iterations: options.iterations) {
-                pipeline.edit(structDecl)
+        Workload(
+            header: "## Workload: edit — inject one _storage member into an existing N-property struct",
+            registry: allEditPipelines,
+            requestedNames: options.editPipelineNames,
+            name: { type(of: $0).name },
+            fixture: { Fixtures.structDecl(propertyCount: $0) },
+            equivalenceFixture: equivalenceFixture,
+            parts: { pipeline, fixture in outputParts(of: pipeline.edit(fixture)) },
+            exactParts: nil,
+            measure: { pipeline, structDecl in
+                measureLoop(warmup: options.warmup, iterations: options.iterations) {
+                    pipeline.edit(structDecl)
+                }
             }
-        }
+        )
     )
 }
 
 if options.workloads.contains("case-factory") {
     runWorkload(
-        header: "## Workload: case-factory — one static factory per enum case (declaration shape, not accessor shape)",
-        registry: allCaseFactoryPipelines,
-        requestedNames: options.caseFactoryPipelineNames,
-        name: { type(of: $0).name },
-        fixture: { Fixtures.enumDecl(caseCount: $0) },
-        equivalenceFixture: caseFactoryEquivalenceFixture,
-        parts: { pipeline, fixture in
-            outputParts(
-                of: pipeline.expand(
-                    cases: extractEnumCases(from: fixture), enumName: fixture.name.text))
-        },
-        measure: { pipeline, enumDecl in
-            measureLoop(warmup: options.warmup, iterations: options.iterations) {
-                pipeline.expand(cases: extractEnumCases(from: enumDecl), enumName: enumDecl.name.text)
+        Workload(
+            header: "## Workload: case-factory — one static factory per enum case "
+                + "(declaration shape, not accessor shape)",
+            registry: allCaseFactoryPipelines,
+            requestedNames: options.caseFactoryPipelineNames,
+            name: { type(of: $0).name },
+            fixture: { Fixtures.enumDecl(caseCount: $0) },
+            equivalenceFixture: caseFactoryEquivalenceFixture,
+            parts: { pipeline, fixture in
+                outputParts(
+                    of: pipeline.expand(
+                        cases: extractEnumCases(from: fixture), enumName: fixture.name.text))
+            },
+            exactParts: nil,
+            measure: { pipeline, enumDecl in
+                measureLoop(warmup: options.warmup, iterations: options.iterations) {
+                    pipeline.expand(cases: extractEnumCases(from: enumDecl), enumName: enumDecl.name.text)
+                }
             }
-        }
+        )
     )
 }
 
 if options.workloads.contains("case-path") {
     runWorkload(
-        header:
-            "## Workload: case-path — @CasePathable-style AnyCasePath property per enum case (the TCA shape)",
-        registry: allCasePathPipelines,
-        requestedNames: allCasePathPipelines.map { type(of: $0).name },
-        name: { type(of: $0).name },
-        fixture: { Fixtures.enumDecl(caseCount: $0) },
-        equivalenceFixture: caseFactoryEquivalenceFixture,
-        parts: { pipeline, fixture in
-            outputParts(
-                of: pipeline.expand(
-                    cases: extractEnumCases(from: fixture), enumName: fixture.name.text))
-        },
-        measure: { pipeline, enumDecl in
-            measureLoop(warmup: options.warmup, iterations: options.iterations) {
-                pipeline.expand(cases: extractEnumCases(from: enumDecl), enumName: enumDecl.name.text)
+        Workload(
+            header:
+                "## Workload: case-path — @CasePathable-style AnyCasePath property per enum case (the TCA shape)",
+            registry: allCasePathPipelines,
+            requestedNames: allCasePathPipelines.map { type(of: $0).name },
+            name: { type(of: $0).name },
+            fixture: { Fixtures.enumDecl(caseCount: $0) },
+            equivalenceFixture: caseFactoryEquivalenceFixture,
+            parts: { pipeline, fixture in
+                outputParts(
+                    of: pipeline.expand(
+                        cases: extractEnumCases(from: fixture), enumName: fixture.name.text))
+            },
+            exactParts: nil,
+            measure: { pipeline, enumDecl in
+                measureLoop(warmup: options.warmup, iterations: options.iterations) {
+                    pipeline.expand(cases: extractEnumCases(from: enumDecl), enumName: enumDecl.name.text)
+                }
             }
-        }
+        )
     )
 }
 
@@ -294,7 +334,7 @@ if options.workloads.contains("accumulate") {
         let name = type(of: pipeline).name
         // `dropped` sweeps a 64× range: flat malloc Δ/expansion across it
         // means arenas die with each expansion and nothing compounds.
-        for expansions in [64, 1024, 16384, 131072] {
+        for expansions in [64, 1024, 16_384, 131_072] {
             samples.append(
                 measureAccumulation(
                     pipeline: pipeline,
