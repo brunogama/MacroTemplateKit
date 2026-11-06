@@ -18,7 +18,15 @@ let package = Package(
     .library(
       name: "MacroTemplateKit",
       targets: ["MacroTemplateKit"]
-    )
+    ),
+    .library(
+      name: "ExpectedSyntaxGenCore",
+      targets: ["ExpectedSyntaxGenCore"]
+    ),
+    .executable(
+      name: "ExpectedSyntaxGen",
+      targets: ["ExpectedSyntaxGenCLI"]
+    ),
   ],
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.1"..<"700.0.0")
@@ -34,9 +42,39 @@ let package = Package(
         .enableExperimentalFeature("StrictConcurrency")
       ]
     ),
+    .target(
+      name: "ExpectedSyntaxGenCore",
+      dependencies: [
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
+        .product(name: "SwiftParserDiagnostics", package: "swift-syntax"),
+      ],
+      swiftSettings: [
+        .enableExperimentalFeature("StrictConcurrency")
+      ]
+    ),
+    .executableTarget(
+      name: "ExpectedSyntaxGenCLI",
+      dependencies: ["ExpectedSyntaxGenCore"],
+      swiftSettings: [
+        .enableExperimentalFeature("StrictConcurrency")
+      ]
+    ),
     .testTarget(
       name: "MacroTemplateKitTests",
       dependencies: ["MacroTemplateKit"],
+      swiftSettings: [
+        .enableExperimentalFeature("StrictConcurrency")
+      ]
+    ),
+    .testTarget(
+      name: "ExpectedSyntaxGenTests",
+      dependencies: [
+        "ExpectedSyntaxGenCore",
+        "ExpectedSyntaxGenCLI",
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
+      ],
       swiftSettings: [
         .enableExperimentalFeature("StrictConcurrency")
       ]
@@ -63,6 +101,17 @@ let package = Package(
         "ExtensionMacros/README.md",
         "MemberMacros/README.md",
         "PeerMacros/README.md",
+      ],
+      swiftSettings: [
+        .enableExperimentalFeature("StrictConcurrency")
+      ]
+    ),
+    .testTarget(
+      name: "MacroExamplesTests",
+      dependencies: [
+        "MacroExamples",
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
       ],
       swiftSettings: [
         .enableExperimentalFeature("StrictConcurrency")
